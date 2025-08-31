@@ -1,0 +1,1 @@
+../../../tiris-backend/docs/architecture/system-definition.md

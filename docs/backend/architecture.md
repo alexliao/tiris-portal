@@ -1,0 +1,1 @@
+../../../tiris-backend/docs/architecture/architecture.md
