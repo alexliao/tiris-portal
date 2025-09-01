@@ -6,6 +6,7 @@ This document defines the user experience goals, information architecture, user 
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2025-08-31 | 1.0 | Initial UI/UX specification creation | Sally (UX Expert) |
+| 2025-09-01 | 2.0 | Updated to match actual Strikingly design | Sally (UX Expert) |
 
 ## Overall UX Goals & Principles
 
@@ -28,60 +29,42 @@ This document defines the user experience goals, information architecture, user 
 
 ### Design Principles
 
-1. **Education Before Action** - Never allow users to make financial decisions without understanding the implications and seeing simulated results first
-2. **Transparency Through Visualization** - Complex ML algorithms become trustworthy through clear performance data, backtesting results, and decision explanations
-3. **Progressive Disclosure** - Start simple (landing page education) and gradually reveal complexity (simulation → live trading) as user confidence grows
-4. **Professional Trust** - Every design element reinforces credibility and financial competence to build confidence in non-technical users
-5. **Mobile-First Trading** - Cryptocurrency markets never sleep, so critical monitoring and decision-making must work perfectly on mobile devices
+1. **Radical Simplicity** - Minimal design with maximum impact, focusing on essential messaging only
+2. **Professional Minimalism** - Clean, sophisticated aesthetic that conveys technical competence through restraint
+3. **Immediate Clarity** - Users understand the core value proposition within seconds of landing
+4. **Typography-Driven Design** - Strong typographic hierarchy creates visual impact without complex graphics
+5. **Subtle Sophistication** - Understated elegance that appeals to professional crypto investors
 
 ## Information Architecture (IA)
 
 ### Site Map / Screen Inventory
 
-```mermaid
-graph TD
-    A[Landing Page] --> B[Authentication]
-    A --> C[About/Education]
-    B --> D[User Dashboard]
-    
-    D --> E[Simulation Trading]
-    D --> F[Performance Analytics]
-    D --> G[Account Settings]
-    
-    E --> E1[Strategy Overview]
-    E --> E2[Virtual Portfolio]
-    E --> E3[Trading History]
-    E --> E4[ML Decision Explanations]
-    
-    F --> F1[Backtesting Results]
-    F --> F2[Performance Metrics]
-    F --> F3[Risk Analysis]
-    
-    G --> G1[Profile Management]
-    G --> G2[Notification Preferences]
-    G --> G3[Exchange Connections - Future]
-    
-    C --> C1[How ML Trading Works]
-    C --> C2[Strategy Validation Process]
-    C --> C3[Risk Education]
+**Single-Page Layout Structure:**
+```
+Landing Page (Single Page)
+├── Hero Section (HOME)
+│   ├── Large "tiris" title
+│   └── "Profitable Crypto Trading Bot" subtitle
+├── About Section (ABOUT)
+│   └── Company/Product explanation
+└── Features Section (FEATURES)
+    ├── Profitable
+    ├── Secure
+    ├── Automatic
+    └── Simple
 ```
 
 ### Navigation Structure
 
 **Primary Navigation:** 
-- Clean top navigation bar with: Dashboard, Simulation, Analytics, Profile
-- Persistent "Start Simulation" CTA for unauthenticated users
-- Clear authentication state indicator (Sign In/User Menu)
+- Minimal sticky navigation bar with: HOME, ABOUT, FEATURES
+- Smooth scrolling between sections
+- No complex authentication states in MVP
 
-**Secondary Navigation:** 
-- Contextual sidebar within major sections (Dashboard tabs, Simulation tools)
-- Educational tooltips and "Learn More" links throughout
-- Quick access to key performance metrics as persistent widgets
-
-**Breadcrumb Strategy:** 
-- Simple path indication: Dashboard > Simulation > Strategy Details
-- Educational context preserved: "Learning Mode" indicator during simulation
-- Clear "Exit to Dashboard" options from deep educational content
+**Navigation Behavior:**
+- Fixed top navigation that remains visible during scroll
+- Active section highlighting as user scrolls
+- Smooth scroll animation between sections when clicked
 
 ## User Flows
 
@@ -248,56 +231,70 @@ graph TD
 
 ### Visual Identity
 
-**Brand Guidelines:** Building on Tiris brand identity focused on ML excellence, transparency, and accessibility for non-technical users. Professional financial credibility with approachable, educational tone.
+**Brand Guidelines:** Minimalist, professional design matching the actual Strikingly implementation. Focus on typography-driven layout with sophisticated simplicity.
 
 ### Color Palette
 
 | Color Type | Hex Code | Usage |
 |------------|----------|--------|
-| Primary | #3B82F6 | Primary actions, ML confidence indicators, main CTA buttons |
-| Secondary | #6366F1 | Secondary actions, educational highlights, progress indicators |
-| Accent | #10B981 | Success states, profitable trades, positive performance |
-| Success | #22C55E | Confirmations, completed simulations, portfolio gains |
-| Warning | #F59E0B | Risk alerts, important notices, attention-required items |
-| Error | #EF4444 | Losses, errors, destructive actions, critical warnings |
-| Neutral | #6B7280, #9CA3AF, #D1D5DB | Text, borders, backgrounds, inactive states |
+| Primary | #080404 | Deep black for primary text, backgrounds, and main branding |
+| Background | #FFFFFF | Clean white backgrounds for contrast |
+| Feature Tiles | Soft pastels | Muted pastel backgrounds for feature cards |
+| Text | #080404 | High contrast black text for readability |
+| Muted Text | #666666 | Secondary text and descriptions |
 
 ### Typography
 
 #### Font Families
-- **Primary:** Inter (clean, professional, excellent for financial data)
-- **Secondary:** Inter (consistent across all elements)
-- **Monospace:** JetBrains Mono (for numerical data, code snippets)
+- **Title Font:** Bebas Neue - Bold, impactful titles (for "tiris" hero title)
+- **Body Font:** Nunito - Clean, readable body text
+- **Headings Font:** Raleway - Professional headings and subheadings
 
 #### Type Scale
 
-| Element | Size | Weight | Line Height |
-|---------|------|--------|-------------|
-| H1 | 48px | 700 | 1.2 |
-| H2 | 36px | 600 | 1.3 |
-| H3 | 24px | 600 | 1.4 |
-| Body | 16px | 400 | 1.6 |
-| Small | 14px | 400 | 1.5 |
+| Element | Font | Size | Weight | Usage |
+|---------|------|------|--------|-------|
+| Hero Title | Bebas Neue | 120px+ | Bold | Main "tiris" title |
+| Hero Subtitle | Nunito | 24px | Regular | "Profitable Crypto Trading Bot" |
+| Section Headers | Raleway | 32px | Bold | Section titles (ABOUT, FEATURES) |
+| Feature Titles | Raleway | 20px | Bold | Feature card titles |
+| Body Text | Nunito | 16px | Regular | Descriptive text |
 
-### Iconography
+### Layout Structure
 
-**Icon Library:** Lucide React - clean, consistent icon system perfect for financial interfaces
+**Single-Page Design:**
+- Full-height sections with centered content
+- Clean, minimal spacing with generous white space
+- Focused content without clutter
 
-**Usage Guidelines:** 
-- 24px standard size for interface icons
-- 16px for inline text icons  
-- Use outline style for consistency
-- Profit/loss icons: TrendingUp (green) / TrendingDown (red)
-- ML/AI concepts: Brain, Target, TrendingUp icons
+**Section Layout:**
+- Hero: Full viewport height with centered title and subtitle
+- About: Centered content with company description
+- Features: 4-column grid with equal-height feature cards
 
-### Spacing & Layout
+**Feature Cards:**
+- Subtle pastel background colors
+- Bold titles: "Profitable", "Secure", "Automatic", "Simple"
+- Descriptive paragraph below each title
+- Consistent padding and rounded corners
 
-**Grid System:** 12-column responsive grid with consistent gutters
-- Mobile: 16px margins, 12px gutters
-- Tablet: 24px margins, 16px gutters  
-- Desktop: 32px margins, 24px gutters
+### Responsive Behavior
 
-**Spacing Scale:** 4px base unit system (4px, 8px, 12px, 16px, 24px, 32px, 48px, 64px)
+**Desktop (1200px+):**
+- 4-column feature grid
+- Large hero typography
+- Full-width sections
+
+**Tablet (768px-1199px):**
+- 2-column feature grid
+- Scaled typography
+- Maintained spacing ratios
+
+**Mobile (320px-767px):**
+- Single column layout
+- Stacked features
+- Optimized typography sizing
+- Touch-friendly navigation
 
 ## Accessibility Requirements
 
@@ -407,21 +404,97 @@ graph TD
 - **Intelligent Caching:** ML recommendations and backtesting results cache intelligently to reduce API calls while ensuring data freshness
 - **Critical Path Prioritization:** Essential trading information (current portfolio value, ML recommendations) loads first, with secondary analytics loading progressively
 
+## Exact Implementation Specifications
+
+### Hero Section Implementation
+**Match Strikingly Design Exactly:**
+
+```html
+<section className="min-h-screen flex items-center justify-center bg-white">
+  <div className="text-center">
+    <h1 className="text-[120px] md:text-[160px] font-['Bebas_Neue'] font-bold text-[#080404] leading-none mb-4">
+      tiris
+    </h1>
+    <p className="text-2xl font-['Nunito'] text-[#080404] font-normal">
+      Profitable Crypto Trading Bot
+    </p>
+  </div>
+</section>
+```
+
+### Navigation Implementation
+**Minimal sticky navigation:**
+
+```html
+<nav className="fixed top-0 w-full bg-white/95 backdrop-blur z-50 py-4">
+  <div className="max-w-6xl mx-auto px-6">
+    <ul className="flex justify-center space-x-12">
+      <li><a href="#home" className="font-['Raleway'] text-[#080404] hover:opacity-70 transition-opacity">HOME</a></li>
+      <li><a href="#about" className="font-['Raleway'] text-[#080404] hover:opacity-70 transition-opacity">ABOUT</a></li>
+      <li><a href="#features" className="font-['Raleway'] text-[#080404] hover:opacity-70 transition-opacity">FEATURES</a></li>
+    </ul>
+  </div>
+</nav>
+```
+
+### Features Section Implementation
+**4-column grid with pastel backgrounds:**
+
+```html
+<section className="min-h-screen flex items-center justify-center bg-white py-20">
+  <div className="max-w-6xl mx-auto px-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="bg-[#f0f4ff] rounded-lg p-8 text-center">
+        <h3 className="font-['Raleway'] font-bold text-xl text-[#080404] mb-4">Profitable</h3>
+        <p className="font-['Nunito'] text-[#666666] leading-relaxed">[Feature description]</p>
+      </div>
+      <div className="bg-[#fff0f4] rounded-lg p-8 text-center">
+        <h3 className="font-['Raleway'] font-bold text-xl text-[#080404] mb-4">Secure</h3>
+        <p className="font-['Nunito'] text-[#666666] leading-relaxed">[Feature description]</p>
+      </div>
+      <div className="bg-[#f0fff4] rounded-lg p-8 text-center">
+        <h3 className="font-['Raleway'] font-bold text-xl text-[#080404] mb-4">Automatic</h3>
+        <p className="font-['Nunito'] text-[#666666] leading-relaxed">[Feature description]</p>
+      </div>
+      <div className="bg-[#fff8f0] rounded-lg p-8 text-center">
+        <h3 className="font-['Raleway'] font-bold text-xl text-[#080404] mb-4">Simple</h3>
+        <p className="font-['Nunito'] text-[#666666] leading-relaxed">[Feature description]</p>
+      </div>
+    </div>
+  </div>
+</section>
+```
+
+### Required Google Fonts
+**Add to index.html:**
+```html
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600&family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+```
+
+### Exact Colors
+- Primary text: `#080404`
+- Secondary text: `#666666`
+- Feature card backgrounds:
+  - Profitable: `#f0f4ff` (light blue)
+  - Secure: `#fff0f4` (light pink)
+  - Automatic: `#f0fff4` (light green)
+  - Simple: `#fff8f0` (light orange)
+
 ## Next Steps
 
 ### Immediate Actions
 
-1. **Stakeholder Review:** Present UX specification to product team and gather feedback on user personas and design principles
-2. **Create Visual Designs:** Begin detailed mockups in Figma for the three core screens (Landing, Simulation, Performance Dashboard)
-3. **Technical Architecture Handoff:** Collaborate with Design Architect to ensure component library aligns with React + Tailwind implementation
-4. **User Research Validation:** Conduct user interviews with target demographic to validate education-first approach and information architecture
-5. **Accessibility Audit Planning:** Set up processes for ongoing accessibility testing integration with development workflow
+1. **Implement Exact Design Match:** Replace current Hero Section with minimal "tiris" + subtitle design
+2. **Add Required Fonts:** Install Bebas Neue, Nunito, and Raleway from Google Fonts
+3. **Create Features Section:** Build 4-column feature grid with exact pastel colors
+4. **Update Navigation:** Replace complex navigation with simple HOME/ABOUT/FEATURES links
+5. **Remove Complex Elements:** Strip out performance metrics, detailed explanations, and complex layouts
 
 ### Design Handoff Checklist
 
-- ✅ All user flows documented
-- ✅ Component inventory complete  
-- ✅ Accessibility requirements defined
-- ✅ Responsive strategy clear
-- ✅ Brand guidelines incorporated
-- ✅ Performance goals established
+- ✅ Exact Strikingly design specifications documented
+- ✅ Font requirements specified (Bebas Neue, Nunito, Raleway)
+- ✅ Color palette updated to match actual design
+- ✅ Layout structure simplified to single-page
+- ✅ Implementation code examples provided
+- ✅ Responsive behavior defined for all breakpoints

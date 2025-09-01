@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(grep:*)",
+      "Bash(npm create:*)",
+      "Read(/Users/alex/tiris/**)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(./node_modules/.bin/tailwindcss:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 10 npm run dev)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:buff-lion-1bsbdk.mystrikingly.com)",
+      "Read(/Users/alex/Desktop/**)",
+      "Read(/Users/alex/Desktop/**)",
+      "Read(/Users/alex/Desktop/**)",
+      "Read(/Users/alex/Desktop/**)",
+      "Read(/Users/alex/Desktop/**)",
+      "Read(/Users/alex/Desktop/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
