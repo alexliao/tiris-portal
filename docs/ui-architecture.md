@@ -38,17 +38,17 @@ Based on analysis of successful trading platforms (Coinbase Pro, Robinhood, Trad
 
 | Category | Technology | Version | Purpose | Rationale |
 |----------|------------|---------|---------|-----------|
-| Framework | React | 18+ | UI framework | Best ecosystem for financial applications |
-| Language | TypeScript | 5+ | Type safety | Essential for financial calculations |
-| Build Tool | Vite | 4+ | Development/bundling | Fast builds for data visualization development |
-| Styling | Tailwind CSS | 3+ | Utility-first CSS | Rapid development with design consistency |
-| UI Library | Headless UI (Radix) | 1+ | Accessible components | Built-in accessibility for financial compliance |
-| State Management | Zustand | 4+ | Lightweight state | Simple state management for trading data |
-| Routing | React Router | 6+ | Client-side routing | Standard React routing solution |
-| Form Handling | React Hook Form | 7+ | Form management | Performance and validation for financial forms |
-| Icons | Lucide React | 0.2+ | Icon system | Clean, professional icons for trading interface |
-| Charts | Recharts | 2+ | Data visualization | React-native charting for financial data |
-| HTTP Client | Axios | 1+ | API integration | Robust HTTP client for backend integration |
+| Framework | React | 19+ | UI framework | Latest version with enhanced performance |
+| Language | TypeScript | 5+ | Type safety | Essential for reliable development |
+| Build Tool | Vite | 7+ | Development/bundling | Fast builds and hot reload |
+| Styling | Tailwind CSS | 4+ | Utility-first CSS | Rapid development with design consistency |
+| Icons | Lucide React | 0.5+ | Icon system | Clean, professional icons |
+| Internationalization | react-i18next | 15+ | Translation management | Comprehensive i18n solution |
+| i18n Core | i18next | 25+ | Internationalization | Industry standard i18n library |
+| Language Detection | i18next-browser-languagedetector | 8+ | Auto language detection | Browser-based language detection |
+| Form Handling | React Hook Form | 7+ | Form management | Performance and validation |
+| Charts | Recharts | 3+ | Data visualization | React charting library |
+| State Management | Zustand | 5+ | Lightweight state | Simple state management |
 | Testing | Vitest + RTL | Latest | Testing framework | Fast testing aligned with Vite |
 
 ## Project Structure
@@ -57,33 +57,133 @@ Based on analysis of successful trading platforms (Coinbase Pro, Robinhood, Trad
 tiris-portal/
 ├── public/
 │   ├── index.html
-│   └── assets/
+│   └── tiris-light.png     # Favicon and logo
 ├── src/
 │   ├── components/          # Reusable UI components
-│   │   ├── ui/             # Headless UI component wrappers
-│   │   ├── charts/         # Financial chart components
-│   │   ├── forms/          # Form components
-│   │   └── layout/         # Layout components (Header, Footer)
+│   │   ├── ui/             # UI component wrappers
+│   │   │   └── LanguageSelector.tsx  # Dropdown language switcher
+│   │   ├── landing/        # Landing page specific components
+│   │   │   ├── HeroSection.tsx       # Hero with TIRIS branding
+│   │   │   └── HighlightsSection.tsx # Combined About + Features
+│   │   └── layout/         # Layout components
+│   │       ├── Header.tsx  # Navigation with language selector
+│   │       └── Footer.tsx  # Footer component
 │   ├── pages/              # Page components
-│   │   ├── landing/        # Landing page components
-│   │   ├── dashboard/      # Future dashboard pages
-│   │   └── auth/           # Future authentication pages
-│   ├── hooks/              # Custom React hooks
-│   ├── services/           # API service layer
-│   ├── stores/             # Zustand state stores
-│   ├── types/              # TypeScript type definitions
+│   │   └── landing/        # Landing page layout
+│   │       └── LandingPage.tsx # Main landing page structure
+│   ├── i18n/               # Internationalization
+│   │   ├── index.ts        # i18next configuration
+│   │   └── locales/        # Translation files
+│   │       ├── en.json     # English translations
+│   │       └── zh.json     # Chinese translations
 │   ├── utils/              # Utility functions
-│   ├── styles/             # Global styles and Tailwind config
-│   ├── assets/             # Static assets (images, icons)
-│   ├── main.tsx            # Application entry point
+│   │   └── cn.ts           # Tailwind class merging utility
+│   ├── main.tsx            # Application entry point with i18n
 │   └── App.tsx             # Root component
-├── tests/                  # Test files
 ├── docs/                   # Documentation
+│   ├── front-end-spec.md   # UI/UX specifications
+│   ├── ui-architecture.md  # Technical architecture
+│   └── stories/            # User stories and epics
+├── index.html              # HTML template with favicon
 ├── tailwind.config.js      # Tailwind configuration
 ├── vite.config.ts          # Vite configuration
 ├── tsconfig.json           # TypeScript configuration
 └── package.json            # Dependencies and scripts
 ```
+
+## Internationalization (i18n)
+
+### i18n Architecture
+
+The TIRIS Portal implements comprehensive internationalization using react-i18next for seamless English/Chinese language support.
+
+**Supported Languages:**
+- **English (en)** - Primary language
+- **Chinese (zh)** - Secondary language with full UI/content translation
+
+### i18n Configuration
+
+```typescript
+// src/i18n/index.ts
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import LanguageDetector from 'i18next-browser-languagedetector';
+
+import enTranslations from './locales/en.json';
+import zhTranslations from './locales/zh.json';
+
+i18n
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init({
+    resources: {
+      en: { translation: enTranslations },
+      zh: { translation: zhTranslations },
+    },
+    fallbackLng: 'en',
+    detection: {
+      order: ['localStorage', 'navigator', 'htmlTag'],
+      caches: ['localStorage'],
+    },
+  });
+```
+
+### Translation File Structure
+
+```json
+// Example structure for locales/en.json and locales/zh.json
+{
+  "nav": {
+    "home": "HOME",
+    "highlights": "HIGHLIGHTS"
+  },
+  "hero": {
+    "title": "TIRIS",
+    "subtitle": "Profitable Crypto Trading Bot"
+  },
+  "about": {
+    "title": "WHAT TIRIS DOES",
+    "description": "Company description..."
+  },
+  "features": {
+    "profitable": {
+      "title": "Profitable",
+      "description": "Feature description..."
+    }
+  },
+  "language": {
+    "select": "Language",
+    "english": "English",
+    "chinese": "中文"
+  }
+}
+```
+
+### Component Usage Pattern
+
+```typescript
+import { useTranslation } from 'react-i18next';
+
+export const Component: React.FC = () => {
+  const { t } = useTranslation();
+  
+  return (
+    <div>
+      <h1>{t('hero.title')}</h1>
+      <p>{t('hero.subtitle')}</p>
+    </div>
+  );
+};
+```
+
+### Language Selector Implementation
+
+The LanguageSelector component provides flag-based language switching with persistent storage:
+
+- **Visual**: Flag indicators (🇺🇸/🇨🇳) with dropdown
+- **Functionality**: Smooth language switching with localStorage persistence
+- **UX**: Immediate UI update without page reload
+- **Integration**: Embedded in main navigation header
 
 ## Component Standards
 

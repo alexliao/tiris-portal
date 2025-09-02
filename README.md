@@ -1,61 +1,54 @@
 # TIRIS Portal
 
-Landing page for TIRIS (Trading Intelligence and Research Information System) - an AI-powered cryptocurrency trading platform.
+A modern React landing page for the TIRIS cryptocurrency trading platform. Built with TypeScript, Vite, and Tailwind CSS, featuring multilingual support and professional design.
 
-## About TIRIS
+## Overview
 
-TIRIS is committed to utilizing artificial intelligence technology to implement quantitative trading strategies that can be consistently profitable. The platform makes the benefits of quantitative trading available to every trader, even if they are completely technically illiterate.
-
-## Features
-
-- **Multilingual Support**: Full internationalization with English and Chinese translations
-- **Responsive Design**: Optimized for desktop and mobile devices
-- **Modern UI**: Clean, professional design with smooth animations
-- **Component-based Architecture**: Modular React components for maintainability
-
-### Key Sections
-
-- **Hero Section**: Eye-catching introduction with TIRIS branding
-- **About Section**: Overview of TIRIS mission and technology
-- **Features Section**: Four key value propositions (Profitable, Secure, Automatic, Simple)
-- **Navigation**: Fixed navigation with language selector
+This is a single-page application that serves as the marketing landing page for TIRIS. The page presents the platform's value proposition through a clean, minimalist design with multilingual support for English and Chinese users.
 
 ## Tech Stack
 
 - **React 19** - UI framework
 - **TypeScript** - Type safety and development experience
 - **Vite** - Fast build tool and development server
-- **Tailwind CSS** - Utility-first styling
-- **react-i18next** - Internationalization framework
-- **Lucide React** - Modern icon library
+- **Tailwind CSS** - Utility-first CSS framework
+- **react-i18next** - Internationalization
+- **Lucide React** - Icon library
+
+## Prerequisites
+
+- Node.js 18 or higher
+- npm or yarn package manager
 
 ## Getting Started
 
-### Prerequisites
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd tiris-portal
+   ```
 
-- Node.js 18+ 
-- npm or yarn
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-### Installation
+3. **Start development server**
+   ```bash
+   npm run dev
+   ```
+
+4. **Open your browser**
+   Navigate to `http://localhost:5173`
+
+## Available Scripts
 
 ```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
-# Lint code
-npm run lint
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run lint         # Run ESLint
 ```
-
-The development server will be available at `http://localhost:5173`
 
 ## Project Structure
 
@@ -63,52 +56,148 @@ The development server will be available at `http://localhost:5173`
 src/
 ├── components/
 │   ├── landing/
-│   │   ├── HeroSection.tsx
-│   │   ├── AboutSection.tsx
-│   │   └── FeaturesSection.tsx
+│   │   ├── HeroSection.tsx       # Main hero section
+│   │   └── HighlightsSection.tsx # About + features combined
 │   ├── layout/
-│   │   └── Header.tsx
+│   │   ├── Header.tsx            # Navigation with language selector
+│   │   └── Footer.tsx
 │   └── ui/
-│       └── LanguageSelector.tsx
+│       └── LanguageSelector.tsx  # Language switching component
 ├── i18n/
-│   ├── index.ts
+│   ├── index.ts                  # i18next configuration
 │   └── locales/
-│       ├── en.json
-│       └── zh.json
+│       ├── en.json               # English translations
+│       └── zh.json               # Chinese translations
 ├── pages/
 │   └── landing/
-│       └── LandingPage.tsx
+│       └── LandingPage.tsx       # Main page layout
 ├── utils/
-│   └── cn.ts
-├── App.tsx
-└── main.tsx
+│   └── cn.ts                     # Tailwind utility
+├── App.tsx                       # App root
+└── main.tsx                      # Entry point
 ```
+
+## Key Components
+
+### HeroSection
+- Displays main TIRIS branding and value proposition
+- Responsive typography using Bebas Neue and Nunito fonts
+- Background image with overlay text
+
+### HighlightsSection  
+- Combined section with company description and feature grid
+- Four feature cards: Profitable, Secure, Automatic, Simple
+- Dark color scheme for professional appearance
+
+### Header/Navigation
+- Fixed navigation with smooth scrolling
+- Integrated language selector with flag indicators
+- TIRIS logo with branding
+
+### LanguageSelector
+- Dropdown component for English/Chinese switching
+- Persistent language selection via localStorage
+- Flag-based visual indicators
 
 ## Internationalization
 
-The portal supports English and Chinese languages using react-i18next:
+The app supports English and Chinese through react-i18next:
 
-- Language detection from browser/localStorage
-- Language switcher in navigation
-- All content fully localized
-- RTL support ready
+- **Language files**: `src/i18n/locales/`
+- **Configuration**: `src/i18n/index.ts`
+- **Usage**: Import `useTranslation()` hook in components
+- **Detection**: Auto-detects browser language, falls back to English
 
-## Integration with TIRIS System
+### Adding new translations
 
-This portal serves as the public-facing landing page for the broader TIRIS ecosystem, which includes:
+1. Add keys to both `en.json` and `zh.json`
+2. Use the `t()` function in components:
+   ```typescript
+   const { t } = useTranslation();
+   return <h1>{t('hero.title')}</h1>;
+   ```
 
-- **TIRIS Library**: Python ML prediction models
-- **TIRIS API**: FastAPI service for predictions
-- **FMZ Trading Scripts**: Automated trading strategies
+## Design System
+
+### Typography
+- **Bebas Neue**: Titles, headings, navigation
+- **Nunito**: Body text, descriptions, UI elements
+
+### Colors
+- **Primary text**: `#080404`
+- **Feature backgrounds**: Dark professional palette
+  - Profitable: `#8B6914` (dark bronze)
+  - Secure: `#7A1F3D` (deep burgundy)  
+  - Automatic: `#2E3A59` (dark steel blue)
+  - Simple: `#1B4D3E` (dark forest green)
+
+### Layout
+- Single-page design with smooth scroll navigation
+- Responsive breakpoints for mobile, tablet, desktop
+- Fixed header with transparent background
+
+## Development Guidelines
+
+### Code Style
+- Use TypeScript for all new components
+- Follow the existing component structure and naming conventions
+- Use Tailwind classes for styling, avoid custom CSS when possible
+- Implement proper TypeScript interfaces for props
+
+### Component Pattern
+```typescript
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+
+interface ComponentProps {
+  className?: string;
+}
+
+export const Component: React.FC<ComponentProps> = ({ className = '' }) => {
+  const { t } = useTranslation();
+  
+  return (
+    <div className={`base-classes ${className}`}>
+      {t('translation.key')}
+    </div>
+  );
+};
+```
+
+### Adding New Features
+1. Create component in appropriate directory
+2. Add TypeScript interfaces for props
+3. Include translations in both language files
+4. Test responsive behavior
+5. Run linting before committing
+
+## Building for Production
+
+```bash
+npm run build
+```
+
+The build artifacts will be stored in the `dist/` directory, ready for deployment to any static hosting service.
+
+## Browser Support
+
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
 
 ## Contributing
 
-1. Follow the existing code style and conventions
-2. Use TypeScript for type safety
-3. Add translations for new text content
-4. Test responsive design on multiple screen sizes
-5. Run linting before committing
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes following the coding guidelines
+4. Add translations for any new text content
+5. Test on multiple screen sizes
+6. Run `npm run lint` to check code quality
+7. Submit a pull request
 
-## License
+## Documentation
 
-Part of the TIRIS Trading Intelligence System.
+- **[Technical Architecture](docs/ui-architecture.md)**: Detailed technical specifications
+- **[Design Specification](docs/front-end-spec.md)**: UI/UX requirements and design system
+- **[User Stories](docs/stories/)**: Product requirements and user flows

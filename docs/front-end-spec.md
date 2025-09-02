@@ -43,21 +43,22 @@ This document defines the user experience goals, information architecture, user 
 ```
 Landing Page (Single Page)
 ├── Hero Section (HOME)
-│   ├── Large "tiris" title
+│   ├── Large "TIRIS" title
 │   └── "Profitable Crypto Trading Bot" subtitle
-├── About Section (ABOUT)
-│   └── Company/Product explanation
-└── Features Section (FEATURES)
-    ├── Profitable
-    ├── Secure
-    ├── Automatic
-    └── Simple
+└── Highlights Section (HIGHLIGHTS)
+    ├── About Company/Product explanation
+    └── Features Grid
+        ├── Profitable
+        ├── Secure
+        ├── Automatic
+        └── Simple
 ```
 
 ### Navigation Structure
 
 **Primary Navigation:** 
-- Minimal sticky navigation bar with: HOME, ABOUT, FEATURES
+- Minimal sticky navigation bar with: HOME, HIGHLIGHTS
+- Language selector with flag indicators (🇺🇸/🇨🇳)
 - Smooth scrolling between sections
 - No complex authentication states in MVP
 
@@ -246,19 +247,20 @@ graph TD
 ### Typography
 
 #### Font Families
-- **Title Font:** Bebas Neue - Bold, impactful titles (for "tiris" hero title)
-- **Body Font:** Nunito - Clean, readable body text
-- **Headings Font:** Raleway - Professional headings and subheadings
+- **Title Font:** Bebas Neue - Bold, impactful titles, headings, and navigation
+- **Body Font:** Nunito - Clean, readable body text, descriptions, and UI elements
 
 #### Type Scale
 
 | Element | Font | Size | Weight | Usage |
 |---------|------|------|--------|-------|
-| Hero Title | Bebas Neue | 120px+ | Bold | Main "tiris" title |
-| Hero Subtitle | Nunito | 24px | Regular | "Profitable Crypto Trading Bot" |
-| Section Headers | Raleway | 32px | Bold | Section titles (ABOUT, FEATURES) |
-| Feature Titles | Raleway | 20px | Bold | Feature card titles |
+| Hero Title | Bebas Neue | 48px-64px | Bold | Main "TIRIS" title |
+| Hero Subtitle | Nunito | 24px | Bold | "Profitable Crypto Trading Bot" |
+| Section Headers | Bebas Neue | 24px | Bold | "WHAT TIRIS DOES" section title |
+| Feature Titles | Bebas Neue | 24px | Bold | Feature card titles |
+| Navigation | Bebas Neue | 16px | Normal | Navigation buttons |
 | Body Text | Nunito | 16px | Regular | Descriptive text |
+| UI Elements | Nunito | 14px | Regular | Language selector, small UI text |
 
 ### Layout Structure
 
@@ -423,43 +425,73 @@ graph TD
 ```
 
 ### Navigation Implementation
-**Minimal sticky navigation:**
+**Minimal sticky navigation with language selector:**
 
 ```html
-<nav className="fixed top-0 w-full bg-white/95 backdrop-blur z-50 py-4">
+<nav className="fixed top-0 w-full bg-white z-50 py-4">
   <div className="max-w-6xl mx-auto px-6">
-    <ul className="flex justify-center space-x-12">
-      <li><a href="#home" className="font-['Raleway'] text-[#080404] hover:opacity-70 transition-opacity">HOME</a></li>
-      <li><a href="#about" className="font-['Raleway'] text-[#080404] hover:opacity-70 transition-opacity">ABOUT</a></li>
-      <li><a href="#features" className="font-['Raleway'] text-[#080404] hover:opacity-70 transition-opacity">FEATURES</a></li>
-    </ul>
+    <div className="flex items-center justify-between">
+      <!-- Logo -->
+      <button className="flex items-center space-x-2 font-['Bebas_Neue'] text-2xl font-bold text-[#080404]">
+        <img src="/tiris-light.png" alt="Tiris Logo" width="36" height="36" />
+        <span>TIRIS</span>
+      </button>
+      
+      <!-- Navigation with Language Selector -->
+      <div className="flex items-center space-x-8">
+        <button className="font-['Bebas_Neue'] text-[#080404] hover:bg-[#f4f6f8] px-3 py-1 rounded">
+          HOME
+        </button>
+        <button className="font-['Bebas_Neue'] text-[#080404] hover:bg-[#f4f6f8] px-3 py-1 rounded">
+          HIGHLIGHTS
+        </button>
+        <!-- Language Selector Component -->
+        <div className="flex items-center space-x-2">
+          <span className="font-['Nunito'] text-sm">🇺🇸</span>
+          <!-- Dropdown functionality -->
+        </div>
+      </div>
+    </div>
   </div>
 </nav>
 ```
 
-### Features Section Implementation
-**4-column grid with pastel backgrounds:**
+### Highlights Section Implementation
+**Combined About + Features with dark professional backgrounds:**
 
 ```html
-<section className="min-h-screen flex items-center justify-center bg-white py-20">
-  <div className="max-w-6xl mx-auto px-6">
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-      <div className="bg-[#f0f4ff] rounded-lg p-8 text-center">
-        <h3 className="font-['Raleway'] font-bold text-xl text-[#080404] mb-4">Profitable</h3>
-        <p className="font-['Nunito'] text-[#666666] leading-relaxed">[Feature description]</p>
+<section id="highlights" className="bg-white">
+  <!-- About Section -->
+  <div className="py-16">
+    <div className="max-w-4xl mx-auto px-6 text-center">
+      <h2 className="text-2xl font-['Bebas_Neue'] font-bold text-[#080404] leading-none mb-6">
+        WHAT TIRIS DOES
+      </h2>
+      <div className="max-w-3xl mx-auto">
+        <p className="text-base font-['Nunito'] text-[#080404] leading-relaxed">
+          [Company description with multilingual support]
+        </p>
       </div>
-      <div className="bg-[#fff0f4] rounded-lg p-8 text-center">
-        <h3 className="font-['Raleway'] font-bold text-xl text-[#080404] mb-4">Secure</h3>
-        <p className="font-['Nunito'] text-[#666666] leading-relaxed">[Feature description]</p>
-      </div>
-      <div className="bg-[#f0fff4] rounded-lg p-8 text-center">
-        <h3 className="font-['Raleway'] font-bold text-xl text-[#080404] mb-4">Automatic</h3>
-        <p className="font-['Nunito'] text-[#666666] leading-relaxed">[Feature description]</p>
-      </div>
-      <div className="bg-[#fff8f0] rounded-lg p-8 text-center">
-        <h3 className="font-['Raleway'] font-bold text-xl text-[#080404] mb-4">Simple</h3>
-        <p className="font-['Nunito'] text-[#666666] leading-relaxed">[Feature description]</p>
-      </div>
+    </div>
+  </div>
+  
+  <!-- Features Grid -->
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+    <div className="bg-[#8B6914] p-8 text-center min-h-[300px] flex flex-col justify-start">
+      <h3 className="font-['Bebas_Neue'] font-bold text-2xl text-white mb-6 mt-4">Profitable</h3>
+      <p className="font-['Nunito'] text-base text-white leading-relaxed">[Feature description]</p>
+    </div>
+    <div className="bg-[#7A1F3D] p-8 text-center min-h-[300px] flex flex-col justify-start">
+      <h3 className="font-['Bebas_Neue'] font-bold text-2xl text-white mb-6 mt-4">Secure</h3>
+      <p className="font-['Nunito'] text-base text-white leading-relaxed">[Feature description]</p>
+    </div>
+    <div className="bg-[#2E3A59] p-8 text-center min-h-[300px] flex flex-col justify-start">
+      <h3 className="font-['Bebas_Neue'] font-bold text-2xl text-white mb-6 mt-4">Automatic</h3>
+      <p className="font-['Nunito'] text-base text-white leading-relaxed">[Feature description]</p>
+    </div>
+    <div className="bg-[#1B4D3E] p-8 text-center min-h-[300px] flex flex-col justify-start">
+      <h3 className="font-['Bebas_Neue'] font-bold text-2xl text-white mb-6 mt-4">Simple</h3>
+      <p className="font-['Nunito'] text-base text-white leading-relaxed">[Feature description]</p>
     </div>
   </div>
 </section>
@@ -474,11 +506,12 @@ graph TD
 ### Exact Colors
 - Primary text: `#080404`
 - Secondary text: `#666666`
-- Feature card backgrounds:
-  - Profitable: `#f0f4ff` (light blue)
-  - Secure: `#fff0f4` (light pink)
-  - Automatic: `#f0fff4` (light green)
-  - Simple: `#fff8f0` (light orange)
+- Feature card backgrounds (dark professional palette):
+  - Profitable: `#8B6914` (dark bronze)
+  - Secure: `#7A1F3D` (deep burgundy)
+  - Automatic: `#2E3A59` (dark steel blue)
+  - Simple: `#1B4D3E` (dark forest green)
+- Feature card text: `#FFFFFF` (white for contrast)
 
 ## Next Steps
 
