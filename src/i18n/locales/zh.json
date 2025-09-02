@@ -1,21 +1,20 @@
 {
   "nav": {
     "home": "主页",
-    "about": "关于我们",
-    "features": "功能特色"
+    "highlights": "亮点"
   },
   "hero": {
     "title": "TIRIS",
     "subtitle": "盈利的加密货币交易机器人"
   },
   "about": {
-    "title": "我们在做什么",
+    "title": "Tiris是什么",
     "description": "Tiris致力于利用人工智能技术实现能够持续盈利的量化交易策略。并使每个交易者都能享受量化交易的好处，即使他们完全不会编写程序。"
   },
   "features": {
     "profitable": {
       "title": "盈利性",
-      "description": "我们的交易策略采用基于前沿的AI技术开发，并经过大量历史数据回测验证，在2024年整年的ETH/USDT交易中获得了140%的回报率。"
+      "description": "我们的交易策略采用前沿的机器学习技术开发，并经过大量历史数据回测验证，在2024年整年的ETH/USDT交易中获得了140%的回报率。"
     },
     "secure": {
       "title": "安全性",

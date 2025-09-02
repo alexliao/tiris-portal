@@ -1,21 +1,20 @@
 {
   "nav": {
     "home": "HOME",
-    "about": "ABOUT", 
-    "features": "FEATURES"
+    "highlights": "HIGHLIGHTS"
   },
   "hero": {
     "title": "TIRIS",
     "subtitle": "Profitable Crypto Trading Bot"
   },
   "about": {
-    "title": "WHAT WE DO",
+    "title": "WHAT TIRIS DOES",
     "description": "Tiris is committed to utilizing artificial intelligence technology to implement quantitative trading strategies that can be consistently profitable. And to make the benefits of quantitative trading available to every trader, even if they are completely technically illiterate."
   },
   "features": {
     "profitable": {
       "title": "Profitable",
-      "description": "Our trading strategy, developed based on the cutting edge AI technology and validated by extensive historical data backtesting, has earned a 140% return on ETH/USDT trading throughout 2024."
+      "description": "Our trading strategy, developed based on the cutting edge machine learning technology and validated by extensive historical data backtesting, has earned a 140% return on ETH/USDT trading throughout 2024."
     },
     "secure": {
       "title": "Secure",

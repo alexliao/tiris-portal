@@ -25,7 +25,7 @@ export const LanguageSelector: React.FC = () => {
         className="flex items-center space-x-2 px-3 py-2 text-[#080404] hover:bg-[#f4f6f8] transition-colors rounded"
         aria-label={t('language.select')}
       >
-        <span className="font-['Raleway'] text-sm">{currentLanguage.flag}</span>
+        <span className="font-['Nunito'] text-sm">{currentLanguage.flag}</span>
         <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -40,7 +40,7 @@ export const LanguageSelector: React.FC = () => {
               }`}
             >
               <span>{language.flag}</span>
-              <span className="font-['Raleway'] text-sm">{language.name}</span>
+              <span className="font-['Nunito'] text-sm">{language.name}</span>
             </button>
           ))}
         </div>

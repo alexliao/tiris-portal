@@ -1,8 +1,7 @@
 import React from 'react';
 import Navigation from '../../components/layout/Header';
 import HeroSection from '../../components/landing/HeroSection';
-import AboutSection from '../../components/landing/AboutSection';
-import FeaturesSection from '../../components/landing/FeaturesSection';
+import HighlightsSection from '../../components/landing/HighlightsSection';
 import Footer from '../../components/layout/Footer';
 
 export const LandingPage: React.FC = () => {
@@ -10,8 +9,7 @@ export const LandingPage: React.FC = () => {
     <div className="min-h-screen bg-white">
       <Navigation />
       <HeroSection />
-      <AboutSection />
-      <FeaturesSection />
+      <HighlightsSection />
       <Footer />
     </div>
   );

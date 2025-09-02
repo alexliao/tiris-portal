@@ -26,21 +26,15 @@ export const Navigation: React.FC = () => {
           <div className="flex items-center space-x-8">
             <button 
               onClick={() => scrollToSection('home')} 
-              className="font-['Raleway'] text-[#080404] hover:bg-[#f4f6f8] transition-colors px-3 py-1 rounded"
+              className="font-['Bebas_Neue'] text-[#080404] hover:bg-[#f4f6f8] transition-colors px-3 py-1 rounded"
             >
               {t('nav.home')}
             </button>
             <button 
-              onClick={() => scrollToSection('about')} 
-              className="font-['Raleway'] text-[#080404] hover:bg-[#f4f6f8] transition-colors px-3 py-1 rounded"
+              onClick={() => scrollToSection('highlights')} 
+              className="font-['Bebas_Neue'] text-[#080404] hover:bg-[#f4f6f8] transition-colors px-3 py-1 rounded"
             >
-              {t('nav.about')}
-            </button>
-            <button 
-              onClick={() => scrollToSection('features')} 
-              className="font-['Raleway'] text-[#080404] hover:bg-[#f4f6f8] transition-colors px-3 py-1 rounded"
-            >
-              {t('nav.features')}
+              {t('nav.highlights')}
             </button>
             <LanguageSelector />
           </div>
