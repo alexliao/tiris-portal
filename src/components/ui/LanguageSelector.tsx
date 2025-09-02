@@ -22,11 +22,11 @@ export const LanguageSelector: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-3 py-2 text-[#080404] hover:bg-[#f4f6f8] transition-colors rounded"
+        className="flex items-center space-x-2 px-3 py-2 text-white hover:bg-white/10 transition-colors rounded"
         aria-label={t('language.select')}
       >
         <span className="font-['Nunito'] text-sm">{currentLanguage.flag}</span>
-        <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''} text-white`} />
       </button>
 
       {isOpen && (
