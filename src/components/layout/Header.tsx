@@ -1,6 +1,10 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { LanguageSelector } from '../ui/LanguageSelector';
 
 export const Navigation: React.FC = () => {
+  const { t } = useTranslation();
+  
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -24,20 +28,21 @@ export const Navigation: React.FC = () => {
               onClick={() => scrollToSection('home')} 
               className="font-['Raleway'] text-[#080404] hover:bg-[#f4f6f8] transition-colors px-3 py-1 rounded"
             >
-              HOME
+              {t('nav.home')}
             </button>
             <button 
               onClick={() => scrollToSection('about')} 
               className="font-['Raleway'] text-[#080404] hover:bg-[#f4f6f8] transition-colors px-3 py-1 rounded"
             >
-              ABOUT
+              {t('nav.about')}
             </button>
             <button 
               onClick={() => scrollToSection('features')} 
               className="font-['Raleway'] text-[#080404] hover:bg-[#f4f6f8] transition-colors px-3 py-1 rounded"
             >
-              FEATURES
+              {t('nav.features')}
             </button>
+            <LanguageSelector />
           </div>
         </div>
       </div>

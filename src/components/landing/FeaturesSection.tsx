@@ -1,38 +1,41 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface FeaturesSectionProps {
   className?: string;
 }
 
 interface Feature {
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   bgColor: string;
 }
 
 export const FeaturesSection: React.FC<FeaturesSectionProps> = ({ 
   className = ''
 }) => {
+  const { t } = useTranslation();
+  
   const features: Feature[] = [
     {
-      title: 'Profitable',
-      description: 'Our trading strategy, developed based on the cutting edge AI technology and validated by extensive historical data backtesting, has earned a 140% return on ETH/USDT trading throughout 2024.',
-      bgColor: 'bg-[#C8A882]'
+      titleKey: 'features.profitable.title',
+      descriptionKey: 'features.profitable.description',
+      bgColor: 'bg-[#8B6914]'
     },
     {
-      title: 'Secure',
-      description: 'We only provide trading strategies and do not hold user funds in custody like traditional hedge funds. Your funds are safely held in your own account in exchanges.',
-      bgColor: 'bg-[#C8969C]'
+      titleKey: 'features.secure.title',
+      descriptionKey: 'features.secure.description',
+      bgColor: 'bg-[#7A1F3D]'
     },
     {
-      title: 'Automatic',
-      description: 'Our smart strategies are encapsulated in trading robots. The robot can work 24/7 without any breaks and is not affected by emotions.',
-      bgColor: 'bg-[#8FA4C8]'
+      titleKey: 'features.automatic.title',
+      descriptionKey: 'features.automatic.description',
+      bgColor: 'bg-[#2E3A59]'
     },
     {
-      title: 'Simple',
-      description: 'We have hidden all the technical details so that users can turn on automated quantitative trading with a single click in an extremely simple and easy-to-use interface.',
-      bgColor: 'bg-[#82B894]'
+      titleKey: 'features.simple.title',
+      descriptionKey: 'features.simple.description',
+      bgColor: 'bg-[#1B4D3E]'
     }
   ];
 
@@ -47,11 +50,11 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = ({
             key={index}
             className={`${feature.bgColor} p-8 text-center min-h-[300px] flex flex-col justify-start`}
           >
-            <h3 className="font-['Raleway'] font-bold text-xl text-white mb-6 mt-4">
-              {feature.title}
+            <h3 className="font-['Raleway'] font-bold text-2xl text-white mb-6 mt-4">
+              {t(feature.titleKey)}
             </h3>
-            <p className="font-['Nunito'] text-sm text-white leading-relaxed">
-              {feature.description}
+            <p className="font-['Nunito'] text-base text-white leading-relaxed">
+              {t(feature.descriptionKey)}
             </p>
           </div>
         ))}

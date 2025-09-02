@@ -1,69 +1,114 @@
-# React + TypeScript + Vite
+# TIRIS Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Landing page for TIRIS (Trading Intelligence and Research Information System) - an AI-powered cryptocurrency trading platform.
 
-Currently, two official plugins are available:
+## About TIRIS
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+TIRIS is committed to utilizing artificial intelligence technology to implement quantitative trading strategies that can be consistently profitable. The platform makes the benefits of quantitative trading available to every trader, even if they are completely technically illiterate.
 
-## Expanding the ESLint configuration
+## Features
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Multilingual Support**: Full internationalization with English and Chinese translations
+- **Responsive Design**: Optimized for desktop and mobile devices
+- **Modern UI**: Clean, professional design with smooth animations
+- **Component-based Architecture**: Modular React components for maintainability
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Key Sections
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+- **Hero Section**: Eye-catching introduction with TIRIS branding
+- **About Section**: Overview of TIRIS mission and technology
+- **Features Section**: Four key value propositions (Profitable, Secure, Automatic, Simple)
+- **Navigation**: Fixed navigation with language selector
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Tech Stack
+
+- **React 19** - UI framework
+- **TypeScript** - Type safety and development experience
+- **Vite** - Fast build tool and development server
+- **Tailwind CSS** - Utility-first styling
+- **react-i18next** - Internationalization framework
+- **Lucide React** - Modern icon library
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+
+### Installation
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Lint code
+npm run lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The development server will be available at `http://localhost:5173`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Project Structure
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+src/
+├── components/
+│   ├── landing/
+│   │   ├── HeroSection.tsx
+│   │   ├── AboutSection.tsx
+│   │   └── FeaturesSection.tsx
+│   ├── layout/
+│   │   └── Header.tsx
+│   └── ui/
+│       └── LanguageSelector.tsx
+├── i18n/
+│   ├── index.ts
+│   └── locales/
+│       ├── en.json
+│       └── zh.json
+├── pages/
+│   └── landing/
+│       └── LandingPage.tsx
+├── utils/
+│   └── cn.ts
+├── App.tsx
+└── main.tsx
+```
+
+## Internationalization
+
+The portal supports English and Chinese languages using react-i18next:
+
+- Language detection from browser/localStorage
+- Language switcher in navigation
+- All content fully localized
+- RTL support ready
+
+## Integration with TIRIS System
+
+This portal serves as the public-facing landing page for the broader TIRIS ecosystem, which includes:
+
+- **TIRIS Library**: Python ML prediction models
+- **TIRIS API**: FastAPI service for predictions
+- **FMZ Trading Scripts**: Automated trading strategies
+
+## Contributing
+
+1. Follow the existing code style and conventions
+2. Use TypeScript for type safety
+3. Add translations for new text content
+4. Test responsive design on multiple screen sizes
+5. Run linting before committing
+
+## License
+
+Part of the TIRIS Trading Intelligence System.

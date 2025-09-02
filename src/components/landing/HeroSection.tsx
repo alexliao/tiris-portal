@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface HeroSectionProps {
   className?: string;
@@ -7,6 +8,8 @@ interface HeroSectionProps {
 export const HeroSection: React.FC<HeroSectionProps> = ({ 
   className = ''
 }) => {
+  const { t } = useTranslation();
+  
   return (
     <section 
       id="home"
@@ -17,10 +20,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     >
       <div className="text-center">
         <h1 className="text-[48px] md:text-[64px] font-['Bebas_Neue'] font-bold text-white leading-none mb-4">
-          TIRIS
+          {t('hero.title')}
         </h1>
         <p className="text-2xl font-['Nunito'] text-white font-bold">
-          Profitable Crypto Trading Bot
+          {t('hero.subtitle')}
         </p>
       </div>
     </section>
