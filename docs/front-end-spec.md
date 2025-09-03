@@ -7,6 +7,7 @@ This document defines the user experience goals, information architecture, user 
 |------|---------|-------------|--------|
 | 2025-08-31 | 1.0 | Initial UI/UX specification creation | Sally (UX Expert) |
 | 2025-09-01 | 2.0 | Updated to match actual Strikingly design | Sally (UX Expert) |
+| 2025-09-03 | 3.0 | Updated for multi-page navigation and performance chart | John (PM) |
 
 ## Overall UX Goals & Principles
 
@@ -39,47 +40,95 @@ This document defines the user experience goals, information architecture, user 
 
 ### Site Map / Screen Inventory
 
-**Single-Page Layout Structure:**
+**Multi-Page Application Structure:**
 ```
-Landing Page (Single Page)
-├── Hero Section (HOME)
-│   ├── Large "TIRIS" title
-│   └── "Profitable Crypto Trading Bot" subtitle
-└── Highlights Section (HIGHLIGHTS)
-    ├── About Company/Product explanation
-    └── Features Grid
-        ├── Profitable
-        ├── Secure
-        ├── Automatic
-        └── Simple
+Tiris Portal (React Router)
+├── Landing Page (/)
+│   ├── Hero Section (HOME)
+│   │   ├── Large "TIRIS" title
+│   │   └── "Profitable Crypto Trading Bot" subtitle
+│   └── Highlights Section (HIGHLIGHTS)
+│       ├── About Company/Product explanation
+│       └── Features Grid
+│           ├── Profitable
+│           ├── Secure
+│           ├── Automatic
+│           └── Simple
+└── Performance Page (/performance)
+    ├── Performance Demonstration Header
+    ├── Key Metrics Cards (ROI, Win Rate, Sharpe Ratio, etc.)
+    ├── Interactive Trading Chart (2024-present)
+    ├── Trading Event Annotations
+    └── Performance Highlights Section
 ```
 
 ### Navigation Structure
 
 **Primary Navigation:** 
-- Minimal sticky navigation bar with: HOME, HIGHLIGHTS
-- Language selector with flag indicators (🇺🇸/🇨🇳)
-- Smooth scrolling between sections
-- No complex authentication states in MVP
+- Smart sticky navigation bar with context-aware links
+- Landing Page (`/`): HOME, HIGHLIGHTS (scroll-to-section)
+- Performance Page (`/performance`): HOME (link back), PERFORMANCE (current)
+- Always available: TIRIS logo (home link), Language selector (🇺🇸/🇨🇳)
 
 **Navigation Behavior:**
 - Fixed top navigation that remains visible during scroll
-- Active section highlighting as user scrolls
-- Smooth scroll animation between sections when clicked
+- Context-aware: Shows section buttons on landing, page links elsewhere
+- Smooth scroll animation for landing page sections
+- React Router navigation for page changes
 
 ## User Flows
 
-### Flow 1: Education-First Onboarding & First Simulation Trade
+### Flow 1: Performance Discovery & Trust Building (CURRENT IMPLEMENTATION)
 
-**User Goal:** Transform from curious visitor to confident simulation trader who understands ML strategy performance
+**User Goal:** Transform from curious visitor to convinced prospect through performance proof and educational content
 
 **Entry Points:** 
-- Landing page hero CTA "Start Learning"
-- Direct link from marketing/referrals
+- Landing page "Performance" navigation
+- Direct link to `/performance` from marketing/referrals
+- Social media sharing of performance results
+
+**Success Criteria:** 
+- User views performance metrics and understands ML bot success
+- User spends significant time exploring chart and annotations
+- User returns to landing page with increased trust and interest
+
+#### Updated Flow Diagram
+
+```mermaid
+graph TD
+    A[Landing Page] --> B[View Value Proposition]
+    B --> C{Interested in Performance?}
+    C -->|Yes| D[Navigate to Performance Page]
+    C -->|No| E[Browse Highlights Section]
+    
+    D --> F[View Key Metrics: ROI +140%, Win Rate 68.5%]
+    F --> G[Explore Interactive Trading Chart]
+    G --> H[Review Trading Event Annotations]
+    
+    H --> I{Understand ML Performance?}
+    I -->|No| J[Read Performance Highlights]
+    J --> H
+    I -->|Yes| K[Trust Built - Ready for Next Step]
+    
+    E --> L[Read Features: Profitable, Secure, etc.]
+    L --> M{Want More Proof?}
+    M -->|Yes| D
+    M -->|No| N[Exit or Return Later]
+    
+    K --> O[Return to Landing or Share Results]
+```
+
+### Flow 2: Education-First Onboarding & First Simulation Trade (PLANNED)
+
+**User Goal:** Transform from convinced prospect to confident simulation trader who understands ML strategy performance
+
+**Entry Points:** 
+- Post-performance page with increased trust
+- Direct registration from high-intent users  
 - Return visitor accessing dashboard
 
 **Success Criteria:** 
-- User completes first simulation trade within 10 minutes
+- User completes first simulation trade within 10 minutes of authentication
 - User can explain what the ML algorithm decided and why
 - User expresses confidence to continue simulation trading
 

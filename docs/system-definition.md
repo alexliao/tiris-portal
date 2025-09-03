@@ -42,8 +42,10 @@ The Tiris Portal serves as the primary user interface for the Tiris trading ecos
 ### 2.2 Core Features
 
 #### **Landing Experience**
-- Engaging landing page with live trading demonstrations
-- Interactive showcases of trading bot capabilities
+- Engaging landing page with clear ML trading value proposition
+- Dedicated performance demonstration page (`/performance`)
+- Interactive real-time trading performance charts (2024-present)
+- Key metrics display: ROI (+140%), Win Rate (68.5%), Sharpe Ratio (2.4)
 - Educational content explaining quantitative trading concepts
 - Clear value proposition and getting-started guidance
 
@@ -73,13 +75,15 @@ The Tiris Portal serves as the primary user interface for the Tiris trading ecos
 - Risk assessment tools
 
 ### 2.3 User Workflow
-1. **Discovery**: User explores landing page and educational content
-2. **Authentication**: Sign in via SSO provider
-3. **Learning**: Access simulation trading to understand system capabilities
-4. **Integration**: Bind cryptocurrency exchange accounts
-5. **Configuration**: Create and customize trading sessions
-6. **Monitoring**: Track performance and manage active trades
-7. **Optimization**: Analyze results and refine strategies
+1. **Discovery**: User explores landing page and clear value proposition
+2. **Performance Review**: Access dedicated `/performance` page to view ML bot performance data
+3. **Trust Building**: Review interactive charts showing 68.5% win rate and +140% ROI
+4. **Authentication**: Sign in via SSO provider (planned)
+5. **Learning**: Access simulation trading to understand system capabilities (planned)
+6. **Integration**: Bind cryptocurrency exchange accounts (planned)
+7. **Configuration**: Create and customize trading sessions (planned)
+8. **Monitoring**: Track performance and manage active trades (planned)
+9. **Optimization**: Analyze results and refine strategies (planned)
 
 ## 3. Technical Architecture
 
@@ -104,10 +108,14 @@ The Tiris Portal serves as the primary user interface for the Tiris trading ecos
 - **Error Handling**: User-friendly error messages and fallback states
 
 ### 3.4 Frontend Technology Stack
-- **Framework**: Modern JavaScript framework (React/Vue/Angular)
-- **Styling**: Responsive CSS framework for cross-device compatibility
+- **Framework**: React with TypeScript for type safety and component reusability
+- **Routing**: React Router DOM for multi-page client-side navigation
+- **Charts**: Recharts library for professional financial data visualization
+- **Styling**: Tailwind CSS with responsive design framework
+- **Internationalization**: i18next for multilingual support (English/Chinese)
 - **State Management**: Client-side state management for user data
-- **Build Tools**: Modern build pipeline for optimization and deployment
+- **Build Tools**: Vite for fast development and optimized production builds
+- **Testing**: Playwright for comprehensive end-to-end testing
 
 ## 4. Infrastructure & Resources
 
@@ -137,21 +145,41 @@ The Tiris Portal serves as the primary user interface for the Tiris trading ecos
 - **Responsive Design**: Mobile-first development for all screen sizes
 - **User Experience Focus**: Intuitive design with extensive usability testing
 
-### 5.2 MVP Feature Set
-The initial release focuses on core functionality:
+### 5.2 Current Implementation Status
+The following features are implemented and operational:
 
-1. **Landing Page**
-   - Compelling introduction to Tiris capabilities
-   - Live trading demonstrations
-   - Clear call-to-action for user onboarding
+1. **Landing Page** ✅ COMPLETED
+   - Compelling introduction to Tiris ML capabilities
+   - Clear value proposition messaging
+   - Professional branding and visual design
+   - Multilingual support (English/Chinese)
 
-2. **Google OAuth Integration**
+2. **Performance Demonstration Page** ✅ COMPLETED
+   - Dedicated `/performance` route with comprehensive trading chart
+   - Interactive performance metrics (ROI, Win Rate, Sharpe Ratio, etc.)
+   - Real-time visualization of ML bot performance (2024-present)
+   - Trading event annotations with buy/sell signals
+   - Mobile-responsive chart design
+
+3. **Multi-Page Navigation** ✅ COMPLETED
+   - React Router implementation for client-side routing
+   - Smart context-aware navigation
+   - Smooth scroll functionality for landing page sections
+
+4. **Testing Infrastructure** ✅ COMPLETED
+   - Playwright end-to-end testing framework
+   - Multi-browser testing (Chrome, Firefox, Safari)
+   - Mobile and responsive design testing
+   - Automated test reporting
+
+### 5.2.1 Planned Next Phase
+1. **Google OAuth Integration** (Recommended Next Epic)
    - Secure user authentication
    - Streamlined registration process
    - Profile management capabilities
 
-3. **User Dashboard**
-   - Overview of all user trading sessions
+2. **User Dashboard**
+   - Overview of user trading sessions
    - Exchange binding status and management
    - Quick access to key functionality
 
