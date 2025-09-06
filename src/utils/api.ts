@@ -72,6 +72,24 @@ export interface TradingLog {
   };
 }
 
+export interface EquityCurvePoint {
+  time: string;
+  value: number;
+  breakdown?: Array<{
+    symbol: string;
+    balance: number;
+    price: number;
+    value: number;
+  }>;
+}
+
+export interface EquityCurveData {
+  trading_id: string;
+  start_date: string;
+  end_date: string;
+  points: EquityCurvePoint[];
+}
+
 export class ApiError extends Error {
   public code: string;
   public details?: string;
@@ -130,6 +148,25 @@ export async function getLatestBacktestTrading(): Promise<Trading | null> {
     return null;
   }
   
+  // Try to find a backtest with actual transaction data
+  // Check each backtest trading to find one with data
+  for (const trading of backtestTradings.sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )) {
+    try {
+      const transactions = await getTransactions(trading.id);
+      if (transactions.length > 0) {
+        console.log(`Found backtest with data: ${trading.id} (${transactions.length} transactions)`);
+        return trading;
+      }
+    } catch (error) {
+      console.warn(`Failed to check transactions for trading ${trading.id}:`, error);
+      continue;
+    }
+  }
+  
+  // If no backtest has transaction data, return the latest one anyway
+  console.warn('No backtest trading found with transaction data, using latest');
   return backtestTradings.sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   )[0];
@@ -143,5 +180,15 @@ export async function getTransactions(tradingId: string): Promise<Transaction[]>
 export async function getTradingLogs(tradingId: string): Promise<TradingLog[]> {
   return apiRequest<{ trading_logs: TradingLog[] }>(`/trading-logs?trading_id=${tradingId}&limit=1000`)
     .then(response => response.trading_logs);
+}
+
+export async function getEquityCurve(tradingId: string, breakdown: boolean = false): Promise<EquityCurveData> {
+  const params = new URLSearchParams();
+  if (breakdown) {
+    params.append('breakdown', 'true');
+  }
+  
+  const endpoint = `/tradings/${tradingId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
+  return apiRequest<EquityCurveData>(endpoint);
 }
 

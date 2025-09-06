@@ -1,4 +1,4 @@
-import type { Transaction, TradingLog } from './api';
+import type { Transaction, TradingLog, EquityCurveData } from './api';
 
 export interface TradingDataPoint {
   date: string;
@@ -17,6 +17,47 @@ export interface TradingMetrics {
   sharpeRatio: number;
   maxDrawdown: number;
   totalTrades: number;
+}
+
+export function transformEquityCurveToChartData(
+  equityCurve: EquityCurveData,
+  tradingLogs: TradingLog[]
+): { data: TradingDataPoint[]; metrics: TradingMetrics } {
+  // Create a map of events by date for quick lookup
+  const eventsByDate = new Map<string, TradingDataPoint['event']>();
+  tradingLogs.forEach(log => {
+    const date = log.event_time.split('T')[0];
+    if (log.type === 'long' || log.type === 'short') {
+      eventsByDate.set(date, {
+        type: log.type === 'long' ? 'buy' : 'sell',
+        description: log.message,
+      });
+    }
+  });
+
+  // Transform equity curve points to chart data
+  const chartData: TradingDataPoint[] = equityCurve.points.map(point => {
+    const date = point.time.split('T')[0];
+    const event = eventsByDate.get(date);
+    
+    // Calculate ROI based on first point as initial value
+    const initialValue = equityCurve.points[0]?.value || 10000;
+    const roi = ((point.value - initialValue) / initialValue) * 100;
+
+    return {
+      date,
+      timestamp: point.time,
+      netValue: Math.round(point.value * 100) / 100,
+      roi: Math.round(roi * 100) / 100,
+      event,
+    };
+  });
+
+  // Calculate metrics using the equity curve data
+  const initialValue = equityCurve.points[0]?.value || 10000;
+  const metrics = calculateMetrics(chartData, tradingLogs, initialValue);
+
+  return { data: chartData, metrics };
 }
 
 export function transformTransactionsToChartData(

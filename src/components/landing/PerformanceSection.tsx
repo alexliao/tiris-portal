@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceDot } from 'recharts';
-import { getLatestBacktestTrading, getTransactions, getTradingLogs, ApiError } from '../../utils/api';
-import { transformTransactionsToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
+import { getLatestBacktestTrading, getEquityCurve, getTradingLogs, ApiError } from '../../utils/api';
+import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 
 interface PerformanceSectionProps {
   className?: string;
@@ -31,12 +31,12 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
           return;
         }
 
-        const [transactions, tradingLogs] = await Promise.all([
-          getTransactions(latestTrading.id),
+        const [equityCurve, tradingLogs] = await Promise.all([
+          getEquityCurve(latestTrading.id, false), // Get equity curve without breakdown for better performance
           getTradingLogs(latestTrading.id)
         ]);
 
-        const { data, metrics: calculatedMetrics } = transformTransactionsToChartData(transactions, tradingLogs);
+        const { data, metrics: calculatedMetrics } = transformEquityCurveToChartData(equityCurve, tradingLogs);
         
         setTradingData(data);
         setMetrics(calculatedMetrics);
