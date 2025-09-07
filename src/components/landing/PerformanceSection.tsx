@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart } from 'recharts';
+import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Brush } from 'recharts';
 import { getLatestBacktestTrading, getEquityCurve, getTradingLogs, ApiError } from '../../utils/api';
 import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 
@@ -16,6 +16,7 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
   const [metrics, setMetrics] = useState<TradingMetrics>({} as TradingMetrics);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showTradingDots, setShowTradingDots] = useState(false);
 
   // Fetch real trading data from API
   useEffect(() => {
@@ -258,9 +259,24 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
         {/* Chart Container */}
         <div className="bg-white p-6 rounded-lg shadow-lg border">
           <div className="mb-4">
-            <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404] mb-2">
-              PORTFOLIO RETURN vs ETH BENCHMARK
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404]">
+                PORTFOLIO RETURN vs ETH BENCHMARK
+              </h3>
+              <button
+                onClick={() => setShowTradingDots(!showTradingDots)}
+                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-['Nunito'] transition-colors ${
+                  showTradingDots 
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full mr-2 ${
+                  showTradingDots ? 'bg-blue-600' : 'bg-gray-400'
+                }`}></div>
+                {showTradingDots ? 'Hide' : 'Show'} Trading Signals
+              </button>
+            </div>
             <p className="text-sm font-['Nunito'] text-gray-600">
               Portfolio Value: {formatCurrency(displayData[displayData.length - 1]?.netValue || 0)} | 
               Return: {formatPercentage(displayData[displayData.length - 1]?.roi || 0)} | 
@@ -305,7 +321,7 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
                   fillOpacity={0.1}
                   dot={(props) => {
                     const { cx, cy, payload } = props;
-                    if (payload && payload.event) {
+                    if (showTradingDots && payload && payload.event) {
                       return (
                         <circle
                           cx={cx}
@@ -334,6 +350,14 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
                   activeDot={{ r: 4, fill: '#F59E0B', stroke: '#ffffff', strokeWidth: 2 }}
                   name="ETH Benchmark"
                 />
+                
+                {/* Zoom Brush */}
+                <Brush 
+                  dataKey="timestamp" 
+                  height={30}
+                  stroke="#8884d8"
+                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -352,14 +376,18 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
               <div className="w-4 h-0.5 bg-slate-400 border-dashed border-t mr-2" style={{borderStyle: 'dashed'}}></div>
               <span>Zero Line</span>
             </div>
-            <div className="flex items-center">
-              <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-              <span>Buy Signals</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-              <span>Sell Signals</span>
-            </div>
+            {showTradingDots && (
+              <>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                  <span>Buy Signals</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                  <span>Sell Signals</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
