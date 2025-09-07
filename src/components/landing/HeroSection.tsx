@@ -15,7 +15,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       id="home"
       className={`min-h-screen flex items-center justify-center bg-cover bg-center ${className}`}
       style={{
-        backgroundImage: 'url(/hero-bg.webp)'
+        backgroundImage: 'url(/hero-bg.png)'
       }}
     >
       <div className="text-center">
