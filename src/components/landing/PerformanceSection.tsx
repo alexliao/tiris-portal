@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceDot, ReferenceLine, ComposedChart } from 'recharts';
+import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart } from 'recharts';
 import { getLatestBacktestTrading, getEquityCurve, getTradingLogs, ApiError } from '../../utils/api';
 import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 
@@ -97,14 +97,11 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
     });
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
         <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
-          <p className="font-['Nunito'] text-sm text-gray-600">
-            {`Date: ${new Date(label).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
-          </p>
           <p className="font-['Nunito'] text-sm text-gray-600">
             {`Time: ${formatDateTime(data.timestamp)}`}
           </p>
@@ -276,10 +273,12 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
               <ComposedChart data={displayData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis 
-                  dataKey="date" 
+                  dataKey="timestamp" 
                   stroke="#666"
                   fontSize={12}
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  interval="preserveStartEnd"
+                  minTickGap={30}
                 />
                 <YAxis 
                   stroke="#666"
@@ -304,7 +303,23 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
                   strokeWidth={2}
                   fill="#10B981"
                   fillOpacity={0.1}
-                  dot={false}
+                  dot={(props) => {
+                    const { cx, cy, payload } = props;
+                    if (payload && payload.event) {
+                      return (
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={6}
+                          fill={payload.event.type === 'buy' ? '#3B82F6' : '#EF4444'}
+                          stroke="white"
+                          strokeWidth={2}
+                          opacity={0.9}
+                        />
+                      );
+                    }
+                    return <></>;
+                  }}
                   activeDot={{ r: 4, fill: '#10B981', stroke: '#ffffff', strokeWidth: 2 }}
                   name="Portfolio Return"
                 />
@@ -319,21 +334,6 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
                   activeDot={{ r: 4, fill: '#F59E0B', stroke: '#ffffff', strokeWidth: 2 }}
                   name="ETH Benchmark"
                 />
-                
-                {/* Trading Event Markers */}
-                {displayData.map((point, index) => 
-                  point.event ? (
-                    <ReferenceDot 
-                      key={index}
-                      x={point.date} 
-                      y={point.roi}
-                      r={5}
-                      fill={point.event.type === 'buy' ? '#3B82F6' : '#EF4444'}
-                      stroke="white"
-                      strokeWidth={2}
-                    />
-                  ) : null
-                )}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
