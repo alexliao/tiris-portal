@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Brush } from 'recharts';
 import { getLatestBacktestTrading, getEquityCurve, getTradingLogs, ApiError } from '../../utils/api';
 import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
@@ -10,6 +11,7 @@ interface PerformanceSectionProps {
 export const PerformanceSection: React.FC<PerformanceSectionProps> = ({ 
   className = ''
 }) => {
+  const { t } = useTranslation();
   const [currentDataIndex, setCurrentDataIndex] = useState(0);
   const [animationComplete, setAnimationComplete] = useState(false);
   const [tradingData, setTradingData] = useState<TradingDataPoint[]>([]);
@@ -104,33 +106,33 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
       return (
         <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
           <p className="font-['Nunito'] text-sm text-gray-600">
-            {`Time: ${formatDateTime(data.timestamp)}`}
+            {`${t('performance.tooltip.time')}: ${formatDateTime(data.timestamp)}`}
           </p>
           <p className="font-['Nunito'] text-sm text-[#080404] font-semibold">
-            {`Portfolio Value: ${formatCurrency(data.netValue)}`}
+            {`${t('performance.tooltip.portfolioValue')}: ${formatCurrency(data.netValue)}`}
           </p>
           <div className="flex items-center mt-2">
             <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
             <p className="font-['Nunito'] text-sm text-green-600 font-semibold">
-              {`Portfolio Return: ${formatPercentage(data.roi)}`}
+              {`${t('performance.tooltip.portfolioReturn')}: ${formatPercentage(data.roi)}`}
             </p>
           </div>
           {data.benchmark !== undefined && (
             <div className="flex items-center mt-1">
               <div className="w-3 h-3 bg-amber-500 rounded-full mr-2"></div>
               <p className="font-['Nunito'] text-sm text-amber-600 font-semibold">
-                {`ETH Benchmark: ${formatPercentage(data.benchmark)}`}
+                {`${t('performance.tooltip.ethBenchmark')}: ${formatPercentage(data.benchmark)}`}
               </p>
             </div>
           )}
           {data.benchmark !== undefined && (
             <p className="font-['Nunito'] text-xs text-gray-500 mt-2 text-center border-t pt-2">
-              {`Excess Return: ${formatPercentage(data.roi - data.benchmark)}`}
+              {`${t('performance.tooltip.excessReturn')}: ${formatPercentage(data.roi - data.benchmark)}`}
             </p>
           )}
           {data.event && (
             <p className="font-['Nunito'] text-xs text-blue-600 mt-2 border-t pt-2">
-              {`${data.event.type.toUpperCase()}: ${data.event.description}`}
+              {`${t(`performance.tooltip.${data.event.type}`)}: ${data.event.description}`}
             </p>
           )}
         </div>
@@ -149,10 +151,10 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-['Bebas_Neue'] font-bold text-[#080404] mb-4">
-              LIVE PERFORMANCE DEMONSTRATION
+              {t('performance.title')}
             </h2>
             <p className="text-lg font-['Nunito'] text-gray-600 max-w-3xl mx-auto">
-              Loading real trading data from our ML-powered trading system...
+              {t('performance.loading')}
             </p>
           </div>
           <div className="flex justify-center items-center h-96">
@@ -173,7 +175,7 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-['Bebas_Neue'] font-bold text-[#080404] mb-4">
-              LIVE PERFORMANCE DEMONSTRATION
+              {t('performance.title')}
             </h2>
             <p className="text-lg font-['Nunito'] text-red-600 max-w-3xl mx-auto">
               {error}
@@ -194,10 +196,10 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-['Bebas_Neue'] font-bold text-[#080404] mb-4">
-              LIVE PERFORMANCE DEMONSTRATION
+              {t('performance.title')}
             </h2>
             <p className="text-lg font-['Nunito'] text-gray-600 max-w-3xl mx-auto">
-              No trading data available at this time.
+              {t('performance.noData')}
             </p>
           </div>
         </div>
@@ -214,11 +216,10 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
         {/* Section Header */}
         <div className="text-center mb-12">
           <h2 className="text-3xl font-['Bebas_Neue'] font-bold text-[#080404] mb-4">
-            LIVE PERFORMANCE DEMONSTRATION
+            {t('performance.title')}
           </h2>
           <p className="text-lg font-['Nunito'] text-gray-600 max-w-3xl mx-auto">
-            See how our ML-powered trading bot has performed with real backtest data compared to ETH benchmark. 
-            This shows actual trading decisions made by our algorithm based on historical market analysis.
+            {t('performance.description')}
           </p>
         </div>
 
@@ -228,31 +229,31 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
             <div className="text-2xl font-['Bebas_Neue'] font-bold text-green-600">
               {formatPercentage(metrics.totalROI)}
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">Total ROI</div>
+            <div className="text-sm font-['Nunito'] text-gray-600">{t('performance.metrics.totalROI')}</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border">
             <div className="text-2xl font-['Bebas_Neue'] font-bold text-blue-600">
               {formatPercentage(metrics.winRate)}
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">Win Rate</div>
+            <div className="text-sm font-['Nunito'] text-gray-600">{t('performance.metrics.winRate')}</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border">
             <div className="text-2xl font-['Bebas_Neue'] font-bold text-purple-600">
               {metrics.sharpeRatio.toFixed(1)}
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">Sharpe Ratio</div>
+            <div className="text-sm font-['Nunito'] text-gray-600">{t('performance.metrics.sharpeRatio')}</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border">
             <div className="text-2xl font-['Bebas_Neue'] font-bold text-orange-600">
               {formatPercentage(metrics.maxDrawdown)}
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">Max Drawdown</div>
+            <div className="text-sm font-['Nunito'] text-gray-600">{t('performance.metrics.maxDrawdown')}</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border">
             <div className="text-2xl font-['Bebas_Neue'] font-bold text-gray-700">
               {metrics.totalTrades}
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">Total Trades</div>
+            <div className="text-sm font-['Nunito'] text-gray-600">{t('performance.metrics.totalTrades')}</div>
           </div>
         </div>
 
@@ -261,7 +262,7 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404]">
-                PORTFOLIO RETURN vs ETH BENCHMARK
+                {t('performance.chart.title')}
               </h3>
               <button
                 onClick={() => setShowTradingDots(!showTradingDots)}
@@ -274,13 +275,13 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
                 <div className={`w-2 h-2 rounded-full mr-2 ${
                   showTradingDots ? 'bg-blue-600' : 'bg-gray-400'
                 }`}></div>
-                {showTradingDots ? 'Hide' : 'Show'} Trading Signals
+                {showTradingDots ? t('performance.chart.toggleHide') : t('performance.chart.toggleShow')}
               </button>
             </div>
             <p className="text-sm font-['Nunito'] text-gray-600">
-              Portfolio Value: {formatCurrency(displayData[displayData.length - 1]?.netValue || 0)} | 
-              Return: {formatPercentage(displayData[displayData.length - 1]?.roi || 0)} | 
-              ETH Return: {formatPercentage(displayData[displayData.length - 1]?.benchmark || 0)}
+              {t('performance.chart.portfolioValue')}: {formatCurrency(displayData[displayData.length - 1]?.netValue || 0)} | 
+              {t('performance.chart.return')}: {formatPercentage(displayData[displayData.length - 1]?.roi || 0)} | 
+              {t('performance.chart.ethReturn')}: {formatPercentage(displayData[displayData.length - 1]?.benchmark || 0)}
             </p>
           </div>
           
@@ -366,25 +367,25 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
           <div className="flex items-center justify-center mt-4 space-x-4 text-sm font-['Nunito'] flex-wrap">
             <div className="flex items-center">
               <div className="w-4 h-3 bg-green-500 bg-opacity-20 border-2 border-green-500 rounded mr-2"></div>
-              <span>Portfolio Return (Area)</span>
+              <span>{t('performance.legend.portfolioReturn')}</span>
             </div>
             <div className="flex items-center">
               <div className="w-4 h-0.5 bg-amber-500 mr-2"></div>
-              <span>ETH Benchmark (Line)</span>
+              <span>{t('performance.legend.ethBenchmark')}</span>
             </div>
             <div className="flex items-center">
               <div className="w-4 h-0.5 bg-slate-400 border-dashed border-t mr-2" style={{borderStyle: 'dashed'}}></div>
-              <span>Zero Line</span>
+              <span>{t('performance.legend.zeroLine')}</span>
             </div>
             {showTradingDots && (
               <>
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                  <span>Buy Signals</span>
+                  <span>{t('performance.legend.buySignals')}</span>
                 </div>
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                  <span>Sell Signals</span>
+                  <span>{t('performance.legend.sellSignals')}</span>
                 </div>
               </>
             )}
@@ -394,17 +395,17 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
         {/* Performance Highlights */}
         <div className="mt-8 bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg">
           <h3 className="text-lg font-['Bebas_Neue'] font-bold text-[#080404] mb-4">
-            KEY PERFORMANCE HIGHLIGHTS
+            {t('performance.highlights.title')}
           </h3>
           <div className="grid md:grid-cols-3 gap-4 text-sm font-['Nunito']">
             <div>
-              <strong>Outperforming ETH:</strong> Algorithm achieved superior returns compared to holding ETH directly
+              {t('performance.highlights.outperforming')}
             </div>
             <div>
-              <strong>Risk Management:</strong> Controlled drawdowns through intelligent position sizing and ML-driven decisions
+              {t('performance.highlights.riskManagement')}
             </div>
             <div>
-              <strong>Real-time Analysis:</strong> Performance data updated from live backend equity curve calculations
+              {t('performance.highlights.realTimeAnalysis')}
             </div>
           </div>
         </div>

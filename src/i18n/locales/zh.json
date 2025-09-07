@@ -30,6 +30,49 @@
       "description": "我们隐藏了所有技术细节，用户可以在简单易用的界面中一键开启自动化量化交易。"
     }
   },
+  "performance": {
+    "title": "实时表现演示",
+    "description": "查看我们的机器学习驱动交易机器人在真实回测数据中与ETH基准相比的表现。这显示了我们的算法基于历史市场分析做出的实际交易决策。",
+    "loading": "正在从我们的机器学习交易系统加载实时交易数据...",
+    "noData": "目前没有可用的交易数据。",
+    "chart": {
+      "title": "投资组合收益 vs ETH基准",
+      "toggleShow": "显示交易信号",
+      "toggleHide": "隐藏交易信号",
+      "portfolioValue": "投资组合价值",
+      "return": "收益",
+      "ethReturn": "ETH收益"
+    },
+    "metrics": {
+      "totalROI": "总投资回报率",
+      "winRate": "胜率",
+      "sharpeRatio": "夏普比率",
+      "maxDrawdown": "最大回撤",
+      "totalTrades": "总交易次数"
+    },
+    "legend": {
+      "portfolioReturn": "投资组合收益（面积图）",
+      "ethBenchmark": "ETH基准（线图）",
+      "zeroLine": "零线",
+      "buySignals": "买入信号",
+      "sellSignals": "卖出信号"
+    },
+    "tooltip": {
+      "time": "时间",
+      "portfolioValue": "投资组合价值",
+      "portfolioReturn": "投资组合收益",
+      "ethBenchmark": "ETH基准",
+      "excessReturn": "超额收益",
+      "buy": "买入",
+      "sell": "卖出"
+    },
+    "highlights": {
+      "title": "关键表现亮点",
+      "outperforming": "超越ETH：算法相比直接持有ETH获得了更优的收益",
+      "riskManagement": "风险管理：通过智能仓位控制和机器学习决策控制回撤",
+      "realTimeAnalysis": "实时分析：表现数据从实时后端权益曲线计算中更新"
+    }
+  },
   "language": {
     "select": "语言",
     "english": "English",

@@ -30,6 +30,49 @@
       "description": "We have hidden all the technical details so that users can turn on automated quantitative trading with a single click in a simple and easy-to-use interface."
     }
   },
+  "performance": {
+    "title": "LIVE PERFORMANCE DEMONSTRATION",
+    "description": "See how our ML-powered trading bot has performed with real backtest data compared to ETH benchmark. This shows actual trading decisions made by our algorithm based on historical market analysis.",
+    "loading": "Loading real trading data from our ML-powered trading system...",
+    "noData": "No trading data available at this time.",
+    "chart": {
+      "title": "PORTFOLIO RETURN vs ETH BENCHMARK",
+      "toggleShow": "Show Trading Signals",
+      "toggleHide": "Hide Trading Signals",
+      "portfolioValue": "Portfolio Value",
+      "return": "Return",
+      "ethReturn": "ETH Return"
+    },
+    "metrics": {
+      "totalROI": "Total ROI",
+      "winRate": "Win Rate",
+      "sharpeRatio": "Sharpe Ratio",
+      "maxDrawdown": "Max Drawdown",
+      "totalTrades": "Total Trades"
+    },
+    "legend": {
+      "portfolioReturn": "Portfolio Return (Area)",
+      "ethBenchmark": "ETH Benchmark (Line)",
+      "zeroLine": "Zero Line",
+      "buySignals": "Buy Signals",
+      "sellSignals": "Sell Signals"
+    },
+    "tooltip": {
+      "time": "Time",
+      "portfolioValue": "Portfolio Value",
+      "portfolioReturn": "Portfolio Return",
+      "ethBenchmark": "ETH Benchmark",
+      "excessReturn": "Excess Return",
+      "buy": "BUY",
+      "sell": "SELL"
+    },
+    "highlights": {
+      "title": "KEY PERFORMANCE HIGHLIGHTS",
+      "outperforming": "Outperforming ETH: Algorithm achieved superior returns compared to holding ETH directly",
+      "riskManagement": "Risk Management: Controlled drawdowns through intelligent position sizing and ML-driven decisions", 
+      "realTimeAnalysis": "Real-time Analysis: Performance data updated from live backend equity curve calculations"
+    }
+  },
   "language": {
     "select": "Language",
     "english": "English",
