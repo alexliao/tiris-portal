@@ -74,7 +74,8 @@ export interface TradingLog {
 
 export interface EquityCurvePoint {
   time: string;
-  value: number;
+  return: number;
+  benchmark: number;
   breakdown?: Array<{
     symbol: string;
     balance: number;
@@ -87,6 +88,10 @@ export interface EquityCurveData {
   trading_id: string;
   start_date: string;
   end_date: string;
+  initial_value: number;
+  end_value: number;
+  initial_market_price: number;
+  end_market_price: number;
   points: EquityCurvePoint[];
 }
 
@@ -182,10 +187,17 @@ export async function getTradingLogs(tradingId: string): Promise<TradingLog[]> {
     .then(response => response.trading_logs);
 }
 
-export async function getEquityCurve(tradingId: string, breakdown: boolean = false): Promise<EquityCurveData> {
+export async function getEquityCurve(
+  tradingId: string, 
+  breakdown: boolean = false,
+  benchmarkSymbol?: string
+): Promise<EquityCurveData> {
   const params = new URLSearchParams();
   if (breakdown) {
     params.append('breakdown', 'true');
+  }
+  if (benchmarkSymbol) {
+    params.append('benchmark_symbol', benchmarkSymbol);
   }
   
   const endpoint = `/tradings/${tradingId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;

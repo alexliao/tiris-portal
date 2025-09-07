@@ -3,8 +3,9 @@ import type { Transaction, TradingLog, EquityCurveData } from './api';
 export interface TradingDataPoint {
   date: string;
   timestamp: string; // Exact event time (ISO string)
-  netValue: number;
-  roi: number;
+  netValue: number; // Keep for tooltip display
+  roi: number; // Primary chart value - return percentage
+  benchmark?: number; // Benchmark return percentage
   event?: {
     type: 'buy' | 'sell';
     description: string;
@@ -40,22 +41,24 @@ export function transformEquityCurveToChartData(
     const date = point.time.split('T')[0];
     const event = eventsByDate.get(date);
     
-    // Calculate ROI based on first point as initial value
-    const initialValue = equityCurve.points[0]?.value || 10000;
-    const roi = ((point.value - initialValue) / initialValue) * 100;
+    // Calculate absolute value using the API formula: initial_value * (1 + return)
+    const absoluteValue = equityCurve.initial_value * (1 + point.return);
+    // Convert return and benchmark from decimal to percentage for display
+    const roiPercentage = point.return * 100;
+    const benchmarkPercentage = point.benchmark * 100;
 
     return {
       date,
       timestamp: point.time,
-      netValue: Math.round(point.value * 100) / 100,
-      roi: Math.round(roi * 100) / 100,
+      netValue: Math.round(absoluteValue * 100) / 100, // Keep for tooltip
+      roi: Math.round(roiPercentage * 100) / 100, // Primary chart value
+      benchmark: Math.round(benchmarkPercentage * 100) / 100, // Benchmark for comparison
       event,
     };
   });
 
   // Calculate metrics using the equity curve data
-  const initialValue = equityCurve.points[0]?.value || 10000;
-  const metrics = calculateMetrics(chartData, tradingLogs, initialValue);
+  const metrics = calculateMetrics(chartData, tradingLogs, equityCurve.initial_value);
 
   return { data: chartData, metrics };
 }
