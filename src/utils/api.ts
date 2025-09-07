@@ -183,8 +183,28 @@ export async function getTransactions(tradingId: string): Promise<Transaction[]>
 }
 
 export async function getTradingLogs(tradingId: string): Promise<TradingLog[]> {
-  return apiRequest<{ trading_logs: TradingLog[] }>(`/trading-logs?trading_id=${tradingId}&limit=1000`)
-    .then(response => response.trading_logs);
+  const allLogs: TradingLog[] = [];
+  let offset = 0;
+  const limit = 1000;
+  
+  while (true) {
+    const response = await apiRequest<{ trading_logs: TradingLog[] }>(`/trading-logs?trading_id=${tradingId}&limit=${limit}&offset=${offset}`);
+    const logs = response.trading_logs;
+    
+    if (logs.length === 0) {
+      break; // No more logs to fetch
+    }
+    
+    allLogs.push(...logs);
+    
+    if (logs.length < limit) {
+      break; // Last page, no more data
+    }
+    
+    offset += limit;
+  }
+  
+  return allLogs;
 }
 
 export async function getEquityCurve(
