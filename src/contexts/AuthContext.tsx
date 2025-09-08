@@ -21,6 +21,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  justSignedIn: boolean;
   loginWithGoogle: () => Promise<void>;
   loginWithWeChat: () => Promise<void>;
   logout: () => Promise<void>;
@@ -47,6 +48,7 @@ const convertBackendUserToUser = (backendUser: BackendUser): User => {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [justSignedIn, setJustSignedIn] = useState(false);
 
   // Token management
   const getTokens = () => {
@@ -149,6 +151,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Reset justSignedIn flag after showing status
+  useEffect(() => {
+    if (justSignedIn) {
+      const timer = setTimeout(() => {
+        setJustSignedIn(false);
+      }, 5000); // Reset after 5 seconds
+      
+      return () => clearTimeout(timer);
+    }
+  }, [justSignedIn]);
+
   const loginWithGoogle = async (): Promise<void> => {
     try {
       setIsLoading(true);
@@ -159,6 +172,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Set user
       setUser(convertBackendUserToUser(authData.user));
+      
+      // Mark as just signed in
+      setJustSignedIn(true);
     } catch (error) {
       console.error('Google login failed:', error);
       throw error;
@@ -177,6 +193,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Set user
       setUser(convertBackendUserToUser(authData.user));
+      
+      // Mark as just signed in
+      setJustSignedIn(true);
     } catch (error) {
       console.error('WeChat login failed:', error);
       throw error;
@@ -205,6 +224,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     isAuthenticated: !!user,
     isLoading,
+    justSignedIn,
     loginWithGoogle,
     loginWithWeChat,
     logout,

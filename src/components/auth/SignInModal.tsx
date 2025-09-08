@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../hooks/useToast';
 import { useTranslation } from 'react-i18next';
 
 interface SignInModalProps {
@@ -11,27 +12,27 @@ interface SignInModalProps {
 export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => {
   const { loginWithGoogle, loginWithWeChat, isLoading } = useAuth();
   const { t } = useTranslation();
-  const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   const handleGoogleLogin = async () => {
     try {
-      setError(null);
       await loginWithGoogle();
       onClose();
     } catch (error) {
       console.error('Google login failed:', error);
-      setError(error instanceof Error ? error.message : 'Google login failed');
+      const errorMessage = error instanceof Error ? error.message : 'Google authentication failed';
+      toast.error('Authentication Failed', errorMessage);
     }
   };
 
   const handleWeChatLogin = async () => {
     try {
-      setError(null);
       await loginWithWeChat();
       onClose();
     } catch (error) {
       console.error('WeChat login failed:', error);
-      setError(error instanceof Error ? error.message : 'WeChat login failed');
+      const errorMessage = error instanceof Error ? error.message : 'WeChat authentication failed';
+      toast.error('Authentication Failed', errorMessage);
     }
   };
 
@@ -60,29 +61,6 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
             {t('auth.chooseProvider', 'Choose your preferred sign-in method')}
           </p>
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0">
-                  <svg className="w-5 h-5 text-red-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-sm font-medium text-red-800 mb-1">
-                    {t('auth.authenticationFailed', 'Authentication Failed')}
-                  </h3>
-                  <div className="text-sm text-red-700 whitespace-pre-wrap">{error}</div>
-                  {error.includes('Backend') && (
-                    <div className="mt-3 text-xs text-red-600 bg-red-100 p-2 rounded border">
-                      <strong>Debug Info:</strong> Check browser console for detailed error logs
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="space-y-4">
             {/* Google Sign In */}
