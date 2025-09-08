@@ -1,0 +1,1 @@
+../../../tiris-backend/docs/api/google-oauth-integration.md

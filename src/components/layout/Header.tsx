@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { LanguageSelector } from '../ui/LanguageSelector';
+import { SignInButton } from '../auth/SignInButton';
+import { UserProfile } from '../auth/UserProfile';
+import { useAuth } from '../../hooks/useAuth';
 
 export const Navigation: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const scrollToSection = (sectionId: string) => {
@@ -67,11 +71,13 @@ export const Navigation: React.FC = () => {
               {t('nav.performance')}
             </Link>
             <LanguageSelector />
+            {isAuthenticated ? <UserProfile /> : <SignInButton testId="signin-button-desktop" />}
           </div>
 
           {/* Mobile Navigation */}
           <div className="md:hidden flex items-center space-x-4">
             <LanguageSelector />
+            {isAuthenticated ? <UserProfile /> : <SignInButton testId="signin-button-mobile" />}
             <button
               onClick={toggleMobileMenu}
               className="text-white hover:bg-white/10 transition-colors p-2 rounded"

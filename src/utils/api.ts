@@ -1,6 +1,9 @@
-const API_BASE_URL = 'https://backend.dev.tiris.ai/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend.dev.tiris.ai/v1';
 
-const JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZWVkMDk1MTktNzM1ZC00YzA3LTgyZjctNjU1NjA4MDBhNWNmIiwidXNlcm5hbWUiOiJhbGV4IiwiZW1haWwiOiJhbGV4QHRpcmlzLmxvY2FsIiwicm9sZSI6InVzZXIiLCJpc3MiOiJ0aXJpcy1iYWNrZW5kIiwic3ViIjoiZWVkMDk1MTktNzM1ZC00YzA3LTgyZjctNjU1NjA4MDBhNWNmIiwiZXhwIjoxNzg4NDY0MjUwLCJuYmYiOjE3NTY5MjgyNTAsImlhdCI6MTc1NjkyODI1MH0.WdfXWnkc1q6FBNMaPeM7F1Zg9f7kY_ChX68smuL7TEY';
+// Get access token from localStorage
+const getAccessToken = (): string | null => {
+  return localStorage.getItem('access_token');
+};
 
 interface ApiResponse<T> {
   success: boolean;
@@ -116,11 +119,12 @@ export class ApiError extends Error {
 
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
+  const token = getAccessToken();
   
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${JWT_TOKEN}`,
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       'Content-Type': 'application/json',
       ...options.headers,
     },

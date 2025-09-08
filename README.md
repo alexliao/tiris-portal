@@ -1,10 +1,10 @@
 # TIRIS Portal
 
-A modern React landing page for the TIRIS cryptocurrency trading platform. Built with TypeScript, Vite, and Tailwind CSS, featuring multilingual support and professional design.
+A modern React application for the TIRIS cryptocurrency trading platform. Built with TypeScript, Vite, and Tailwind CSS, featuring backend-integrated authentication, multilingual support, and professional design.
 
 ## Overview
 
-This is a single-page application that serves as the marketing landing page for TIRIS. The page presents the platform's value proposition through a clean, minimalist design with multilingual support for English and Chinese users.
+This is a React application that serves as the portal for TIRIS users. It features a marketing landing page with integrated backend authentication, supporting Google and WeChat sign-in through the TIRIS backend API. The application presents the platform's value proposition through a clean, minimalist design with multilingual support for English and Chinese users.
 
 ## Tech Stack
 
@@ -14,11 +14,13 @@ This is a single-page application that serves as the marketing landing page for 
 - **Tailwind CSS** - Utility-first CSS framework
 - **react-i18next** - Internationalization
 - **Lucide React** - Icon library
+- **Backend Integration** - JWT authentication with TIRIS backend API
 
 ## Prerequisites
 
 - Node.js 18 or higher
 - npm or yarn package manager
+- Access to TIRIS backend API (for authentication features)
 
 ## Getting Started
 
@@ -33,13 +35,19 @@ This is a single-page application that serves as the marketing landing page for 
    npm install
    ```
 
-3. **Start development server**
+3. **Configure environment**
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local to set VITE_API_BASE_URL
+   ```
+
+4. **Start development server**
    ```bash
    npm run dev
    ```
 
-4. **Open your browser**
-   Navigate to `http://localhost:5173`
+5. **Open your browser**
+   Navigate to `http://localhost:5174`
 
 ## Available Scripts
 
@@ -48,6 +56,7 @@ npm run dev          # Start development server
 npm run build        # Build for production
 npm run preview      # Preview production build
 npm run lint         # Run ESLint
+npm run test         # Run Playwright tests
 ```
 
 ## Project Structure
@@ -55,49 +64,62 @@ npm run lint         # Run ESLint
 ```
 src/
 ├── components/
+│   ├── auth/
+│   │   ├── SignInModal.tsx       # Multi-provider authentication modal
+│   │   ├── SignInButton.tsx      # Sign-in button component
+│   │   ├── UserProfile.tsx       # User profile dropdown
+│   │   └── AuthStatus.tsx        # Authentication status indicator
 │   ├── landing/
 │   │   ├── HeroSection.tsx       # Main hero section
 │   │   └── HighlightsSection.tsx # About + features combined
 │   ├── layout/
-│   │   ├── Header.tsx            # Navigation with language selector
+│   │   ├── Header.tsx            # Navigation with auth integration
 │   │   └── Footer.tsx
 │   └── ui/
 │       └── LanguageSelector.tsx  # Language switching component
+├── contexts/
+│   └── AuthContext.tsx           # Authentication context provider
+├── hooks/
+│   └── useAuth.ts                # Authentication hook
 ├── i18n/
 │   ├── index.ts                  # i18next configuration
 │   └── locales/
-│       ├── en.json               # English translations
-│       └── zh.json               # Chinese translations
+│       ├── en.json               # English translations (with auth)
+│       └── zh.json               # Chinese translations (with auth)
 ├── pages/
-│   └── landing/
-│       └── LandingPage.tsx       # Main page layout
+│   ├── auth/
+│   │   └── OAuthCallback.tsx     # OAuth callback handler
+│   ├── landing/
+│   │   └── LandingPage.tsx       # Main page layout
+│   └── PerformancePage.tsx       # Performance analytics page
+├── services/
+│   └── auth.ts                   # Backend authentication service
 ├── utils/
+│   ├── api.ts                    # API utilities with JWT support
 │   └── cn.ts                     # Tailwind utility
-├── App.tsx                       # App root
+├── App.tsx                       # App root with routing
 └── main.tsx                      # Entry point
 ```
 
 ## Key Components
 
-### HeroSection
-- Displays main TIRIS branding and value proposition
-- Responsive typography using Bebas Neue and Nunito fonts
-- Background image with overlay text
+### Authentication System
+- **SignInModal**: Multi-provider authentication modal with Google and WeChat options
+- **AuthContext**: Backend-integrated authentication state management
+- **SignInButton**: Secure sign-in trigger with loading states
+- **UserProfile**: User dropdown with provider info and logout
+- **AuthStatus**: Simple authentication status indicator
 
-### HighlightsSection  
-- Combined section with company description and feature grid
-- Four feature cards: Profitable, Secure, Automatic, Simple
-- Dark color scheme for professional appearance
+### Landing Page
+- **HeroSection**: Main TIRIS branding and value proposition with responsive typography
+- **HighlightsSection**: Company description and feature grid with professional design
+- **Header/Navigation**: Fixed navigation with authentication integration and language selector
+- **LanguageSelector**: Persistent language switching with flag indicators
 
-### Header/Navigation
-- Fixed navigation with smooth scrolling
-- Integrated language selector with flag indicators
-- TIRIS logo with branding
-
-### LanguageSelector
-- Dropdown component for English/Chinese switching
-- Persistent language selection via localStorage
-- Flag-based visual indicators
+### Backend Integration
+- **AuthService**: Complete OAuth flow integration with TIRIS backend API
+- **API Utils**: JWT token management and authenticated requests
+- **Error Handling**: Clear error messages when backend is unavailable
 
 ## Internationalization
 
@@ -196,8 +218,26 @@ The build artifacts will be stored in the `dist/` directory, ready for deploymen
 6. Run `npm run lint` to check code quality
 7. Submit a pull request
 
+## Authentication
+
+The application integrates with the TIRIS backend for secure authentication. See [AUTHENTICATION_SETUP.md](./AUTHENTICATION_SETUP.md) for complete implementation details.
+
+**Features:**
+- Google and WeChat OAuth through TIRIS backend
+- JWT token management with automatic refresh
+- Popup-based OAuth flow for security
+- Clear error handling when backend is unavailable
+- Multi-language authentication UI
+
+**Requirements:**
+- TIRIS backend API must be running and configured
+- Backend OAuth endpoints properly set up for Google/WeChat
+- Environment variable `VITE_API_BASE_URL` configured
+
 ## Documentation
 
+- **[Authentication Setup](AUTHENTICATION_SETUP.md)**: Complete authentication implementation guide
+- **[Backend OAuth Integration](docs/backend/google-oauth-integration.md)**: Backend OAuth flow specification
 - **[Technical Architecture](docs/ui-architecture.md)**: Detailed technical specifications
 - **[Design Specification](docs/front-end-spec.md)**: UI/UX requirements and design system
 - **[User Stories](docs/stories/)**: Product requirements and user flows
