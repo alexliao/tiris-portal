@@ -4,6 +4,8 @@ import { ToastProvider, ToastContainer } from './components/toast';
 import { AuthToastHandler } from './components/auth/AuthToastHandler';
 import LandingPage from './pages/landing/LandingPage';
 import PerformancePage from './pages/PerformancePage';
+import DashboardPage from './pages/DashboardPage';
+import TradingDetailPage from './pages/TradingDetailPage';
 import { OAuthCallback } from './pages/auth/OAuthCallback';
 
 function App() {
@@ -15,6 +17,8 @@ function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/performance" element={<PerformancePage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/trading/:id" element={<TradingDetailPage />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
           </Routes>
           <ToastContainer />

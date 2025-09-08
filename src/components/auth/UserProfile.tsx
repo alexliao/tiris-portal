@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, LayoutDashboard } from 'lucide-react';
 
 export const UserProfile: React.FC = () => {
   const { user, logout } = useAuth();
@@ -41,6 +42,14 @@ export const UserProfile: React.FC = () => {
               </span>
             </div>
           </div>
+          <Link
+            to="/dashboard"
+            onClick={() => setIsDropdownOpen(false)}
+            className="flex items-center space-x-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span>Dashboard</span>
+          </Link>
           <button
             onClick={() => {
               logout();

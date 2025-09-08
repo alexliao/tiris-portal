@@ -42,20 +42,12 @@ export const Navigation: React.FC = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             {location.pathname === '/' ? (
-              <>
-                <button 
-                  onClick={() => scrollToSection('home')} 
-                  className="font-['Nunito'] font-semibold text-white hover:bg-white/10 transition-colors px-3 py-1 rounded"
-                >
-                  {t('nav.home')}
-                </button>
-                <button 
-                  onClick={() => scrollToSection('highlights')} 
-                  className="font-['Nunito'] font-semibold text-white hover:bg-white/10 transition-colors px-3 py-1 rounded"
-                >
-                  {t('nav.highlights')}
-                </button>
-              </>
+              <button 
+                onClick={() => scrollToSection('home')} 
+                className="font-['Nunito'] font-semibold text-white hover:bg-white/10 transition-colors px-3 py-1 rounded"
+              >
+                {t('nav.home')}
+              </button>
             ) : (
               <Link 
                 to="/" 
@@ -70,6 +62,14 @@ export const Navigation: React.FC = () => {
             >
               {t('nav.performance')}
             </Link>
+            {isAuthenticated && (
+              <Link 
+                to="/dashboard" 
+                className="font-['Nunito'] font-semibold text-white hover:bg-white/10 transition-colors px-3 py-1 rounded"
+              >
+                Dashboard
+              </Link>
+            )}
             <LanguageSelector />
             {isAuthenticated ? <UserProfile /> : <SignInButton testId="signin-button-desktop" />}
           </div>
@@ -110,20 +110,12 @@ export const Navigation: React.FC = () => {
           <div className="md:hidden absolute top-full left-0 right-0 bg-[#1a1a1a] border-t border-gray-700 shadow-lg">
             <div className="max-w-7xl mx-auto px-6 py-4 space-y-4">
               {location.pathname === '/' ? (
-                <>
-                  <button 
-                    onClick={() => scrollToSection('home')} 
-                    className="block w-full text-left font-['Nunito'] font-semibold text-white hover:bg-white/10 transition-colors px-3 py-2 rounded"
-                  >
-                    {t('nav.home')}
-                  </button>
-                  <button 
-                    onClick={() => scrollToSection('highlights')} 
-                    className="block w-full text-left font-['Nunito'] font-semibold text-white hover:bg-white/10 transition-colors px-3 py-2 rounded"
-                  >
-                    {t('nav.highlights')}
-                  </button>
-                </>
+                <button 
+                  onClick={() => scrollToSection('home')} 
+                  className="block w-full text-left font-['Nunito'] font-semibold text-white hover:bg-white/10 transition-colors px-3 py-2 rounded"
+                >
+                  {t('nav.home')}
+                </button>
               ) : (
                 <Link 
                   to="/" 
@@ -140,6 +132,15 @@ export const Navigation: React.FC = () => {
               >
                 {t('nav.performance')}
               </Link>
+              {isAuthenticated && (
+                <Link 
+                  to="/dashboard" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block font-['Nunito'] font-semibold text-white hover:bg-white/10 transition-colors px-3 py-2 rounded"
+                >
+                  Dashboard
+                </Link>
+              )}
             </div>
           </div>
         )}
