@@ -265,7 +265,10 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
             <ComposedChart data={displayData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis 
-                dataKey="timestamp" 
+                dataKey="timestampNum"
+                type="number"
+                scale="time"
+                domain={['dataMin', 'dataMax']}
                 stroke="#666"
                 fontSize={12}
                 tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -329,7 +332,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
               
               {/* Zoom Brush */}
               <Brush 
-                dataKey="timestamp" 
+                dataKey="timestampNum" 
                 height={30}
                 stroke="#8884d8"
                 tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}

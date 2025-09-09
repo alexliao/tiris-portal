@@ -3,6 +3,7 @@ import type { Transaction, TradingLog, EquityCurveData } from './api';
 export interface TradingDataPoint {
   date: string;
   timestamp: string; // Exact event time (ISO string)
+  timestampNum: number; // Numeric timestamp for chart X-axis scale
   netValue: number; // Keep for tooltip display
   roi: number; // Primary chart value - return percentage
   benchmark?: number; // Benchmark return percentage
@@ -75,6 +76,7 @@ export function transformEquityCurveToChartData(
     return {
       date,
       timestamp: point.time,
+      timestampNum: new Date(point.time).getTime(),
       netValue: Math.round(absoluteValue * 100) / 100, // Keep for tooltip
       roi: Math.round(roiPercentage * 100) / 100, // Primary chart value
       benchmark: Math.round(benchmarkPercentage * 100) / 100, // Benchmark for comparison
@@ -185,6 +187,7 @@ export function transformTransactionsToChartData(
     chartData.push({
       date,
       timestamp: latestTimestamp,
+      timestampNum: new Date(latestTimestamp).getTime(),
       netValue: Math.round(totalPortfolioValue * 100) / 100,
       roi: Math.round(roi * 100) / 100,
       event,
