@@ -46,7 +46,6 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchToSig
 
     try {
       await signInWithEmailPassword(formData.email, formData.password);
-      toast.success('Welcome Back', 'You have been successfully signed in.');
       onSuccess();
     } catch (error) {
       console.error('Signin failed:', error);
