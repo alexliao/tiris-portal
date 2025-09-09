@@ -376,12 +376,17 @@ class AuthService {
   // Logout
   async logout(token: string): Promise<void> {
     try {
-      await fetch(`${API_BASE_URL}/auth/logout`, {
+      const response = await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
+      
+      if (!response.ok) {
+        console.warn(`Logout API returned ${response.status}: ${response.statusText}`);
+        // Don't throw error - continue with local cleanup
+      }
     } catch (error) {
       console.warn('Logout API call failed:', error);
       // Continue with local cleanup even if API call fails

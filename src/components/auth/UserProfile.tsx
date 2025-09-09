@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../hooks/useToast';
 import { LogOut, User, LayoutDashboard } from 'lucide-react';
 
 export const UserProfile: React.FC = () => {
   const { user, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const navigate = useNavigate();
+  const toast = useToast();
 
   if (!user) return null;
 
@@ -48,9 +51,18 @@ export const UserProfile: React.FC = () => {
             <span>Dashboard</span>
           </Link>
           <button
-            onClick={() => {
-              logout();
-              setIsDropdownOpen(false);
+            onClick={async () => {
+              try {
+                setIsDropdownOpen(false);
+                await logout();
+                toast.success('Logged Out', 'You have been successfully signed out.');
+                navigate('/');
+              } catch (error) {
+                // Logout should always succeed locally even if API fails
+                console.error('Logout error:', error);
+                toast.success('Logged Out', 'You have been successfully signed out.');
+                navigate('/');
+              }
             }}
             className="flex items-center space-x-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
           >
