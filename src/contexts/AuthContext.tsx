@@ -37,10 +37,12 @@ interface AuthProviderProps {
 }
 
 const convertBackendUserToUser = (backendUser: BackendUser): User => {
+  // Prefer full name if available; fall back to username.
+  const displayName = backendUser.full_name || backendUser.name || backendUser.username;
   return {
     id: backendUser.id,
     email: backendUser.email,
-    name: backendUser.username,
+    name: displayName,
     picture: backendUser.avatar,
     provider: (backendUser.info.oauth_provider as AuthProvider) || 'email',
     settings: backendUser.settings,

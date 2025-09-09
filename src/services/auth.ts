@@ -6,6 +6,8 @@ const DEBUG_MODE = import.meta.env.DEV; // Enable detailed logging in developmen
 export interface BackendUser {
   id: string;
   username: string;
+  full_name?: string;
+  name?: string;
   email: string;
   avatar: string;
   settings: {
