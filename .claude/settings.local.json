@@ -19,9 +19,11 @@
       "Read(/Users/alex/Desktop/**)",
       "Read(/Users/alex/Desktop/**)",
       "Read(/Users/alex/Desktop/**)",
-      "Read(/Users/alex/Desktop/**)"
+      "Read(/Users/alex/Desktop/**)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true
 }
