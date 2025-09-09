@@ -146,7 +146,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 
 export async function getTradings(): Promise<Trading[]> {
   return apiRequest<{ tradings: Trading[] }>('/tradings')
-    .then(response => response.tradings);
+    .then(response => response.tradings || []);
 }
 
 export async function getLatestBacktestTrading(): Promise<Trading | null> {

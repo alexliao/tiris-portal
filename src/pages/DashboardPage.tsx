@@ -208,7 +208,7 @@ export const DashboardPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {tradings.map((trading) => (
+                  {(tradings || []).map((trading) => (
                     <tr key={trading.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/trading/${trading.id}`)}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
