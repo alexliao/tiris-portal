@@ -24,6 +24,7 @@ interface AuthContextType {
   justSignedIn: boolean;
   loginWithGoogle: () => Promise<void>;
   loginWithWeChat: () => Promise<void>;
+  signUpWithEmailPassword: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
 }
@@ -204,6 +205,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const signUpWithEmailPassword = async (email: string, password: string, fullName: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+      const authData = await authService.signUpWithEmailPassword(email, password, fullName);
+      
+      // Store tokens
+      setTokens(authData.access_token, authData.refresh_token, authData.expires_in);
+      
+      // Set user
+      setUser(convertBackendUserToUser(authData.user));
+      
+      // Mark as just signed in
+      setJustSignedIn(true);
+    } catch (error) {
+      console.error('Email/Password signup failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async (): Promise<void> => {
     const { accessToken } = getTokens();
     
@@ -227,6 +249,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     justSignedIn,
     loginWithGoogle,
     loginWithWeChat,
+    signUpWithEmailPassword,
     logout,
     refreshAuth,
   };

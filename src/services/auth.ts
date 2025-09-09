@@ -235,6 +235,78 @@ class AuthService {
     return data.data;
   }
 
+  // Email/Password Signup
+  async signUpWithEmailPassword(email: string, password: string, fullName: string): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          full_name: fullName,
+        }),
+      });
+
+      if (!response.ok) {
+        let errorBody: any = {};
+        try {
+          errorBody = await response.json();
+        } catch (e) {
+          // Response body is not JSON
+        }
+        
+        console.error('Backend Email/Password Signup Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody,
+        });
+
+        if (response.status >= 500) {
+          throw new Error('Backend server error. Please try again later.');
+        } else if (response.status === 409) {
+          throw new Error('Email address is already registered. Please try signing in instead.');
+        } else if (response.status === 400) {
+          const details = errorBody.error?.message || 'Invalid signup data';
+          if (details.toLowerCase().includes('password')) {
+            throw new Error('Password must be at least 8 characters long.');
+          } else if (details.toLowerCase().includes('email')) {
+            throw new Error('Please provide a valid email address.');
+          } else if (details.toLowerCase().includes('full_name')) {
+            throw new Error('Full name must be between 2-255 characters.');
+          }
+          throw new Error(`Signup validation failed: ${details}`);
+        } else {
+          throw new Error(`Signup failed (${response.status}): ${errorBody.error?.message || response.statusText}`);
+        }
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        const errorMessage = data.error?.message || 'Signup failed';
+        const errorCode = data.error?.code;
+        
+        console.error('Backend Signup Response Error:', {
+          errorCode,
+          errorMessage,
+          fullResponse: data
+        });
+        
+        throw new Error(`Signup Error: ${errorMessage}`);
+      }
+
+      return data.data;
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Unable to connect to TIRIS backend. Please check your internet connection.');
+      }
+      throw error;
+    }
+  }
+
   // Logout
   async logout(token: string): Promise<void> {
     try {
