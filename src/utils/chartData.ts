@@ -20,16 +20,40 @@ export interface TradingMetrics {
   totalTrades: number;
 }
 
+// Helper function to find the closest event within a reasonable time window
+function findClosestEvent(
+  targetTime: string, 
+  eventsByTimestamp: Map<string, TradingDataPoint['event']>
+): TradingDataPoint['event'] | undefined {
+  const targetTimestamp = new Date(targetTime).getTime();
+  const timeWindow = 5 * 60 * 1000; // 5 minutes in milliseconds
+  
+  let closestEvent: TradingDataPoint['event'] | undefined;
+  let closestTimeDiff = Infinity;
+  
+  for (const [eventTime, event] of eventsByTimestamp) {
+    const eventTimestamp = new Date(eventTime).getTime();
+    const timeDiff = Math.abs(targetTimestamp - eventTimestamp);
+    
+    // Only consider events within the time window
+    if (timeDiff <= timeWindow && timeDiff < closestTimeDiff) {
+      closestTimeDiff = timeDiff;
+      closestEvent = event;
+    }
+  }
+  
+  return closestEvent;
+}
+
 export function transformEquityCurveToChartData(
   equityCurve: EquityCurveData,
   tradingLogs: TradingLog[]
 ): { data: TradingDataPoint[]; metrics: TradingMetrics } {
-  // Create a map of events by date for quick lookup
-  const eventsByDate = new Map<string, TradingDataPoint['event']>();
+  // Create a map of events by exact timestamp for precise lookup
+  const eventsByTimestamp = new Map<string, TradingDataPoint['event']>();
   tradingLogs.forEach(log => {
-    const date = log.event_time.split('T')[0];
     if (log.type === 'long' || log.type === 'short') {
-      eventsByDate.set(date, {
+      eventsByTimestamp.set(log.event_time, {
         type: log.type === 'long' ? 'buy' : 'sell',
         description: log.message,
       });
@@ -39,7 +63,8 @@ export function transformEquityCurveToChartData(
   // Transform equity curve points to chart data
   const chartData: TradingDataPoint[] = equityCurve.points.map(point => {
     const date = point.time.split('T')[0];
-    const event = eventsByDate.get(date);
+    // Find exact matching event by timestamp, or closest event within reasonable time window
+    const event = eventsByTimestamp.get(point.time) || findClosestEvent(point.time, eventsByTimestamp);
     
     // Calculate absolute value using the API formula: initial_value * (1 + return)
     const absoluteValue = equityCurve.initial_value * (1 + point.return);
@@ -72,12 +97,11 @@ export function transformTransactionsToChartData(
     new Date(a.event_time).getTime() - new Date(b.event_time).getTime()
   );
 
-  // Create a map of events by date for quick lookup
-  const eventsByDate = new Map<string, TradingDataPoint['event']>();
+  // Create a map of events by exact timestamp for precise lookup
+  const eventsByTimestamp = new Map<string, TradingDataPoint['event']>();
   tradingLogs.forEach(log => {
-    const date = log.event_time.split('T')[0];
     if (log.type === 'long' || log.type === 'short') {
-      eventsByDate.set(date, {
+      eventsByTimestamp.set(log.event_time, {
         type: log.type === 'long' ? 'buy' : 'sell',
         description: log.message,
       });
@@ -156,7 +180,7 @@ export function transformTransactionsToChartData(
     const totalPortfolioValue = usdtBalance + ethValueInUSDT;
     
     const roi = ((totalPortfolioValue - initialPortfolioValue) / initialPortfolioValue) * 100;
-    const event = eventsByDate.get(date);
+    const event = eventsByTimestamp.get(latestTimestamp) || findClosestEvent(latestTimestamp, eventsByTimestamp);
 
     chartData.push({
       date,
