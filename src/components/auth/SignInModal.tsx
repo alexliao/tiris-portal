@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { SignUpForm } from './SignUpForm';
 
 interface SignInModalProps {
@@ -15,11 +16,13 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
   const { loginWithGoogle, loginWithWeChat, isLoading } = useAuth();
   const { t } = useTranslation();
   const toast = useToast();
+  const navigate = useNavigate();
 
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle();
       onClose();
+      navigate('/dashboard');
     } catch (error) {
       console.error('Google login failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Google authentication failed';
@@ -31,11 +34,17 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
     try {
       await loginWithWeChat();
       onClose();
+      navigate('/dashboard');
     } catch (error) {
       console.error('WeChat login failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'WeChat authentication failed';
       toast.error('Authentication Failed', errorMessage);
     }
+  };
+
+  const handleSignUpSuccess = () => {
+    onClose();
+    navigate('/dashboard');
   };
 
   if (!isOpen) return null;
@@ -61,7 +70,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
         <div className="p-6">
           {mode === 'signup' ? (
             <SignUpForm 
-              onSuccess={onClose}
+              onSuccess={handleSignUpSuccess}
               onSwitchToLogin={() => setMode('login')}
             />
           ) : (
