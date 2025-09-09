@@ -198,14 +198,42 @@ function calculateMetrics(
   );
   const totalTrades = tradeLogs.length;
 
-  // For win rate calculation, we'll use a simplified approach
-  // In a real implementation, you'd match buy/sell pairs to determine wins/losses
-  const profitableTrades = tradeLogs.filter(log => {
-    // This is a simplified heuristic - in reality you'd need to track position opens/closes
-    return log.message.toLowerCase().includes('profit') || 
-           (log.info.confidence && log.info.confidence > 0.6);
-  });
-  const winRate = totalTrades > 0 ? (profitableTrades.length / totalTrades) * 100 : 0;
+  // Calculate win rate by matching long/short trading pairs
+  let winRate = 0;
+  if (totalTrades > 0) {
+    const longTrades = tradingLogs.filter(log => log.type === 'long');
+    const shortTrades = tradingLogs.filter(log => log.type === 'short');
+    
+    let completedTrades = 0;
+    let winningTrades = 0;
+    
+    // Match long positions with their corresponding short (exit) positions
+    for (const longTrade of longTrades) {
+      // Find the next short trade after this long trade (chronologically)
+      const longTime = new Date(longTrade.event_time).getTime();
+      const correspondingShort = shortTrades.find(shortTrade => {
+        const shortTime = new Date(shortTrade.event_time).getTime();
+        return shortTime > longTime;
+      });
+      
+      if (correspondingShort && longTrade.info && correspondingShort.info) {
+        const entryPrice = parseFloat(longTrade.info.price?.toString() || '0');
+        const exitPrice = parseFloat(correspondingShort.info.price?.toString() || '0');
+        
+        if (entryPrice > 0 && exitPrice > 0) {
+          completedTrades++;
+          
+          // For long positions: profit if exit price > entry price
+          if (exitPrice > entryPrice) {
+            winningTrades++;
+          }
+        }
+      }
+    }
+    
+    // Calculate win rate from completed trades
+    winRate = completedTrades > 0 ? (winningTrades / completedTrades) * 100 : 0;
+  }
 
   // Calculate max drawdown
   let peak = initialBalance;
