@@ -98,18 +98,16 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
             <button
               onClick={handleWeChatLogin}
               disabled={isLoading}
-              className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-[#1aad19] hover:bg-[#179b16] text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white hover:bg-gray-50 text-gray-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
-                <div className="w-5 h-5 mr-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                <div className="w-5 h-5 mr-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
               ) : (
-                <svg
+                <img 
+                  src="/wechat-96.png"
+                  alt="WeChat"
                   className="w-5 h-5 mr-3"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18 0 .659-.52 1.188-1.162 1.188-.642 0-1.162-.53-1.162-1.188 0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18 0 .659-.52 1.188-1.162 1.188-.642 0-1.162-.53-1.162-1.188 0-.651.52-1.18 1.162-1.18zm7.278 5.99c0-3.169-2.892-5.738-6.463-5.738-3.57 0-6.462 2.569-6.462 5.738 0 1.719.937 3.269 2.434 4.315a.49.49 0 0 1 .181.553l-.334 1.219c-.015.055-.038.11-.038.165 0 .125.1.228.222.228a.264.264 0 0 0 .125-.042l1.577-.918a.681.681 0 0 1 .574-.077c.616.192 1.295.315 2.013.315 3.57 0 6.171-2.569 6.171-5.738zm-8.966-1.18c-.394 0-.713-.329-.713-.738 0-.408.319-.737.713-.737.394 0 .713.329.713.737 0 .409-.319.738-.713.738zm4.52 0c-.394 0-.713-.329-.713-.738 0-.408.319-.737.713-.737.394 0 .713.329.713.737 0 .409-.319.738-.713.738z"/>
-                </svg>
+                />
               )}
               {t('auth.signInWithWeChat', 'Sign in with WeChat')}
             </button>

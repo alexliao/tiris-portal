@@ -286,7 +286,7 @@ export const TradingDetailPage: React.FC = () => {
           <TradingPerformanceWidget 
             trading={trading}
             showHeader={false}
-            showHighlights={true}
+            showHighlights={false}
           />
         </div>
       </div>

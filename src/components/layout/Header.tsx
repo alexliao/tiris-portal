@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
-import { LanguageSelector } from '../ui/LanguageSelector';
 import { SignInButton } from '../auth/SignInButton';
 import { UserProfile } from '../auth/UserProfile';
 import { useAuth } from '../../hooks/useAuth';
@@ -30,7 +29,7 @@ export const Navigation: React.FC = () => {
 
   return (
     <nav className="fixed top-0 w-full bg-[#1a1a1a] z-50 py-4">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <Link 
             to="/" 
@@ -70,13 +69,11 @@ export const Navigation: React.FC = () => {
                 Dashboard
               </Link>
             )}
-            <LanguageSelector />
             {isAuthenticated ? <UserProfile /> : <SignInButton testId="signin-button-desktop" />}
           </div>
 
           {/* Mobile Navigation */}
           <div className="md:hidden flex items-center space-x-4">
-            <LanguageSelector />
             {isAuthenticated ? <UserProfile /> : <SignInButton testId="signin-button-mobile" />}
             <button
               onClick={toggleMobileMenu}
@@ -108,7 +105,7 @@ export const Navigation: React.FC = () => {
         {/* Mobile Dropdown Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-full left-0 right-0 bg-[#1a1a1a] border-t border-gray-700 shadow-lg">
-            <div className="max-w-7xl mx-auto px-6 py-4 space-y-4">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
               {location.pathname === '/' ? (
                 <button 
                   onClick={() => scrollToSection('home')} 

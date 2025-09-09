@@ -13,7 +13,7 @@ export const UserProfile: React.FC = () => {
     <div className="relative" data-testid="user-profile">
       <button
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        className="flex items-center space-x-2 hover:bg-white/10 transition-colors px-3 py-2 rounded"
+        className="flex items-center hover:bg-white/10 transition-colors px-3 py-2 rounded"
         aria-label="User menu"
       >
         {user.picture ? (
@@ -25,9 +25,6 @@ export const UserProfile: React.FC = () => {
         ) : (
           <User className="w-8 h-8 text-white" />
         )}
-        <span className="text-white font-medium hidden sm:block">
-          {user.name}
-        </span>
       </button>
 
       {isDropdownOpen && (
