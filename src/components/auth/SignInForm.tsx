@@ -3,34 +3,23 @@ import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import { useTranslation } from 'react-i18next';
 
-interface SignUpFormProps {
+interface SignInFormProps {
   onSuccess: () => void;
-  onSwitchToLogin: () => void;
+  onSwitchToSignUp: () => void;
 }
 
-export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLogin }) => {
+export const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchToSignUp }) => {
   const [formData, setFormData] = useState({
-    fullName: '',
     email: '',
     password: '',
-    confirmPassword: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const { signUpWithEmailPassword, isLoading } = useAuth();
+  const { signInWithEmailPassword, isLoading } = useAuth();
   const { t } = useTranslation();
   const toast = useToast();
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-
-    // Full name validation
-    if (!formData.fullName.trim()) {
-      errors.fullName = 'Full name is required';
-    } else if (formData.fullName.trim().length < 2) {
-      errors.fullName = 'Full name must be at least 2 characters';
-    } else if (formData.fullName.trim().length > 255) {
-      errors.fullName = 'Full name must be less than 255 characters';
-    }
 
     // Email validation
     if (!formData.email.trim()) {
@@ -42,15 +31,6 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
     // Password validation
     if (!formData.password) {
       errors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters';
-    }
-
-    // Confirm password validation
-    if (!formData.confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
     }
 
     setFormErrors(errors);
@@ -65,13 +45,13 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
     }
 
     try {
-      await signUpWithEmailPassword(formData.email, formData.password, formData.fullName);
-      toast.success('Account Created', 'Welcome to TIRIS! Your account has been created successfully.');
+      await signInWithEmailPassword(formData.email, formData.password);
+      toast.success('Welcome Back', 'You have been successfully signed in.');
       onSuccess();
     } catch (error) {
-      console.error('Signup failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Account creation failed';
-      toast.error('Signup Failed', errorMessage);
+      console.error('Signin failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Sign in failed';
+      toast.error('Sign In Failed', errorMessage);
     }
   };
 
@@ -86,35 +66,14 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Full Name */}
-        <div>
-          <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
-            {t('auth.fullName', 'Full Name')}
-          </label>
-          <input
-            type="text"
-            id="fullName"
-            value={formData.fullName}
-            onChange={(e) => handleInputChange('fullName', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-              formErrors.fullName ? 'border-red-300' : 'border-gray-300'
-            }`}
-            placeholder="Enter your full name"
-            disabled={isLoading}
-          />
-          {formErrors.fullName && (
-            <p className="mt-1 text-sm text-red-600">{formErrors.fullName}</p>
-          )}
-        </div>
-
         {/* Email */}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="signin-email" className="block text-sm font-medium text-gray-700 mb-1">
             {t('auth.email', 'Email Address')}
           </label>
           <input
             type="email"
-            id="email"
+            id="signin-email"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
@@ -130,12 +89,12 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
 
         {/* Password */}
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="signin-password" className="block text-sm font-medium text-gray-700 mb-1">
             {t('auth.password', 'Password')}
           </label>
           <input
             type="password"
-            id="password"
+            id="signin-password"
             value={formData.password}
             onChange={(e) => handleInputChange('password', e.target.value)}
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
@@ -149,27 +108,6 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
           )}
         </div>
 
-        {/* Confirm Password */}
-        <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-            {t('auth.confirmPassword', 'Confirm Password')}
-          </label>
-          <input
-            type="password"
-            id="confirmPassword"
-            value={formData.confirmPassword}
-            onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-              formErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-            }`}
-            placeholder="Confirm your password"
-            disabled={isLoading}
-          />
-          {formErrors.confirmPassword && (
-            <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
-          )}
-        </div>
-
         {/* Submit Button */}
         <button
           type="submit"
@@ -179,24 +117,24 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
           {isLoading ? (
             <>
               <div className="w-5 h-5 mr-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-              {t('auth.creatingAccount', 'Creating Account...')}
+              {t('auth.signingIn', 'Signing In...')}
             </>
           ) : (
-            t('auth.createAccount', 'Create Account')
+            t('auth.signIn', 'Sign In')
           )}
         </button>
       </form>
 
-      {/* Switch to Login */}
+      {/* Switch to Sign Up */}
       <div className="text-center">
         <p className="text-sm text-gray-600">
-          {t('auth.alreadyHaveAccount', 'Already have an account?')}{' '}
+          {t('auth.dontHaveAccount', "Don't have an account?")}{' '}
           <button
-            onClick={onSwitchToLogin}
+            onClick={onSwitchToSignUp}
             className="text-blue-600 hover:text-blue-800 font-medium"
             disabled={isLoading}
           >
-            {t('auth.signIn', 'Sign In')}
+            {t('auth.signUp', 'Sign Up')}
           </button>
         </p>
       </div>
@@ -204,7 +142,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
       {/* Terms and Privacy */}
       <div className="text-xs text-center text-gray-500">
         <p>
-          {t('auth.termsText', 'By creating an account, you agree to our')}{' '}
+          {t('auth.termsText', 'By signing in, you agree to our')}{' '}
           <a href="#" className="text-blue-600 hover:text-blue-800">
             {t('auth.termsOfService', 'Terms of Service')}
           </a>{' '}

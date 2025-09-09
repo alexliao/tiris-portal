@@ -235,6 +235,72 @@ class AuthService {
     return data.data;
   }
 
+  // Email/Password Login
+  async signInWithEmailPassword(email: string, password: string): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/signin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      if (!response.ok) {
+        let errorBody: any = {};
+        try {
+          errorBody = await response.json();
+        } catch (e) {
+          // Response body is not JSON
+        }
+        
+        console.error('Backend Email/Password Signin Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody,
+        });
+
+        if (response.status >= 500) {
+          throw new Error('Backend server error. Please try again later.');
+        } else if (response.status === 401) {
+          throw new Error('Invalid email or password. Please check your credentials and try again.');
+        } else if (response.status === 404) {
+          throw new Error('Account not found. Please sign up first or check your email address.');
+        } else if (response.status === 400) {
+          const details = errorBody.error?.message || 'Invalid signin data';
+          throw new Error(`Signin validation failed: ${details}`);
+        } else {
+          throw new Error(`Signin failed (${response.status}): ${errorBody.error?.message || response.statusText}`);
+        }
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        const errorMessage = data.error?.message || 'Signin failed';
+        const errorCode = data.error?.code;
+        
+        console.error('Backend Signin Response Error:', {
+          errorCode,
+          errorMessage,
+          fullResponse: data
+        });
+        
+        throw new Error(`Signin Error: ${errorMessage}`);
+      }
+
+      return data.data;
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Unable to connect to TIRIS backend. Please check your internet connection.');
+      }
+      throw error;
+    }
+  }
+
   // Email/Password Signup
   async signUpWithEmailPassword(email: string, password: string, fullName: string): Promise<AuthResponse> {
     try {
