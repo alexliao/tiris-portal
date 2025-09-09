@@ -192,7 +192,7 @@ export async function getTradingLogs(tradingId: string): Promise<TradingLog[]> {
   const limit = 1000;
   
   while (true) {
-    const response = await apiRequest<{ trading_logs: TradingLog[] }>(`/trading-logs?trading_id=${tradingId}&limit=${limit}&offset=${offset}`);
+    const response = await apiRequest<{ trading_logs: TradingLog[] }>(`/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}`);
     const logs = response.trading_logs;
     
     if (logs.length === 0) {
