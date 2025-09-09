@@ -14,7 +14,16 @@ export const AuthToastHandler: React.FC = () => {
   // Show success toast when user just signed in (only once)
   useEffect(() => {
     if (user && justSignedIn && !hasShownToast.current) {
-      const providerName = user.provider === 'google' ? 'Google' : 'WeChat';
+      const getProviderName = (provider: string) => {
+        switch (provider) {
+          case 'google': return 'Google';
+          case 'wechat': return 'WeChat';
+          case 'email': return 'email';
+          default: return 'email';
+        }
+      };
+      
+      const providerName = getProviderName(user.provider);
       toast.success(
         `Welcome back!`, 
         `Successfully signed in with ${providerName}`

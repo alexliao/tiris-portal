@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { authService, type BackendUser } from '../services/auth';
 
-export type AuthProvider = 'google' | 'wechat';
+export type AuthProvider = 'google' | 'wechat' | 'email';
 
 interface User {
   id: string;
@@ -42,7 +42,7 @@ const convertBackendUserToUser = (backendUser: BackendUser): User => {
     email: backendUser.email,
     name: backendUser.username,
     picture: backendUser.avatar,
-    provider: backendUser.info.oauth_provider as AuthProvider,
+    provider: (backendUser.info.oauth_provider as AuthProvider) || 'email',
     settings: backendUser.settings,
   };
 };
