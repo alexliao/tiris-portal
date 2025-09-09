@@ -11,7 +11,10 @@
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
-    "test:mobile": "playwright test tests/mobile-navigation.spec.ts"
+    "test:mobile": "playwright test tests/mobile-navigation.spec.ts",
+    "mcp:playwright:list": "node tools/mcp-playwright.cjs list-tools",
+    "mcp:playwright:call": "node tools/mcp-playwright.cjs call",
+    "mcp:playwright:smoke": "node tools/mcp-playwright.cjs smoke:homepage"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.12",
@@ -35,6 +38,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
+    "@executeautomation/playwright-mcp-server": "^1.0.6",
+    "@modelcontextprotocol/sdk": "^1.17.5",
     "@playwright/test": "^1.55.0",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
@@ -46,5 +51,14 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.2"
+  },
+  "mcp": {
+    "servers": {
+      "playwright": {
+        "command": "node",
+        "args": ["tools/mcp-playwright.cjs"],
+        "description": "Local MCP client wrapper for Playwright"
+      }
+    }
   }
 }
