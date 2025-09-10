@@ -395,86 +395,17 @@ class AuthService {
     }
   }
 
-  // Google OAuth integration using backend flow only
-  async loginWithGoogle(): Promise<AuthResponse> {
-    return await this.backendGoogleLogin();
+  // Google OAuth: redirect-in-place (no popup)
+  async loginWithGoogle(): Promise<void> {
+    const loginData = await this.initiateLogin('google');
+    // Store state and provider for callback verification
+    sessionStorage.setItem('oauth_state', loginData.state);
+    sessionStorage.setItem('oauth_provider', 'google');
+    // Redirect to provider auth URL
+    window.location.assign(loginData.auth_url);
   }
 
-  // Backend OAuth flow
-  private async backendGoogleLogin(): Promise<AuthResponse> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        if (DEBUG_MODE) {
-          console.log('🔐 Starting Google OAuth flow...');
-        }
-
-        // Step 1: Get auth URL from backend
-        const loginData = await this.initiateLogin('google');
-        
-        if (DEBUG_MODE) {
-          console.log('✅ OAuth URL received from backend:', {
-            auth_url: loginData.auth_url.substring(0, 80) + '...',
-            state: loginData.state
-          });
-        }
-        
-        // Store state for validation
-        sessionStorage.setItem('oauth_state', loginData.state);
-        
-        // Step 2: Open popup window
-        const popup = window.open(
-          loginData.auth_url,
-          'oauth-login',
-          'width=500,height=600,scrollbars=yes,resizable=yes'
-        );
-
-        if (!popup) {
-          reject(new Error('Popup blocked'));
-          return;
-        }
-
-        // Step 3: Listen for callback
-        const checkClosed = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(checkClosed);
-            reject(new Error('Login cancelled'));
-          }
-        }, 1000);
-
-        // Listen for messages from popup
-        const messageHandler = async (event: MessageEvent) => {
-          if (event.origin !== window.location.origin) return;
-
-          if (event.data.type === 'OAUTH_CALLBACK') {
-            clearInterval(checkClosed);
-            popup.close();
-            window.removeEventListener('message', messageHandler);
-
-            const { code, state } = event.data;
-            const savedState = sessionStorage.getItem('oauth_state');
-            
-            if (state !== savedState) {
-              reject(new Error('Invalid state parameter'));
-              return;
-            }
-
-            try {
-              // Step 4: Exchange code for tokens
-              const authData = await this.handleCallback('google', code, state);
-              sessionStorage.removeItem('oauth_state');
-              resolve(authData);
-            } catch (error) {
-              reject(error);
-            }
-          }
-        };
-
-        window.addEventListener('message', messageHandler);
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
+  // Note: Popup-based Google flow removed in favor of redirect-in-place.
 
   // WeChat OAuth integration using backend flow only
   async loginWithWeChat(): Promise<AuthResponse> {

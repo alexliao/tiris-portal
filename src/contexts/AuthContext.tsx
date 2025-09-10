@@ -169,21 +169,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const loginWithGoogle = async (): Promise<void> => {
     try {
       setIsLoading(true);
-      const authData = await authService.loginWithGoogle();
-      
-      // Store tokens
-      setTokens(authData.access_token, authData.refresh_token, authData.expires_in);
-      
-      // Set user
-      setUser(convertBackendUserToUser(authData.user));
-      
-      // Mark as just signed in
-      setJustSignedIn(true);
+      // Save current path to return after login
+      sessionStorage.setItem('redirect_after_login', window.location.pathname + window.location.search);
+      await authService.loginWithGoogle(); // will redirect away
     } catch (error) {
       console.error('Google login failed:', error);
-      throw error;
-    } finally {
       setIsLoading(false);
+      throw error;
     }
   };
 
