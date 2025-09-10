@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import { LogOut, User, LayoutDashboard, Copy, Check, Mail } from 'lucide-react';
 
 export const UserProfile: React.FC = () => {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -39,10 +41,10 @@ export const UserProfile: React.FC = () => {
       await navigator.clipboard.writeText(user.email);
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
-      toast.success('Copied', 'Email address copied to clipboard.');
+      toast.success(t('common.success'), t('auth.copyEmail'));
     } catch (err) {
       console.error('Copy failed:', err);
-      toast.error('Copy Failed', 'Unable to copy email address.');
+      toast.error(t('common.failed'), t('auth.copyEmailFailed'));
     }
   };
 
@@ -118,19 +120,19 @@ export const UserProfile: React.FC = () => {
             role="menuitem"
           >
             <LayoutDashboard className="w-4 h-4" />
-            <span>Dashboard</span>
+            <span>{t('dashboard.title')}</span>
           </Link>
           <button
             onClick={async () => {
               try {
                 setIsDropdownOpen(false);
                 await logout();
-                toast.success('Logged Out', 'You have been successfully signed out.');
+                toast.success(t('auth.logout'), t('auth.logoutSuccess'));
                 navigate('/');
               } catch (error) {
                 // Logout should always succeed locally even if API fails
                 console.error('Logout error:', error);
-                toast.success('Logged Out', 'You have been successfully signed out.');
+                toast.success(t('auth.logout'), t('auth.logoutSuccess'));
                 navigate('/');
               }
             }}
@@ -138,7 +140,7 @@ export const UserProfile: React.FC = () => {
             role="menuitem"
           >
             <LogOut className="w-4 h-4" />
-            <span>Sign out</span>
+            <span>{t('auth.logout')}</span>
           </button>
         </div>
       )}

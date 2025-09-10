@@ -23,14 +23,14 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchToSig
 
     // Email validation
     if (!formData.email.trim()) {
-      errors.email = 'Email is required';
+      errors.email = t('auth.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
+      errors.email = t('auth.validEmailRequired');
     }
 
     // Password validation
     if (!formData.password) {
-      errors.password = 'Password is required';
+      errors.password = t('auth.passwordRequired');
     }
 
     setFormErrors(errors);
@@ -49,8 +49,8 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchToSig
       onSuccess();
     } catch (error) {
       console.error('Signin failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Sign in failed';
-      toast.error('Sign In Failed', errorMessage);
+      const errorMessage = error instanceof Error ? error.message : t('auth.signInFailedError');
+      toast.error(t('auth.signInFailed'), errorMessage);
     }
   };
 
@@ -78,7 +78,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchToSig
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               formErrors.email ? 'border-red-300' : 'border-gray-300'
             }`}
-            placeholder="Enter your email address"
+            placeholder={t('auth.enterEmail')}
             disabled={isLoading}
           />
           {formErrors.email && (
@@ -99,7 +99,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchToSig
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               formErrors.password ? 'border-red-300' : 'border-gray-300'
             }`}
-            placeholder="Enter your password"
+            placeholder={t('auth.enterPassword')}
             disabled={isLoading}
           />
           {formErrors.password && (

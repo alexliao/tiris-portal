@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 
@@ -7,6 +8,7 @@ import { useToast } from '../../hooks/useToast';
  * This component listens to auth state changes and shows appropriate toasts
  */
 export const AuthToastHandler: React.FC = () => {
+  const { t } = useTranslation();
   const { user, justSignedIn } = useAuth();
   const toast = useToast();
   const hasShownToast = useRef(false);
@@ -25,8 +27,8 @@ export const AuthToastHandler: React.FC = () => {
       
       const providerName = getProviderName(user.provider);
       toast.success(
-        `Welcome back!`, 
-        `Successfully signed in with ${providerName}`
+        t('auth.welcomeBack'), 
+        t('auth.signedInWith', { provider: providerName })
       );
       hasShownToast.current = true;
     }

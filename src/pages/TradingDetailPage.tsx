@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, type Trading, ApiError } from '../utils/api';
 import { ArrowLeft, Calendar, Activity, TrendingUp, AlertCircle } from 'lucide-react';
@@ -10,6 +11,7 @@ import TradingPerformanceWidget from '../components/trading/TradingPerformanceWi
 export const TradingDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [trading, setTrading] = useState<Trading | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ export const TradingDetailPage: React.FC = () => {
   useEffect(() => {
     const fetchTrading = async () => {
       if (!id) {
-        setError('Trading ID is required');
+        setError(t('trading.detail.tradingIdRequired'));
         setLoading(false);
         return;
       }
@@ -33,7 +35,7 @@ export const TradingDetailPage: React.FC = () => {
         const foundTrading = tradings.find(t => t.id === id);
         
         if (!foundTrading) {
-          setError('Trading not found');
+          setError(t('trading.detail.notFound'));
           return;
         }
         
@@ -41,9 +43,9 @@ export const TradingDetailPage: React.FC = () => {
       } catch (err) {
         console.error('Failed to fetch trading:', err);
         if (err instanceof ApiError) {
-          setError(`Failed to load trading: ${err.message}`);
+          setError(t('trading.detail.failedToLoadWithError', { error: err.message }));
         } else {
-          setError('Failed to load trading data. Please try again.');
+          setError(`${t('trading.detail.failedToLoad')}. ${t('common.tryAgain')}`);
         }
       } finally {
         setLoading(false);
@@ -94,7 +96,7 @@ export const TradingDetailPage: React.FC = () => {
         <div className="pt-20 flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading...</p>
+            <p className="text-gray-600">{t('common.loading')}</p>
           </div>
         </div>
       </div>
@@ -108,13 +110,13 @@ export const TradingDetailPage: React.FC = () => {
         <div className="pt-20 flex items-center justify-center min-h-screen">
           <div className="text-center">
             <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-            <p className="text-gray-600 mb-4">You need to sign in to view trading details.</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.accessDenied')}</h1>
+            <p className="text-gray-600 mb-4">{t('dashboard.needSignIn')}</p>
             <Link 
               to="/"
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
-              Go to Home
+              {t('common.goToHome')}
             </Link>
           </div>
         </div>
@@ -131,7 +133,7 @@ export const TradingDetailPage: React.FC = () => {
             <div className="flex items-center justify-center h-96">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading trading details...</p>
+                <p className="text-gray-600">{t('dashboard.loadingTradings')}</p>
               </div>
             </div>
           </div>
@@ -149,7 +151,7 @@ export const TradingDetailPage: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="text-center">
               <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Error</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.error')}</h1>
               <p className="text-red-600 mb-4">{error}</p>
               <div className="space-x-4">
                 <button
@@ -157,13 +159,13 @@ export const TradingDetailPage: React.FC = () => {
                   className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Go Back
+                  {t('trading.detail.backToDashboard')}
                 </button>
                 <Link 
                   to="/dashboard"
                   className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  Go to Dashboard
+                  {t('dashboard.title')}
                 </Link>
               </div>
             </div>
@@ -182,13 +184,13 @@ export const TradingDetailPage: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="text-center">
               <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Trading Not Found</h1>
-              <p className="text-gray-600 mb-4">The requested trading could not be found.</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('trading.detail.notFound')}</h1>
+              <p className="text-gray-600 mb-4">{t('trading.detail.notFound')}</p>
               <Link 
                 to="/dashboard"
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
-                Go to Dashboard
+                {t('dashboard.title')}
               </Link>
             </div>
           </div>
@@ -207,7 +209,7 @@ export const TradingDetailPage: React.FC = () => {
           <div className="flex items-center justify-center h-96">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading trading details...</p>
+              <p className="text-gray-600">{t('dashboard.loadingTradings')}</p>
             </div>
           </div>
         </div>
@@ -230,7 +232,7 @@ export const TradingDetailPage: React.FC = () => {
                   className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back
+                  {t('trading.detail.backToDashboard')}
                 </button>
                 <div className="flex items-center space-x-3">
                   {getTypeIcon(trading.type)}
@@ -239,10 +241,10 @@ export const TradingDetailPage: React.FC = () => {
                     <div className="flex items-center space-x-4 text-sm text-gray-600">
                       <span>ID: {trading.id.substring(0, 8)}...</span>
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(trading.status)}`}>
-                        {trading.status}
+                        {t(`trading.status.${trading.status.toLowerCase()}`) || trading.status}
                       </span>
                       <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
-                        {trading.type}
+                        {t(`trading.type.${trading.type.toLowerCase()}`) || trading.type}
                       </span>
                     </div>
                   </div>
@@ -252,7 +254,7 @@ export const TradingDetailPage: React.FC = () => {
                 to="/dashboard"
                 className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Dashboard
+                {t('dashboard.title')}
               </Link>
             </div>
           </div>
@@ -261,22 +263,22 @@ export const TradingDetailPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Trading Info */}
           <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Trading Information</h2>
+            <h2 className="text-lg font-medium text-gray-900 mb-4">{t('trading.detail.overview')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <div className="text-sm font-medium text-gray-600">Strategy</div>
+                <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.strategy')}</div>
                 <div className="text-sm text-gray-900">{trading.info?.strategy || 'N/A'}</div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-600">Risk Level</div>
+                <div className="text-sm font-medium text-gray-600">{t('trading.detail.riskLevel')}</div>
                 <div className="text-sm text-gray-900">{trading.info?.risk_level || 'N/A'}</div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-600">Exchange Binding</div>
+                <div className="text-sm font-medium text-gray-600">{t('trading.detail.exchangeBinding')}</div>
                 <div className="text-sm text-gray-900">{trading.exchange_binding_id ? `${trading.exchange_binding_id.substring(0, 8)}...` : 'N/A'}</div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-600">Created</div>
+                <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.created')}</div>
                 <div className="text-sm text-gray-900">{new Date(trading.created_at).toLocaleDateString()}</div>
               </div>
             </div>

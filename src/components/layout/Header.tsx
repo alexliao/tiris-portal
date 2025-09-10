@@ -66,7 +66,7 @@ export const Navigation: React.FC = () => {
                 to="/dashboard" 
                 className="font-['Nunito'] font-semibold text-white hover:bg-white/10 transition-colors px-3 py-1 rounded"
               >
-                Dashboard
+                {t('dashboard.title')}
               </Link>
             )}
             {isAuthenticated ? <UserProfile /> : <SignInButton testId="signin-button-desktop" />}
@@ -135,7 +135,7 @@ export const Navigation: React.FC = () => {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="block font-['Nunito'] font-semibold text-white hover:bg-white/10 transition-colors px-3 py-2 rounded"
                 >
-                  Dashboard
+                  {t('dashboard.title')}
                 </Link>
               )}
             </div>

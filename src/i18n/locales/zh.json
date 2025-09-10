@@ -80,6 +80,7 @@
   },
   "auth": {
     "signIn": "登录",
+    "signUp": "注册",
     "signInWithGoogle": "使用 Google 登录",
     "signInWithWeChat": "使用微信登录",
     "chooseProvider": "选择您的登录方式",
@@ -88,6 +89,152 @@
     "termsText": "登录即表示您同意我们的",
     "termsOfService": "服务条款",
     "and": "和",
-    "privacyPolicy": "隐私政策"
+    "privacyPolicy": "隐私政策",
+    "email": "邮箱",
+    "password": "密码",
+    "confirmPassword": "确认密码",
+    "fullName": "姓名",
+    "enterEmail": "请输入您的邮箱地址",
+    "enterPassword": "请输入您的密码",
+    "confirmPasswordPlaceholder": "请确认您的密码",
+    "enterFullName": "请输入您的姓名",
+    "profile": "个人资料",
+    "logout": "退出登录",
+    "copyEmail": "复制邮箱",
+    "dontHaveAccount": "还没有账户？",
+    "signingIn": "登录中...",
+    "signInFailed": "登录失败",
+    "emailRequired": "邮箱为必填项",
+    "validEmailRequired": "请输入有效的邮箱地址",
+    "passwordRequired": "密码为必填项",
+    "signInFailedError": "登录失败",
+    "fullNameRequired": "姓名为必填项",
+    "fullNameMinLength": "姓名至少需要2个字符",
+    "fullNameMaxLength": "姓名不能超过255个字符",
+    "passwordMinLength": "密码至少需要8个字符",
+    "confirmPasswordRequired": "请确认您的密码",
+    "passwordsDoNotMatch": "两次输入的密码不匹配",
+    "signUpFailed": "注册失败",
+    "signUpFailedError": "注册失败",
+    "signingUp": "注册中...",
+    "alreadyHaveAccount": "已有账户？",
+    "createAccount": "创建账户",
+    "creatingAccount": "创建账户中...",
+    "accountCreated": "账户创建成功",
+    "welcomeMessage": "欢迎来到TIRIS！您的账户已成功创建。",
+    "authenticationFailed": "认证失败",
+    "googleAuthFailed": "Google认证失败",
+    "wechatAuthFailed": "微信认证失败",
+    "logoutSuccess": "您已成功退出登录。",
+    "copyEmailFailed": "无法复制邮箱地址。",
+    "welcomeBack": "欢迎回来！",
+    "signedInWith": "已成功通过{{provider}}登录"
+  },
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "failed": "失败",
+    "refresh": "刷新",
+    "goToHome": "回到首页",
+    "accessDenied": "访问被拒绝",
+    "notFound": "未找到",
+    "tryAgain": "请重试"
+  },
+  "dashboard": {
+    "title": "仪表板",
+    "welcome": "欢迎回来，{{name}}",
+    "totalTradings": "总交易数",
+    "activeTradings": "活跃交易",
+    "backtests": "回测",
+    "yourTradings": "您的交易",
+    "loadingTradings": "正在加载交易...",
+    "noTradingsFound": "未找到交易",
+    "noTradingsDescription": "创建交易策略后，它们将在此处显示。",
+    "needSignIn": "您需要登录才能查看仪表板。",
+    "failedToLoad": "加载交易数据失败",
+    "failedToLoadWithError": "加载交易数据失败：{{error}}",
+    "tableHeaders": {
+      "name": "名称",
+      "type": "类型",
+      "status": "状态",
+      "strategy": "策略",
+      "created": "创建时间"
+    }
+  },
+  "trading": {
+    "detail": {
+      "title": "交易详情",
+      "backToDashboard": "返回仪表板",
+      "overview": "概览",
+      "performance": "表现",
+      "settings": "设置",
+      "notFound": "未找到交易",
+      "failedToLoad": "加载交易失败",
+      "failedToLoadWithError": "加载交易失败：{{error}}",
+      "tradingIdRequired": "需要交易ID"
+    }
+  },
+  "trading": {
+    "detail": {
+      "title": "交易详情",
+      "backToDashboard": "返回仪表板",
+      "overview": "概览",
+      "performance": "表现",
+      "settings": "设置",
+      "notFound": "未找到交易",
+      "failedToLoad": "加载交易失败",
+      "failedToLoadWithError": "加载交易失败：{{error}}",
+      "tradingIdRequired": "需要交易ID",
+      "riskLevel": "风险等级",
+      "exchangeBinding": "交易所绑定",
+      "performanceChart": "表现图表",
+      "noDataAvailable": "无表现数据可用"
+    },
+    "status": {
+      "active": "活跃",
+      "running": "运行中",
+      "stopped": "已停止",
+      "completed": "已完成",
+      "failed": "失败",
+      "error": "错误",
+      "paused": "暂停"
+    },
+    "type": {
+      "backtest": "回测",
+      "live": "实盘",
+      "real": "实盘"
+    },
+    "metrics": {
+      "totalROI": "总收益率",
+      "winRate": "胜率",
+      "sharpeRatio": "夏普比率",
+      "maxDrawdown": "最大回撤",
+      "totalTrades": "总交易数"
+    },
+    "chart": {
+      "showTradingSignals": "显示交易信号",
+      "hideTradingSignals": "隐藏交易信号",
+      "portfolioValue": "投资组合价值",
+      "portfolioReturn": "投资组合收益率",
+      "ethBenchmark": "ETH基准",
+      "ethReturn": "ETH收益率",
+      "excessReturn": "超额收益",
+      "time": "时间",
+      "return": "收益率",
+      "zeroLine": "零线",
+      "buySignals": "买入信号",
+      "sellSignals": "卖出信号"
+    },
+    "events": {
+      "buy": "买入",
+      "sell": "卖出",
+      "long": "做多",
+      "short": "做空"
+    }
+  },
+  "footer": {
+    "copyright": "© {{year}} Tiris.ai",
+    "contact": "biganiseed@gmail.com"
   }
 }

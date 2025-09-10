@@ -80,6 +80,7 @@
   },
   "auth": {
     "signIn": "Sign In",
+    "signUp": "Sign Up",
     "signInWithGoogle": "Sign in with Google",
     "signInWithWeChat": "Sign in with WeChat",
     "chooseProvider": "Choose your preferred sign-in method",
@@ -88,6 +89,152 @@
     "termsText": "By signing in, you agree to our",
     "termsOfService": "Terms of Service",
     "and": "and",
-    "privacyPolicy": "Privacy Policy"
+    "privacyPolicy": "Privacy Policy",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "fullName": "Full Name",
+    "enterEmail": "Enter your email address",
+    "enterPassword": "Enter your password",
+    "confirmPasswordPlaceholder": "Confirm your password",
+    "enterFullName": "Enter your full name",
+    "profile": "Profile",
+    "logout": "Logout",
+    "copyEmail": "Copy email",
+    "dontHaveAccount": "Don't have an account?",
+    "signingIn": "Signing In...",
+    "signInFailed": "Sign In Failed",
+    "emailRequired": "Email is required",
+    "validEmailRequired": "Please enter a valid email address",
+    "passwordRequired": "Password is required",
+    "signInFailedError": "Sign in failed",
+    "fullNameRequired": "Full name is required",
+    "fullNameMinLength": "Full name must be at least 2 characters",
+    "fullNameMaxLength": "Full name must be less than 255 characters",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "confirmPasswordRequired": "Please confirm your password",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "signUpFailed": "Sign Up Failed",
+    "signUpFailedError": "Sign up failed",
+    "signingUp": "Signing Up...",
+    "alreadyHaveAccount": "Already have an account?",
+    "createAccount": "Create Account",
+    "creatingAccount": "Creating Account...",
+    "accountCreated": "Account Created",
+    "welcomeMessage": "Welcome to TIRIS! Your account has been created successfully.",
+    "authenticationFailed": "Authentication Failed",
+    "googleAuthFailed": "Google authentication failed",
+    "wechatAuthFailed": "WeChat authentication failed",
+    "logoutSuccess": "You have been successfully signed out.",
+    "copyEmailFailed": "Unable to copy email address.",
+    "welcomeBack": "Welcome back!",
+    "signedInWith": "Successfully signed in with {{provider}}"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "failed": "Failed",
+    "refresh": "Refresh",
+    "goToHome": "Go to Home",
+    "accessDenied": "Access Denied",
+    "notFound": "Not Found",
+    "tryAgain": "Please try again"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back, {{name}}",
+    "totalTradings": "Total Tradings",
+    "activeTradings": "Active Tradings",
+    "backtests": "Backtests",
+    "yourTradings": "Your Tradings",
+    "loadingTradings": "Loading tradings...",
+    "noTradingsFound": "No tradings found",
+    "noTradingsDescription": "Your trading strategies will appear here once you create them.",
+    "needSignIn": "You need to sign in to view your dashboard.",
+    "failedToLoad": "Failed to load trading data",
+    "failedToLoadWithError": "Failed to load trading data: {{error}}",
+    "tableHeaders": {
+      "name": "Name",
+      "type": "Type",
+      "status": "Status",
+      "strategy": "Strategy",
+      "created": "Created"
+    }
+  },
+  "trading": {
+    "detail": {
+      "title": "Trading Details",
+      "backToDashboard": "Back to Dashboard",
+      "overview": "Overview",
+      "performance": "Performance",
+      "settings": "Settings",
+      "notFound": "Trading not found",
+      "failedToLoad": "Failed to load trading",
+      "failedToLoadWithError": "Failed to load trading: {{error}}",
+      "tradingIdRequired": "Trading ID is required"
+    }
+  },
+  "trading": {
+    "detail": {
+      "title": "Trading Details",
+      "backToDashboard": "Back to Dashboard",
+      "overview": "Overview",
+      "performance": "Performance",
+      "settings": "Settings",
+      "notFound": "Trading not found",
+      "failedToLoad": "Failed to load trading",
+      "failedToLoadWithError": "Failed to load trading: {{error}}",
+      "tradingIdRequired": "Trading ID is required",
+      "riskLevel": "Risk Level",
+      "exchangeBinding": "Exchange Binding",
+      "performanceChart": "Performance Chart",
+      "noDataAvailable": "No performance data available"
+    },
+    "status": {
+      "active": "Active",
+      "running": "Running",
+      "stopped": "Stopped",
+      "completed": "Completed",
+      "failed": "Failed",
+      "error": "Error",
+      "paused": "Paused"
+    },
+    "type": {
+      "backtest": "Backtest",
+      "live": "Live",
+      "real": "Real"
+    },
+    "metrics": {
+      "totalROI": "Total ROI",
+      "winRate": "Win Rate", 
+      "sharpeRatio": "Sharpe Ratio",
+      "maxDrawdown": "Max Drawdown",
+      "totalTrades": "Total Trades"
+    },
+    "chart": {
+      "showTradingSignals": "Show Trading Signals",
+      "hideTradingSignals": "Hide Trading Signals",
+      "portfolioValue": "Portfolio Value",
+      "portfolioReturn": "Portfolio Return", 
+      "ethBenchmark": "ETH Benchmark",
+      "ethReturn": "ETH Return",
+      "excessReturn": "Excess Return",
+      "time": "Time",
+      "return": "Return",
+      "zeroLine": "Zero Line",
+      "buySignals": "Buy Signals",
+      "sellSignals": "Sell Signals"
+    },
+    "events": {
+      "buy": "buy",
+      "sell": "sell",
+      "long": "long",
+      "short": "short"
+    }
+  },
+  "footer": {
+    "copyright": "© {{year}} Tiris.ai",
+    "contact": "biganiseed@gmail.com"
   }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, type Trading, ApiError } from '../utils/api';
 import { TrendingUp, Calendar, Activity, AlertCircle, RefreshCw } from 'lucide-react';
@@ -7,6 +8,7 @@ import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 
 export const DashboardPage: React.FC = () => {
+  const { t } = useTranslation();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [tradings, setTradings] = useState<Trading[]>([]);
@@ -22,9 +24,9 @@ export const DashboardPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to fetch tradings:', err);
       if (err instanceof ApiError) {
-        setError(`Failed to load trading data: ${err.message}`);
+        setError(t('dashboard.failedToLoadWithError', { error: err.message }));
       } else {
-        setError('Failed to load trading data. Please try again.');
+        setError(`${t('dashboard.failedToLoad')}. ${t('common.tryAgain')}`);
       }
     } finally {
       setIsLoading(false);
@@ -71,7 +73,7 @@ export const DashboardPage: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -82,13 +84,13 @@ export const DashboardPage: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-          <p className="text-gray-600 mb-4">You need to sign in to view your dashboard.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.accessDenied')}</h1>
+          <p className="text-gray-600 mb-4">{t('dashboard.needSignIn')}</p>
           <Link 
             to="/"
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
-            Go to Home
+            {t('common.goToHome')}
           </Link>
         </div>
       </div>
@@ -104,8 +106,8 @@ export const DashboardPage: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-                <p className="text-gray-600">Welcome back, {user?.name}</p>
+                <h1 className="text-2xl font-bold text-gray-900">{t('dashboard.title')}</h1>
+                <p className="text-gray-600">{t('dashboard.welcome', { name: user?.name })}</p>
               </div>
             </div>
           </div>
@@ -118,7 +120,7 @@ export const DashboardPage: React.FC = () => {
             <div className="flex items-center">
               <TrendingUp className="w-8 h-8 text-blue-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Tradings</p>
+                <p className="text-sm font-medium text-gray-600">{t('dashboard.totalTradings')}</p>
                 <p className="text-2xl font-bold text-gray-900">{tradings.length}</p>
               </div>
             </div>
@@ -127,7 +129,7 @@ export const DashboardPage: React.FC = () => {
             <div className="flex items-center">
               <Activity className="w-8 h-8 text-green-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active Tradings</p>
+                <p className="text-sm font-medium text-gray-600">{t('dashboard.activeTradings')}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {tradings.filter(t => ['active', 'running'].includes(t.status.toLowerCase())).length}
                 </p>
@@ -138,7 +140,7 @@ export const DashboardPage: React.FC = () => {
             <div className="flex items-center">
               <Calendar className="w-8 h-8 text-purple-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Backtests</p>
+                <p className="text-sm font-medium text-gray-600">{t('dashboard.backtests')}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {tradings.filter(t => t.type.toLowerCase() === 'backtest').length}
                 </p>
@@ -151,14 +153,14 @@ export const DashboardPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium text-gray-900">Your Tradings</h2>
+              <h2 className="text-lg font-medium text-gray-900">{t('dashboard.yourTradings')}</h2>
               <button
                 onClick={fetchTradings}
                 disabled={isLoading}
                 className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                Refresh
+                {t('common.refresh')}
               </button>
             </div>
           </div>
@@ -177,13 +179,13 @@ export const DashboardPage: React.FC = () => {
           {isLoading ? (
             <div className="px-6 py-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading tradings...</p>
+              <p className="text-gray-600">{t('dashboard.loadingTradings')}</p>
             </div>
           ) : tradings.length === 0 ? (
             <div className="px-6 py-8 text-center">
               <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 mb-4">No tradings found</p>
-              <p className="text-sm text-gray-500">Your trading strategies will appear here once you create them.</p>
+              <p className="text-gray-600 mb-4">{t('dashboard.noTradingsFound')}</p>
+              <p className="text-sm text-gray-500">{t('dashboard.noTradingsDescription')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -191,19 +193,19 @@ export const DashboardPage: React.FC = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
+                      {t('dashboard.tableHeaders.name')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
+                      {t('dashboard.tableHeaders.type')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      {t('dashboard.tableHeaders.status')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Strategy
+                      {t('dashboard.tableHeaders.strategy')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Created
+                      {t('dashboard.tableHeaders.created')}
                     </th>
                   </tr>
                 </thead>
@@ -225,12 +227,12 @@ export const DashboardPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
-                          {trading.type}
+                          {t(`trading.type.${trading.type.toLowerCase()}`) || trading.type}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(trading.status)}`}>
-                          {trading.status}
+                          {t(`trading.status.${trading.status.toLowerCase()}`) || trading.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

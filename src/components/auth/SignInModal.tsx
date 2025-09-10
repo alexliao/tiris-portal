@@ -26,8 +26,8 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
       navigate('/dashboard');
     } catch (error) {
       console.error('Google login failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Google authentication failed';
-      toast.error('Authentication Failed', errorMessage);
+      const errorMessage = error instanceof Error ? error.message : t('auth.googleAuthFailed');
+      toast.error(t('auth.authenticationFailed'), errorMessage);
     }
   };
 
@@ -38,8 +38,8 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
       navigate('/dashboard');
     } catch (error) {
       console.error('WeChat login failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'WeChat authentication failed';
-      toast.error('Authentication Failed', errorMessage);
+      const errorMessage = error instanceof Error ? error.message : t('auth.wechatAuthFailed');
+      toast.error(t('auth.authenticationFailed'), errorMessage);
     }
   };
 

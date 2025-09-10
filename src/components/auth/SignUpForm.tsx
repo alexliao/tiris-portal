@@ -25,32 +25,32 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
 
     // Full name validation
     if (!formData.fullName.trim()) {
-      errors.fullName = 'Full name is required';
+      errors.fullName = t('auth.fullNameRequired');
     } else if (formData.fullName.trim().length < 2) {
-      errors.fullName = 'Full name must be at least 2 characters';
+      errors.fullName = t('auth.fullNameMinLength');
     } else if (formData.fullName.trim().length > 255) {
-      errors.fullName = 'Full name must be less than 255 characters';
+      errors.fullName = t('auth.fullNameMaxLength');
     }
 
     // Email validation
     if (!formData.email.trim()) {
-      errors.email = 'Email is required';
+      errors.email = t('auth.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
+      errors.email = t('auth.validEmailRequired');
     }
 
     // Password validation
     if (!formData.password) {
-      errors.password = 'Password is required';
+      errors.password = t('auth.passwordRequired');
     } else if (formData.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters';
+      errors.password = t('auth.passwordMinLength');
     }
 
     // Confirm password validation
     if (!formData.confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password';
+      errors.confirmPassword = t('auth.confirmPasswordRequired');
     } else if (formData.password !== formData.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
+      errors.confirmPassword = t('auth.passwordsDoNotMatch');
     }
 
     setFormErrors(errors);
@@ -66,12 +66,12 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
 
     try {
       await signUpWithEmailPassword(formData.email, formData.password, formData.fullName);
-      toast.success('Account Created', 'Welcome to TIRIS! Your account has been created successfully.');
+      toast.success(t('auth.accountCreated'), t('auth.welcomeMessage'));
       onSuccess();
     } catch (error) {
       console.error('Signup failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Account creation failed';
-      toast.error('Signup Failed', errorMessage);
+      const errorMessage = error instanceof Error ? error.message : t('auth.signUpFailedError');
+      toast.error(t('auth.signUpFailed'), errorMessage);
     }
   };
 
@@ -99,7 +99,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               formErrors.fullName ? 'border-red-300' : 'border-gray-300'
             }`}
-            placeholder="Enter your full name"
+            placeholder={t('auth.enterFullName')}
             disabled={isLoading}
           />
           {formErrors.fullName && (
@@ -120,7 +120,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               formErrors.email ? 'border-red-300' : 'border-gray-300'
             }`}
-            placeholder="Enter your email address"
+            placeholder={t('auth.enterEmail')}
             disabled={isLoading}
           />
           {formErrors.email && (
@@ -141,7 +141,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               formErrors.password ? 'border-red-300' : 'border-gray-300'
             }`}
-            placeholder="Enter your password"
+            placeholder={t('auth.enterPassword')}
             disabled={isLoading}
           />
           {formErrors.password && (
@@ -162,7 +162,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               formErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
             }`}
-            placeholder="Confirm your password"
+            placeholder={t('auth.confirmPasswordPlaceholder')}
             disabled={isLoading}
           />
           {formErrors.confirmPassword && (
