@@ -202,7 +202,8 @@
     },
     "type": {
       "backtest": "回测",
-      "live": "实盘",
+      "simulation": "模拟",
+      "live": "实时",
       "real": "实盘"
     },
     "metrics": {

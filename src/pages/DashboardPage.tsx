@@ -14,6 +14,7 @@ export const DashboardPage: React.FC = () => {
   const [tradings, setTradings] = useState<Trading[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'backtest' | 'simulation' | 'real'>('backtest');
 
   const fetchTradings = async () => {
     try {
@@ -38,6 +39,14 @@ export const DashboardPage: React.FC = () => {
       fetchTradings();
     }
   }, [isAuthenticated, authLoading]);
+
+  const getFilteredTradings = (type: string) => {
+    return tradings.filter(trading => trading.type.toLowerCase() === type.toLowerCase());
+  };
+
+  const getActiveTradings = (tradingList: Trading[]) => {
+    return tradingList.filter(t => ['active', 'running'].includes(t.status.toLowerCase()));
+  };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -118,15 +127,6 @@ export const DashboardPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
-              <TrendingUp className="w-8 h-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">{t('dashboard.totalTradings')}</p>
-                <p className="text-2xl font-bold text-gray-900">{tradings.length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
               <Activity className="w-8 h-8 text-green-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">{t('dashboard.activeTradings')}</p>
@@ -144,6 +144,15 @@ export const DashboardPage: React.FC = () => {
                 <p className="text-2xl font-bold text-gray-900">
                   {tradings.filter(t => t.type.toLowerCase() === 'backtest').length}
                 </p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <TrendingUp className="w-8 h-8 text-blue-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">{t('dashboard.totalTradings')}</p>
+                <p className="text-2xl font-bold text-gray-900">{tradings.length}</p>
               </div>
             </div>
           </div>
@@ -165,6 +174,41 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Tab Navigation */}
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+              {[
+                { key: 'backtest', label: t('trading.type.backtest') || 'Backtest', icon: Activity },
+                { key: 'simulation', label: t('trading.type.simulation') || 'Simulation', icon: Calendar },
+                { key: 'real', label: t('trading.type.real') || 'Real', icon: TrendingUp }
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key as 'backtest' | 'simulation' | 'real')}
+                    className={`${
+                      isActive
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    } flex items-center whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                  >
+                    <Icon className="w-4 h-4 mr-2" />
+                    {tab.label}
+                    <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                      isActive
+                        ? 'bg-blue-100 text-blue-600'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {getFilteredTradings(tab.key).length}
+                    </span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
           {error && (
             <div className="px-6 py-4 bg-red-50 border-l-4 border-red-400">
               <div className="flex">
@@ -181,7 +225,7 @@ export const DashboardPage: React.FC = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-gray-600">{t('dashboard.loadingTradings')}</p>
             </div>
-          ) : tradings.length === 0 ? (
+          ) : getFilteredTradings(activeTab).length === 0 ? (
             <div className="px-6 py-8 text-center">
               <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-600 mb-4">{t('dashboard.noTradingsFound')}</p>
@@ -210,7 +254,7 @@ export const DashboardPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {(tradings || []).map((trading) => (
+                  {getFilteredTradings(activeTab).map((trading) => (
                     <tr key={trading.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/trading/${trading.id}`)}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
