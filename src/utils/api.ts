@@ -272,6 +272,116 @@ export async function createTrading(request: CreateTradingRequest): Promise<Trad
   });
 }
 
+// Interface for creating sub-account
+export interface CreateSubAccountRequest {
+  name: string;
+  symbol: string;
+  balance: string;
+  trading_id: string;
+  info?: { [key: string]: any };
+}
+
+// Create a new sub-account
+export async function createSubAccount(request: CreateSubAccountRequest): Promise<SubAccount> {
+  return apiRequest<SubAccount>('/sub-accounts', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+}
+
+// Interface for creating trading log
+export interface CreateTradingLogRequest {
+  trading_id: string;
+  type: string;
+  source: string;
+  message: string;
+  sub_account_id?: string;
+  transaction_id?: string;
+  event_time?: string;
+  info?: { [key: string]: any };
+}
+
+// Create a new trading log
+export async function createTradingLog(request: CreateTradingLogRequest): Promise<void> {
+  return apiRequest<void>('/trading-logs', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+}
+
+// Complete simulation trading creation according to business logic
+export async function createSimulationTrading(request: CreateTradingRequest): Promise<Trading> {
+  console.log('Creating simulation trading with business logic steps...');
+
+  try {
+    // Step 1: Create the trading
+    console.log('Step 1: Creating trading...');
+    const trading = await createTrading(request);
+    console.log('Trading created:', trading.id);
+
+    // Step 2: Create two sub-accounts (ETH for stock, USDT for balance)
+    console.log('Step 2: Creating sub-accounts...');
+
+    // Create ETH sub-account
+    const ethSubAccount = await createSubAccount({
+      name: 'ETH Stock Account',
+      symbol: 'ETH',
+      balance: '0',
+      trading_id: trading.id,
+      info: {
+        description: 'Sub-account for ETH stock holdings',
+        account_type: 'stock'
+      }
+    });
+    console.log('ETH sub-account created:', ethSubAccount.id);
+
+    // Create USDT sub-account
+    const usdtSubAccount = await createSubAccount({
+      name: 'USDT Balance Account',
+      symbol: 'USDT',
+      balance: '0', // Balance will be set by deposit trading log
+      trading_id: trading.id,
+      info: {
+        description: 'Sub-account for USDT balance',
+        account_type: 'balance'
+      }
+    });
+    console.log('USDT sub-account created:', usdtSubAccount.id);
+
+    // Step 3: Create trading log for initial deposit of 10,000 USDT
+    console.log('Step 3: Creating initial deposit trading log...');
+    await createTradingLog({
+      trading_id: trading.id,
+      type: 'deposit',
+      source: 'manual',
+      message: 'Initial deposit for simulation trading',
+      event_time: new Date().toISOString(),
+      info: {
+        account_id: usdtSubAccount.id,
+        amount: 10000.00,
+        currency: 'USDT'
+      }
+    });
+    console.log('Initial deposit trading log created');
+
+    // Step 4: Sub-account IDs are now available and linked via trading_id
+    // No need to update trading info since sub-accounts can be retrieved by trading_id
+    console.log('Step 4: Simulation trading creation completed');
+    console.log('Sub-account IDs:', {
+      eth_account_id: ethSubAccount.id,
+      usdt_account_id: usdtSubAccount.id
+    });
+
+    return trading;
+
+  } catch (error) {
+    console.error('Failed to create simulation trading:', error);
+    // Note: In case of failure, the created resources might need cleanup
+    // The backend should handle this or we might need to implement cleanup logic
+    throw error;
+  }
+}
+
 // Interface for sub-account
 interface SubAccount {
   id: string;

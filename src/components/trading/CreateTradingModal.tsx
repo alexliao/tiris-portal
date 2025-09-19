@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { X, AlertCircle } from 'lucide-react';
 import {
   createTrading,
+  createSimulationTrading,
   getPublicExchangeBindings,
   getExchangeBindings,
   type CreateTradingRequest,
@@ -102,7 +103,17 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       setIsLoading(true);
       setError(null);
 
-      const newTrading = await createTrading(formData);
+      let newTrading: Trading;
+
+      // Use different creation methods based on trading type
+      if (tradingType === 'simulation') {
+        console.log('Creating simulation trading with business logic...');
+        newTrading = await createSimulationTrading(formData);
+      } else {
+        console.log('Creating standard trading...');
+        newTrading = await createTrading(formData);
+      }
+
       onSuccess(newTrading);
       onClose();
 
@@ -163,6 +174,15 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
             <X className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Simulation Info */}
+        {tradingType === 'simulation' && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-sm text-blue-800">
+              <strong>{t('trading.type.simulation')} Setup:</strong> {t('trading.create.simulationInfo')}
+            </p>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit}>

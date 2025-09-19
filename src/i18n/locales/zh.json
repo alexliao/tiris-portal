@@ -231,6 +231,7 @@
       "riskLevel": "风险级别",
       "description": "描述",
       "descriptionPlaceholder": "可选的交易描述",
+      "simulationInfo": "这将创建一个模拟交易，初始余额为10,000 USDT，并自动设置ETH/USDT交易账户。",
       "failedToLoadBindings": "加载交易所绑定失败：{{error}}",
       "failedToCreate": "创建交易失败：{{error}}"
     },
