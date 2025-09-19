@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, type Trading, ApiError } from '../utils/api';
-import { TrendingUp, Calendar, Activity, AlertCircle, RefreshCw } from 'lucide-react';
+import { TrendingUp, Calendar, Activity, AlertCircle, RefreshCw, Plus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -124,7 +124,7 @@ export const DashboardPage: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <Activity className="w-8 h-8 text-green-600" />
@@ -132,17 +132,6 @@ export const DashboardPage: React.FC = () => {
                 <p className="text-sm font-medium text-gray-600">{t('dashboard.activeTradings')}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {tradings.filter(t => ['active', 'running'].includes(t.status.toLowerCase())).length}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <Calendar className="w-8 h-8 text-purple-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">{t('dashboard.backtests')}</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {tradings.filter(t => t.type.toLowerCase() === 'backtest').length}
                 </p>
               </div>
             </div>
@@ -291,6 +280,20 @@ export const DashboardPage: React.FC = () => {
               </table>
             </div>
           )}
+
+          {/* Create Button */}
+          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <button
+              className="w-full flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              onClick={() => {
+                // TODO: Navigate to create trading page with type parameter
+                console.log(`Create new ${activeTab} trading`);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {t('dashboard.createNew', { type: t(`trading.type.${activeTab}`) || activeTab })}
+            </button>
+          </div>
         </div>
       </div>
       </div>
