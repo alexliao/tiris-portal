@@ -143,8 +143,12 @@ export const DashboardPage: React.FC = () => {
         errorMessage = err.message;
       }
 
-      // Reset deleting state but keep dialog open to show error
-      setDeleteConfirmation(prev => ({ ...prev, isDeleting: false }));
+      // Close dialog and show error in main page
+      setDeleteConfirmation({
+        isOpen: false,
+        trading: null,
+        isDeleting: false,
+      });
       setError(t('dashboard.deleteFailed', { error: errorMessage }));
     }
   };
