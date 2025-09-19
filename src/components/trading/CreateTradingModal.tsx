@@ -41,13 +41,37 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
   const [isLoadingBindings, setIsLoadingBindings] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const generateDefaultName = (type: string): string => {
+    const now = new Date();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const month = monthNames[now.getMonth()];
+    const day = now.getDate();
+    const time = now.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+
+    const typeNames = {
+      backtest: 'Backtest',
+      simulation: 'Simulation',
+      real: 'Live Trading'
+    };
+
+    const typeName = typeNames[type as keyof typeof typeNames] || type;
+
+    return `${typeName} ${month} ${day} ${time}`;
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchExchangeBindings();
-      // Set default name based on trading type
+      // Set default name based on trading type with timestamp
       setFormData(prev => ({
         ...prev,
-        name: `My ${tradingType.charAt(0).toUpperCase() + tradingType.slice(1)} Trading`,
+        name: generateDefaultName(tradingType),
         type: tradingType,
       }));
     }
