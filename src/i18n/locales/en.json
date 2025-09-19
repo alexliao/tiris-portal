@@ -136,6 +136,12 @@
     "success": "Success",
     "failed": "Failed",
     "refresh": "Refresh",
+    "optional": "(Optional)",
+    "creating": "Creating...",
+    "create": "Create",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm",
     "goToHome": "Go to Home",
     "accessDenied": "Access Denied",
     "notFound": "Not Found",
@@ -152,6 +158,11 @@
     "noTradingsFound": "No tradings found",
     "noTradingsDescription": "Your tradings will appear here once you create them.",
     "createNew": "Create New {{type}}",
+    "deleteTradingTitle": "Delete Trading",
+    "deleteTradingMessage": "Are you sure you want to delete '{{name}}'? This will permanently remove all associated data including positions, logs, transactions, and sub-accounts. This action cannot be undone.",
+    "deleteTradingMessageReal": "Are you sure you want to delete '{{name}}'? This will mark the trading as deleted but preserve all historical data. This action cannot be undone.",
+    "deleteSuccess": "Trading deleted successfully",
+    "deleteFailed": "Failed to delete trading: {{error}}",
     "needSignIn": "You need to sign in to view your dashboard.",
     "failedToLoad": "Failed to load trading data",
     "failedToLoadWithError": "Failed to load trading data: {{error}}",
@@ -160,7 +171,8 @@
       "type": "Type",
       "status": "Status",
       "strategy": "Strategy",
-      "created": "Created"
+      "created": "Created",
+      "actions": "Actions"
     }
   },
   "trading": {
@@ -206,6 +218,32 @@
       "simulation": "Simulation",
       "live": "Live",
       "real": "Real"
+    },
+    "create": {
+      "title": "Create New {{type}}",
+      "name": "Trading Name",
+      "namePlaceholder": "Enter trading name",
+      "nameRequired": "Trading name is required",
+      "exchange": "Exchange",
+      "selectExchange": "Select an exchange",
+      "exchangeBindingRequired": "Exchange selection is required",
+      "strategy": "Strategy",
+      "riskLevel": "Risk Level",
+      "description": "Description",
+      "descriptionPlaceholder": "Optional description for this trading",
+      "failedToLoadBindings": "Failed to load exchange bindings: {{error}}",
+      "failedToCreate": "Failed to create trading: {{error}}"
+    },
+    "strategy": {
+      "momentum": "Momentum",
+      "meanReversion": "Mean Reversion",
+      "trendFollowing": "Trend Following",
+      "arbitrage": "Arbitrage"
+    },
+    "riskLevel": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
     },
     "metrics": {
       "totalROI": "Total ROI",

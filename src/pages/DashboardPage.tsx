@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, type Trading, ApiError } from '../utils/api';
-import { TrendingUp, Calendar, Activity, AlertCircle, RefreshCw, Plus } from 'lucide-react';
+import { getTradings, deleteTrading, type Trading, ApiError } from '../utils/api';
+import { TrendingUp, Calendar, Activity, AlertCircle, RefreshCw, Plus, Trash2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
+import CreateTradingModal from '../components/trading/CreateTradingModal';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
@@ -15,6 +17,16 @@ export const DashboardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'backtest' | 'simulation' | 'real'>('backtest');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    trading: Trading | null;
+    isDeleting: boolean;
+  }>({
+    isOpen: false,
+    trading: null,
+    isDeleting: false,
+  });
 
   const fetchTradings = async () => {
     try {
@@ -46,6 +58,103 @@ export const DashboardPage: React.FC = () => {
 
   const getActiveTradings = (tradingList: Trading[]) => {
     return tradingList.filter(t => ['active', 'running'].includes(t.status.toLowerCase()));
+  };
+
+  const handleCreateTrading = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCreateSuccess = (newTrading: Trading) => {
+    // Add the new trading to the list and refresh the data
+    setTradings(prev => [newTrading, ...prev]);
+    // Optionally switch to the tab of the newly created trading
+    setActiveTab(newTrading.type as 'backtest' | 'simulation' | 'real');
+  };
+
+  const handleDeleteClick = (trading: Trading, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent navigation to trading detail
+    setDeleteConfirmation({
+      isOpen: true,
+      trading,
+      isDeleting: false,
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    console.log('handleDeleteConfirm called');
+
+    if (!deleteConfirmation.trading) {
+      console.error('No trading selected for deletion');
+      return;
+    }
+
+    console.log('Starting deletion for trading:', deleteConfirmation.trading.id, deleteConfirmation.trading.name);
+
+    // Check authentication
+    const token = localStorage.getItem('access_token');
+    console.log('Access token present:', !!token);
+    if (!token) {
+      console.error('No access token found');
+      setError('You must be signed in to delete tradings');
+      setDeleteConfirmation(prev => ({ ...prev, isDeleting: false }));
+      return;
+    }
+
+    try {
+      setDeleteConfirmation(prev => ({ ...prev, isDeleting: true }));
+
+      console.log('Calling deleteTrading API...');
+      await deleteTrading(deleteConfirmation.trading.id, deleteConfirmation.trading.type);
+      console.log('Trading deleted successfully');
+
+      // Remove trading from the list
+      setTradings(prev => prev.filter(t => t.id !== deleteConfirmation.trading?.id));
+
+      // Close confirmation dialog
+      setDeleteConfirmation({
+        isOpen: false,
+        trading: null,
+        isDeleting: false,
+      });
+
+      // Clear any previous errors
+      setError(null);
+
+      // Show success message
+      console.log(t('dashboard.deleteSuccess'));
+    } catch (err) {
+      console.error('Failed to delete trading:', err);
+      console.error('Error details:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined,
+        err
+      });
+
+      let errorMessage = 'Unknown error';
+      if (err instanceof ApiError) {
+        errorMessage = err.message;
+        console.error('API Error details:', {
+          code: err.code,
+          message: err.message,
+          details: err.details,
+          status: err.status
+        });
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      // Reset deleting state but keep dialog open to show error
+      setDeleteConfirmation(prev => ({ ...prev, isDeleting: false }));
+      setError(t('dashboard.deleteFailed', { error: errorMessage }));
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmation({
+      isOpen: false,
+      trading: null,
+      isDeleting: false,
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -240,6 +349,9 @@ export const DashboardPage: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {t('dashboard.tableHeaders.created')}
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t('dashboard.tableHeaders.actions')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -274,6 +386,15 @@ export const DashboardPage: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(trading.created_at).toLocaleDateString()}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button
+                          onClick={(e) => handleDeleteClick(trading, e)}
+                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                          title={t('common.delete')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -285,10 +406,7 @@ export const DashboardPage: React.FC = () => {
           <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
             <button
               className="w-full flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-              onClick={() => {
-                // TODO: Navigate to create trading page with type parameter
-                console.log(`Create new ${activeTab} trading`);
-              }}
+              onClick={handleCreateTrading}
             >
               <Plus className="w-4 h-4 mr-2" />
               {t('dashboard.createNew', { type: t(`trading.type.${activeTab}`) || activeTab })}
@@ -298,6 +416,35 @@ export const DashboardPage: React.FC = () => {
       </div>
       </div>
       <Footer />
+
+      {/* Create Trading Modal */}
+      <CreateTradingModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        tradingType={activeTab}
+        onSuccess={handleCreateSuccess}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmation.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title={t('dashboard.deleteTradingTitle')}
+        message={
+          deleteConfirmation.trading?.type === 'real'
+            ? t('dashboard.deleteTradingMessageReal', {
+                name: deleteConfirmation.trading?.name || ''
+              })
+            : t('dashboard.deleteTradingMessage', {
+                name: deleteConfirmation.trading?.name || ''
+              })
+        }
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        isDestructive={true}
+        isLoading={deleteConfirmation.isDeleting}
+      />
     </div>
   );
 };

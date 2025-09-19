@@ -1,0 +1,1 @@
+../tiris-bot/docs/openapi.md
