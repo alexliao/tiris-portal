@@ -406,112 +406,13 @@ export async function deleteSubAccount(subAccountId: string): Promise<void> {
   });
 }
 
-// Helper function to delete all sub-accounts for a trading
-export async function deleteSubAccountsByTrading(tradingId: string): Promise<void> {
-  console.log('Deleting sub-accounts for trading:', tradingId);
-
-  const subAccounts = await getSubAccountsByTrading(tradingId);
-  console.log(`Found ${subAccounts.length} sub-accounts to delete`);
-
-  const deletionErrors: string[] = [];
-
-  for (const subAccount of subAccounts) {
-    console.log(`Deleting sub-account: ${subAccount.id} (${subAccount.name})`);
-    try {
-      await deleteSubAccount(subAccount.id);
-      console.log(`Successfully deleted sub-account: ${subAccount.id}`);
-    } catch (error) {
-      console.error(`Failed to delete sub-account ${subAccount.id}:`, error);
-      deletionErrors.push(`${subAccount.id}: ${error}`);
-    }
-  }
-
-  // If there were any deletion errors, throw to prevent proceeding
-  if (deletionErrors.length > 0) {
-    throw new Error(`Failed to delete ${deletionErrors.length} sub-accounts: ${deletionErrors.join(', ')}`);
-  }
-}
-
-// Helper function to delete trading logs (placeholder - may need individual deletion)
-export async function deleteTradingLogsByTrading(tradingId: string): Promise<void> {
-  console.log('Deleting trading logs for trading:', tradingId);
-  // Try bulk delete first (if endpoint exists)
-  try {
-    await apiRequest<{ message: string }>(`/trading-logs/trading/${tradingId}`, {
-      method: 'DELETE',
-    });
-    console.log('Successfully deleted trading logs for trading:', tradingId);
-  } catch (error) {
-    console.log('Bulk trading logs deletion not available or failed:', error);
-    // If bulk delete fails, it may be that the endpoint doesn't exist
-    // For backtest/simulation, we'll continue but log the warning
-    console.warn('Trading logs may need to be handled by backend cascade deletion');
-  }
-}
-
-// Helper function to delete transactions (placeholder - may need individual deletion)
-export async function deleteTransactionsByTrading(tradingId: string): Promise<void> {
-  console.log('Deleting transactions for trading:', tradingId);
-  try {
-    // Try bulk delete first (if endpoint exists)
-    await apiRequest<{ message: string }>(`/transactions/trading/${tradingId}`, {
-      method: 'DELETE',
-    });
-    console.log('Successfully deleted transactions for trading:', tradingId);
-  } catch (error) {
-    console.log('Bulk transactions deletion not available or failed:', error);
-    // If bulk delete fails, it may be that the endpoint doesn't exist
-    // For backtest/simulation, we'll continue but log the warning
-    console.warn('Transactions may need to be handled by backend cascade deletion');
-  }
-}
-
-// Helper function to delete positions (placeholder - may need individual deletion)
-export async function deletePositionsByTrading(tradingId: string): Promise<void> {
-  console.log('Deleting positions for trading:', tradingId);
-  try {
-    // Try bulk delete first (if endpoint exists)
-    await apiRequest<{ message: string }>(`/positions/trading/${tradingId}`, {
-      method: 'DELETE',
-    });
-    console.log('Successfully deleted positions for trading:', tradingId);
-  } catch (error) {
-    console.log('Bulk positions deletion not available or failed:', error);
-    // If bulk delete fails, it may be that the endpoint doesn't exist
-    // For backtest/simulation, we'll continue but log the warning
-    console.warn('Positions may need to be handled by backend cascade deletion');
-  }
-}
-
 export async function deleteTrading(tradingId: string, tradingType: string): Promise<void> {
   console.log('deleteTrading called with tradingId:', tradingId, 'type:', tradingType);
 
   try {
-    // For backtest and simulation: cascade delete dependent records first
-    if (tradingType === 'backtest' || tradingType === 'simulation') {
-      console.log('Performing cascade deletion for', tradingType, 'trading');
-      console.log('Following deletion order: positions → trading_logs → transactions → sub_accounts → tradings');
-
-      // Delete in the EXACT order specified in business logic:
-      // positions → trading_logs → transactions → sub_accounts → tradings
-      console.log('Step 1: Deleting positions...');
-      await deletePositionsByTrading(tradingId);
-
-      console.log('Step 2: Deleting trading logs...');
-      await deleteTradingLogsByTrading(tradingId);
-
-      console.log('Step 3: Deleting transactions...');
-      await deleteTransactionsByTrading(tradingId);
-
-      console.log('Step 4: Deleting sub-accounts...');
-      await deleteSubAccountsByTrading(tradingId);
-
-      console.log('Step 5: Deleting trading...');
-    } else {
-      console.log('Real trading - performing soft deletion (backend will handle)');
-    }
-
-    // Finally delete the trading itself (or mark as deleted for real trading)
+    // Backend now handles all cascade deletion logic based on trading type:
+    // - Hard delete (backtest/simulation): Backend deletes all dependent records in atomic transaction
+    // - Soft delete (real trading): Backend marks as deleted while preserving audit trail
     const result = await apiRequest<{ message: string }>(`/tradings/${tradingId}`, {
       method: 'DELETE',
     });
