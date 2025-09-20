@@ -29,6 +29,7 @@ export interface Trading {
   info: {
     strategy?: string;
     risk_level?: string;
+    bot_id?: string;
     [key: string]: any;
   };
 }
@@ -262,7 +263,28 @@ export async function getPublicExchangeBindings(): Promise<ExchangeBinding[]> {
 
 export async function getExchangeBindings(): Promise<ExchangeBinding[]> {
   const response = await apiRequest<ExchangeBinding[]>('/exchange-bindings');
-  return response;
+  console.log('getExchangeBindings raw response:', response);
+  console.log('getExchangeBindings response type:', typeof response);
+  console.log('getExchangeBindings is array:', Array.isArray(response));
+
+  // If response is already an array, return it directly
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  // If response is an object with exchange_bindings property, extract it
+  if (response && typeof response === 'object' && 'exchange_bindings' in response) {
+    return (response as any).exchange_bindings || [];
+  }
+
+  // If response is an object with the array directly as values, try to extract
+  if (response && typeof response === 'object') {
+    // Sometimes APIs return the array directly in the data field
+    return response as any || [];
+  }
+
+  console.warn('Unexpected exchange bindings response format:', response);
+  return [];
 }
 
 export async function createTrading(request: CreateTradingRequest): Promise<Trading> {
@@ -307,6 +329,165 @@ export async function createTradingLog(request: CreateTradingLogRequest): Promis
     method: 'POST',
     body: JSON.stringify(request),
   });
+}
+
+// Bot API Configuration
+const BOT_API_BASE_URL = import.meta.env.VITE_BOT_API_BASE_URL || 'https://bot.dev.tiris.ai/api/v1';
+
+// Bot API types based on OpenAPI spec
+export interface Bot {
+  record: {
+    id: string;
+    user_id: string;
+    spec: {
+      trading: {
+        id: string;
+        name: string;
+        type: string;
+      };
+      exchange: {
+        id: string;
+        name: string;
+        type: string;
+      };
+      params?: { [key: string]: any };
+    };
+    status?: {
+      info?: { [key: string]: any };
+      errors?: Array<{
+        timestamp: string;
+        code: string;
+        message: string;
+      }>;
+    };
+    enabled: boolean;
+    last_heartbeat_at?: string;
+    created_at: string;
+    updated_at: string;
+  };
+  alive: boolean;
+}
+
+export interface BotCreateRequest {
+  spec: {
+    trading: {
+      id: string;
+      name: string;
+      type: string;
+    };
+    exchange: {
+      id: string;
+      name: string;
+      type: string;
+    };
+    params?: { [key: string]: any };
+  };
+}
+
+// Bot API request functions
+async function botApiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const url = `${BOT_API_BASE_URL}${endpoint}`;
+  const token = getAccessToken();
+
+  console.log('Bot API Request:', {
+    url,
+    method: options.method || 'GET',
+    hasToken: !!token
+  });
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+  console.log('Bot API Response:', {
+    status: response.status,
+    statusText: response.statusText,
+    ok: response.ok
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Bot API Error Response:', errorText);
+    throw new ApiError(
+      'BOT_API_ERROR',
+      `Bot API error: ${response.status} ${response.statusText}`,
+      errorText,
+      response.status
+    );
+  }
+
+  const result = await response.json();
+  console.log('Bot API Success Response:', result);
+  return result;
+}
+
+// Create a bot
+export async function createBot(request: BotCreateRequest): Promise<Bot> {
+  return botApiRequest<Bot>(`/bots`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+}
+
+// Start a bot
+export async function startBot(botId: string): Promise<Bot> {
+  return botApiRequest<Bot>(`/bots/${botId}/start`, {
+    method: 'POST',
+  });
+}
+
+// Stop a bot
+export async function stopBot(botId: string): Promise<Bot> {
+  return botApiRequest<Bot>(`/bots/${botId}/stop`, {
+    method: 'POST',
+  });
+}
+
+// Pause a bot
+export async function pauseBot(botId: string): Promise<Bot> {
+  return botApiRequest<Bot>(`/bots/${botId}/pause`, {
+    method: 'POST',
+  });
+}
+
+// Resume a bot
+export async function resumeBot(botId: string): Promise<Bot> {
+  return botApiRequest<Bot>(`/bots/${botId}/resume`, {
+    method: 'POST',
+  });
+}
+
+// Get bot details
+export async function getBot(botId: string): Promise<Bot> {
+  return botApiRequest<Bot>(`/bots/${botId}`);
+}
+
+// List user bots
+export async function getBots(enabled?: boolean, alive?: boolean, limit = 50, offset = 0): Promise<{ bots: Bot[]; total: number }> {
+  const params = new URLSearchParams();
+  if (enabled !== undefined) params.append('enabled', String(enabled));
+  if (alive !== undefined) params.append('alive', String(alive));
+  params.append('limit', String(limit));
+  params.append('offset', String(offset));
+
+  const endpoint = `/bots${params.toString() ? `?${params.toString()}` : ''}`;
+  return botApiRequest<{ bots: Bot[]; total: number }>(endpoint);
+}
+
+// Find bot for a specific trading
+export async function getBotByTradingId(tradingId: string): Promise<Bot | null> {
+  try {
+    const { bots } = await getBots();
+    return bots.find(bot => bot.record.spec.trading.id === tradingId) || null;
+  } catch (error) {
+    console.error('Failed to find bot for trading:', error);
+    return null;
+  }
 }
 
 // Complete simulation trading creation according to business logic

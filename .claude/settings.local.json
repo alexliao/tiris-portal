@@ -20,7 +20,8 @@
       "Read(/Users/alex/Desktop/**)",
       "Read(/Users/alex/Desktop/**)",
       "Read(/Users/alex/Desktop/**)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Read(//Users/alex/tiris/tiris-portal/docs/backend/**)"
     ],
     "deny": [],
     "ask": []

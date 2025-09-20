@@ -1,1 +1,1 @@
-../tiris-bot/docs/openapi.md
+../../../tiris-bot/docs/openapi.md

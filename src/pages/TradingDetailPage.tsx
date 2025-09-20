@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, type Trading, ApiError } from '../utils/api';
-import { ArrowLeft, Calendar, Activity, TrendingUp, AlertCircle } from 'lucide-react';
+import { getTradings, type Trading, type Bot, type BotCreateRequest, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getBot } from '../utils/api';
+import { ArrowLeft, Calendar, Activity, TrendingUp, AlertCircle, Play, Square, Loader2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
@@ -14,8 +14,13 @@ export const TradingDetailPage: React.FC = () => {
   const { t } = useTranslation();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [trading, setTrading] = useState<Trading | null>(null);
+  const [bot, setBot] = useState<Bot | null>(null);
   const [loading, setLoading] = useState(true);
+  const [botLoading, setBotLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusCheckInterval, setStatusCheckInterval] = useState<NodeJS.Timeout | null>(null);
+  const isCheckingStatus = useRef(false);
+  const monitoringBotId = useRef<string | null>(null);
 
 
   useEffect(() => {
@@ -40,6 +45,15 @@ export const TradingDetailPage: React.FC = () => {
         }
         
         setTrading(foundTrading);
+
+        // Try to fetch associated bot
+        try {
+          const associatedBot = await getBotByTradingId(foundTrading.id);
+          setBot(associatedBot);
+        } catch (botErr) {
+          console.warn('Failed to fetch bot for trading:', botErr);
+          // Don't show error for bot fetch failure, just log it
+        }
       } catch (err) {
         console.error('Failed to fetch trading:', err);
         if (err instanceof ApiError) {
@@ -59,6 +73,249 @@ export const TradingDetailPage: React.FC = () => {
       setLoading(false);
     }
   }, [id, isAuthenticated, authLoading]);
+
+  // Bot status checking function
+  const checkBotStatus = async (botId: string) => {
+    // Prevent concurrent status checks
+    if (isCheckingStatus.current) {
+      console.log('Status check already in progress, skipping');
+      return;
+    }
+
+    isCheckingStatus.current = true;
+    try {
+      console.log('Checking bot status for bot ID:', botId);
+      const updatedBot = await getBot(botId);
+      console.log('Bot status check result:', {
+        enabled: updatedBot.record.enabled,
+        alive: updatedBot.alive,
+        lastHeartbeat: updatedBot.record.last_heartbeat_at
+      });
+
+      // Check if we need to update bot state - do this check OUTSIDE of setBot
+      let shouldUpdate = false;
+      let changeDetails = {};
+
+      setBot(currentBot => {
+        if (!currentBot) {
+          shouldUpdate = true;
+          changeDetails = { reason: 'No current bot, setting new bot state' };
+          return updatedBot;
+        }
+
+        // Check if status actually changed (more precise comparison)
+        const enabledChanged = currentBot.record.enabled !== updatedBot.record.enabled;
+        const aliveChanged = currentBot.alive !== updatedBot.alive;
+        const heartbeatChanged = currentBot.record.last_heartbeat_at !== updatedBot.record.last_heartbeat_at;
+
+        const statusChanged = enabledChanged || aliveChanged || heartbeatChanged;
+
+        if (statusChanged) {
+          shouldUpdate = true;
+          changeDetails = {
+            enabledChanged: enabledChanged ? `${currentBot.record.enabled} → ${updatedBot.record.enabled}` : 'no change',
+            aliveChanged: aliveChanged ? `${currentBot.alive} → ${updatedBot.alive}` : 'no change',
+            heartbeatChanged: heartbeatChanged ? 'updated' : 'no change'
+          };
+          return updatedBot;
+        }
+
+        // No changes, keep current state
+        return currentBot;
+      });
+
+      // Log OUTSIDE of the state setter to avoid React Strict Mode duplicates
+      if (shouldUpdate) {
+        console.log('Bot status changed, updating state:', changeDetails);
+      }
+    } catch (err) {
+      console.error('Failed to check bot status:', err);
+
+      // Handle 404 (bot not found) - treat as bot being offline/deleted
+      if ((err instanceof ApiError && err.status === 404) ||
+          (err instanceof Error && err.message.includes('404'))) {
+        console.log('Bot not found (404), marking as offline and stopping monitoring');
+        setBot(currentBot => {
+          if (currentBot) {
+            // Update the bot to show as offline
+            return {
+              ...currentBot,
+              alive: false,
+              record: {
+                ...currentBot.record,
+                enabled: false
+              }
+            };
+          }
+          return null; // If no current bot, set to null
+        });
+
+        // Stop monitoring since bot doesn't exist
+        stopBotStatusMonitoring();
+      }
+
+      // Don't throw error for status checks, just log it
+    } finally {
+      isCheckingStatus.current = false;
+    }
+  };
+
+  // Start periodic status checking when bot is running
+  const startBotStatusMonitoring = (botId: string) => {
+    // Prevent starting monitoring for the same bot multiple times
+    if (monitoringBotId.current === botId && statusCheckInterval) {
+      console.log('Status monitoring already active for bot ID:', botId);
+      return;
+    }
+
+    console.log('Starting bot status monitoring for bot ID:', botId);
+
+    // Clear any existing interval first
+    if (statusCheckInterval) {
+      console.log('Clearing existing status monitoring interval');
+      clearInterval(statusCheckInterval);
+    }
+
+    // Set the monitoring bot ID
+    monitoringBotId.current = botId;
+
+    // Create new interval
+    console.log('Creating new status monitoring interval');
+    const interval = setInterval(() => {
+      checkBotStatus(botId);
+    }, 10000);
+
+    setStatusCheckInterval(interval);
+  };
+
+  // Stop periodic status checking
+  const stopBotStatusMonitoring = () => {
+    console.log('Stopping bot status monitoring');
+    if (statusCheckInterval) {
+      clearInterval(statusCheckInterval);
+      setStatusCheckInterval(null);
+    }
+    monitoringBotId.current = null;
+  };
+
+  // Start monitoring if bot is already running when component loads
+  useEffect(() => {
+    if (bot && bot.record.enabled && bot.alive && !statusCheckInterval) {
+      console.log('Bot is running on page load, starting status monitoring');
+      startBotStatusMonitoring(bot.record.id);
+    } else if (bot && (!bot.record.enabled || !bot.alive) && statusCheckInterval) {
+      console.log('Bot is not running, stopping status monitoring');
+      stopBotStatusMonitoring();
+    }
+  }, [bot?.record.id, bot?.record.enabled, bot?.alive]); // More specific dependencies
+
+  // Cleanup interval on component unmount
+  useEffect(() => {
+    return () => {
+      if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+      }
+    };
+  }, [statusCheckInterval]);
+
+  const handleStartBot = async () => {
+    if (!trading) return;
+
+    console.log('Starting bot for trading:', trading.id);
+    setBotLoading(true);
+    try {
+      let currentBot = bot;
+
+      // If no bot exists, create one first
+      if (!currentBot) {
+        console.log('No existing bot found, creating new bot for trading ID:', trading.id);
+
+        // According to business logic: For backtest and simulation trading, use public exchange bindings
+        const isSimulationOrBacktest = trading.type === 'simulation' || trading.type === 'backtest';
+
+        let exchangeBinding;
+
+        if (isSimulationOrBacktest) {
+          console.log('Using public exchange bindings for simulation/backtest trading');
+          const publicExchangeBindings = await getPublicExchangeBindings();
+          console.log('Public exchange bindings received:', publicExchangeBindings);
+
+          if (!Array.isArray(publicExchangeBindings) || publicExchangeBindings.length === 0) {
+            throw new Error('No public exchange bindings available for simulation/backtest trading');
+          }
+
+          // Use the first available public exchange binding (typically Binance public)
+          exchangeBinding = publicExchangeBindings[0];
+          console.log('Selected public exchange binding:', exchangeBinding);
+        } else {
+          // For real trading, this would use private exchange bindings
+          throw new Error('Real trading bot creation not implemented yet');
+        }
+
+        // Hardcoded BotSpec according to business logic
+        const createRequest: BotCreateRequest = {
+          spec: {
+            trading: {
+              id: trading.id,
+              name: trading.name,
+              type: trading.type
+            },
+            exchange: {
+              id: exchangeBinding.id,
+              name: exchangeBinding.name,
+              type: exchangeBinding.exchange
+            },
+            params: {
+              // Hardcoded parameters for now
+              strategy_name: "platform_test",
+              symbol: "ETH/USDT",
+              timeframe: "5m",
+              initial_balance: 10000
+            }
+          }
+        };
+
+        console.log('Creating bot with hardcoded request:', createRequest);
+        currentBot = await createBot(createRequest);
+        console.log('Bot created:', currentBot);
+        setBot(currentBot);
+      }
+
+      // Now start the bot
+      console.log('Starting bot with ID:', currentBot.record.id);
+      const updatedBot = await startBot(currentBot.record.id);
+      console.log('Bot started:', updatedBot);
+      setBot(updatedBot);
+
+      // Start monitoring bot status if the bot is now running
+      if (updatedBot.record.enabled && updatedBot.alive) {
+        startBotStatusMonitoring(updatedBot.record.id);
+      }
+    } catch (err) {
+      console.error('Failed to start bot:', err);
+      // Could add a toast notification here
+    } finally {
+      setBotLoading(false);
+    }
+  };
+
+  const handleStopBot = async () => {
+    if (!bot) return;
+
+    setBotLoading(true);
+    try {
+      const updatedBot = await stopBot(bot.record.id);
+      setBot(updatedBot);
+
+      // Stop monitoring when bot is stopped
+      stopBotStatusMonitoring();
+    } catch (err) {
+      console.error('Failed to stop bot:', err);
+      // Could add a toast notification here
+    } finally {
+      setBotLoading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -246,16 +503,49 @@ export const TradingDetailPage: React.FC = () => {
                       <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
                         {t(`trading.type.${trading.type.toLowerCase()}`) || trading.type}
                       </span>
+                      {bot && (
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${
+                          bot.alive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          Bot {bot.alive ? 'Online' : 'Offline'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                {t('dashboard.title')}
-              </Link>
+              <div className="flex items-center space-x-3">
+                {/* Bot Controls - Always show start button, show stop when bot exists and is running */}
+                <div className="flex items-center space-x-2">
+                  {bot && bot.record.enabled && bot.alive ? (
+                    <button
+                      onClick={handleStopBot}
+                      disabled={botLoading}
+                      className="inline-flex items-center px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors"
+                    >
+                      {botLoading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Square className="w-4 h-4 mr-2" />
+                      )}
+                      Stop Bot
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleStartBot}
+                      disabled={botLoading}
+                      className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
+                    >
+                      {botLoading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Play className="w-4 h-4 mr-2" />
+                      )}
+                      Start Bot
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
