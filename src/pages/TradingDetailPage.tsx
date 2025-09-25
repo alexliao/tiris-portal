@@ -276,6 +276,7 @@ export const TradingDetailPage: React.FC = () => {
               // Use strategy_name from trading info if available, otherwise default
               strategy_name: trading.info?.strategy_name || "platform_test",
               symbol: "ETH/USDT",
+              exchange: exchangeBinding.exchange,
               timeframe: "5m",
               initial_balance: 10000
             }
