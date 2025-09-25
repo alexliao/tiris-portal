@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, deleteTrading, type Trading, ApiError } from '../utils/api';
+import { getTradings, deleteTrading, type Trading, ApiError, getBots, type Bot } from '../utils/api';
 import { TrendingUp, Calendar, Activity, AlertCircle, RefreshCw, Plus, Trash2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navigation from '../components/layout/Header';
@@ -14,9 +14,10 @@ export const DashboardPage: React.FC = () => {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [tradings, setTradings] = useState<Trading[]>([]);
+  const [bots, setBots] = useState<Bot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'backtest' | 'simulation' | 'real'>('backtest');
+  const [activeTab, setActiveTab] = useState<'backtest' | 'simulation' | 'real'>('simulation');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
@@ -34,6 +35,16 @@ export const DashboardPage: React.FC = () => {
       setError(null);
       const data = await getTradings();
       setTradings(data);
+
+      // Try to fetch bots for strategy information
+      try {
+        const botsData = await getBots();
+        setBots(botsData.bots || []);
+      } catch (botErr) {
+        console.warn('Failed to fetch bots:', botErr);
+        // Don't show error for bot fetch failure, just log it
+        setBots([]);
+      }
     } catch (err) {
       console.error('Failed to fetch tradings:', err);
       if (err instanceof ApiError) {
@@ -161,6 +172,17 @@ export const DashboardPage: React.FC = () => {
     });
   };
 
+  // Helper function to get strategy name from bot data
+  const getStrategyForTrading = (trading: Trading): string => {
+    const bot = bots.find(b => b.record.spec.trading.id === trading.id);
+    return bot?.record.spec.params?.strategy_name || trading.info?.strategy || 'N/A';
+  };
+
+  // Helper function to get bot status for a trading
+  const getBotForTrading = (trading: Trading): Bot | null => {
+    return bots.find(b => b.record.spec.trading.id === trading.id) || null;
+  };
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
@@ -280,8 +302,8 @@ export const DashboardPage: React.FC = () => {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
               {[
-                { key: 'backtest', label: t('trading.type.backtest') || 'Backtest', icon: Activity },
                 { key: 'simulation', label: t('trading.type.simulation') || 'Simulation', icon: Calendar },
+                { key: 'backtest', label: t('trading.type.backtest') || 'Backtest', icon: Activity },
                 { key: 'real', label: t('trading.type.real') || 'Real', icon: TrendingUp }
               ].map((tab) => {
                 const Icon = tab.icon;
@@ -351,6 +373,9 @@ export const DashboardPage: React.FC = () => {
                       {t('dashboard.tableHeaders.strategy')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Bot Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {t('dashboard.tableHeaders.created')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -385,7 +410,26 @@ export const DashboardPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {trading.info?.strategy || 'N/A'}
+                        {getStrategyForTrading(trading)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {(() => {
+                          const bot = getBotForTrading(trading);
+                          if (!bot) {
+                            return (
+                              <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                                No Bot
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                              bot.alive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {bot.alive ? 'Online' : 'Offline'}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(trading.created_at).toLocaleDateString()}

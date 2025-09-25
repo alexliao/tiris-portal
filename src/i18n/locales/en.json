@@ -84,7 +84,6 @@
     "signInWithGoogle": "Sign in with Google",
     "signInWithWeChat": "Sign in with WeChat",
     "chooseProvider": "Choose your preferred sign-in method",
-    "authenticationFailed": "Authentication Failed",
     "or": "or",
     "termsText": "By signing in, you agree to our",
     "termsOfService": "Terms of Service",
@@ -122,7 +121,6 @@
     "creatingAccount": "Creating Account...",
     "accountCreated": "Account Created",
     "welcomeMessage": "Welcome to TIRIS! Your account has been created successfully.",
-    "authenticationFailed": "Authentication Failed",
     "googleAuthFailed": "Google authentication failed",
     "wechatAuthFailed": "WeChat authentication failed",
     "logoutSuccess": "You have been successfully signed out.",
@@ -138,6 +136,8 @@
     "refresh": "Refresh",
     "optional": "(Optional)",
     "creating": "Creating...",
+    "processing": "Processing...",
+    "continue": "Continue",
     "create": "Create",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -173,19 +173,6 @@
       "strategy": "Strategy",
       "created": "Created",
       "actions": "Actions"
-    }
-  },
-  "trading": {
-    "detail": {
-      "title": "Trading Details",
-      "backToDashboard": "Back to Dashboard",
-      "overview": "Overview",
-      "performance": "Performance",
-      "settings": "Settings",
-      "notFound": "Trading not found",
-      "failedToLoad": "Failed to load trading",
-      "failedToLoadWithError": "Failed to load trading: {{error}}",
-      "tradingIdRequired": "Trading ID is required"
     }
   },
   "trading": {
@@ -234,6 +221,16 @@
       "simulationInfo": "This will create a simulation trading with 10,000 USDT initial balance and set up ETH/USDT trading accounts automatically.",
       "failedToLoadBindings": "Failed to load exchange bindings: {{error}}",
       "failedToCreate": "Failed to create trading: {{error}}"
+    },
+    "botParams": {
+      "title": "Bot Parameters",
+      "description": "Select strategy and exchange type for your trading bot.",
+      "strategy": "Strategy",
+      "selectStrategy": "Select a strategy",
+      "exchangeType": "Exchange Type",
+      "selectExchange": "Select an exchange type",
+      "failedToLoad": "Failed to load bot parameters: {{error}}",
+      "allFieldsRequired": "Please select both strategy and exchange type"
     },
     "strategy": {
       "momentum": "Momentum",

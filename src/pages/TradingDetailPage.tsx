@@ -252,7 +252,7 @@ export const TradingDetailPage: React.FC = () => {
           throw new Error('Real trading bot creation not implemented yet');
         }
 
-        // Hardcoded BotSpec according to business logic
+        // Create BotSpec using strategy from trading info
         const createRequest: BotCreateRequest = {
           spec: {
             trading: {
@@ -266,8 +266,8 @@ export const TradingDetailPage: React.FC = () => {
               type: exchangeBinding.exchange
             },
             params: {
-              // Hardcoded parameters for now
-              strategy_name: "platform_test",
+              // Use strategy_name from trading info if available, otherwise default
+              strategy_name: trading.info?.strategy_name || "platform_test",
               symbol: "ETH/USDT",
               timeframe: "5m",
               initial_balance: 10000
@@ -275,10 +275,26 @@ export const TradingDetailPage: React.FC = () => {
           }
         };
 
-        console.log('Creating bot with hardcoded request:', createRequest);
+        console.log('Creating bot with request:', createRequest);
         currentBot = await createBot(createRequest);
         console.log('Bot created:', currentBot);
         setBot(currentBot);
+
+        // Update trading info with strategy name for future display
+        if (currentBot?.record.spec.params?.strategy_name) {
+          setTrading(currentTrading => {
+            if (currentTrading && currentBot?.record.spec.params?.strategy_name) {
+              return {
+                ...currentTrading,
+                info: {
+                  ...currentTrading.info,
+                  strategy: currentBot.record.spec.params.strategy_name
+                }
+              };
+            }
+            return currentTrading;
+          });
+        }
       }
 
       // Now start the bot
@@ -557,7 +573,7 @@ export const TradingDetailPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.strategy')}</div>
-                <div className="text-sm text-gray-900">{trading.info?.strategy || 'N/A'}</div>
+                <div className="text-sm text-gray-900">{bot?.record.spec.params?.strategy_name || trading.info?.strategy || 'N/A'}</div>
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.riskLevel')}</div>

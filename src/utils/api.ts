@@ -574,6 +574,16 @@ interface SubAccount {
   info: { [key: string]: any };
 }
 
+// Get available strategies from tiris-bot API
+export async function getStrategies(): Promise<string[]> {
+  return botApiRequest<string[]>('/strategies');
+}
+
+// Get available exchanges from tiris-bot API
+export async function getExchanges(): Promise<string[]> {
+  return botApiRequest<string[]>('/exchanges');
+}
+
 // Get sub-accounts for a trading
 export async function getSubAccountsByTrading(tradingId: string): Promise<SubAccount[]> {
   const response = await apiRequest<{ sub_accounts: SubAccount[] }>(`/sub-accounts?trading_id=${tradingId}`);
