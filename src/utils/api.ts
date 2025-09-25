@@ -121,7 +121,13 @@ export class ApiError extends Error {
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   const token = getAccessToken();
-  
+
+  // Debug log for POST requests
+  if (options.method === 'POST' && endpoint.includes('tradings')) {
+    console.log('🔍 [HTTP DEBUG] POST request to:', url);
+    console.log('🔍 [HTTP DEBUG] Request body:', options.body);
+  }
+
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -132,6 +138,12 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   });
 
   const data: ApiResponse<T> = await response.json();
+
+  // Debug log for POST responses
+  if (options.method === 'POST' && endpoint.includes('tradings')) {
+    console.log('🔍 [HTTP DEBUG] Response status:', response.status);
+    console.log('🔍 [HTTP DEBUG] Response data:', data);
+  }
 
   if (!response.ok || !data.success) {
     throw new ApiError(
@@ -288,10 +300,13 @@ export async function getExchangeBindings(): Promise<ExchangeBinding[]> {
 }
 
 export async function createTrading(request: CreateTradingRequest): Promise<Trading> {
-  return apiRequest<Trading>('/tradings', {
+  console.log('🔍 [API DEBUG] createTrading request:', request);
+  const result = await apiRequest<Trading>('/tradings', {
     method: 'POST',
     body: JSON.stringify(request),
   });
+  console.log('🔍 [API DEBUG] createTrading response:', result);
+  return result;
 }
 
 // Interface for creating sub-account
@@ -332,7 +347,7 @@ export async function createTradingLog(request: CreateTradingLogRequest): Promis
 }
 
 // Bot API Configuration
-const BOT_API_BASE_URL = import.meta.env.VITE_BOT_API_BASE_URL || 'https://bot.dev.tiris.ai/api/v1';
+const BOT_API_BASE_URL = import.meta.env.VITE_BOT_API_BASE_URL;
 
 // Bot API types based on OpenAPI spec
 export interface Bot {
@@ -389,20 +404,37 @@ async function botApiRequest<T>(endpoint: string, options: RequestInit = {}): Pr
   const url = `${BOT_API_BASE_URL}${endpoint}`;
   const token = getAccessToken();
 
-  console.log('Bot API Request:', {
+  console.log('🔍 [BOT API DEBUG] Bot API Request:', {
     url,
     method: options.method || 'GET',
-    hasToken: !!token
+    hasToken: !!token,
+    tokenPreview: token ? `${token.substring(0, 20)}...` : 'No token'
   });
 
-  const response = await fetch(url, {
+  if (options.method === 'POST' && options.body) {
+    console.log('🔍 [BOT API DEBUG] Request body:', options.body);
+    console.log('🔍 [BOT API DEBUG] Request body length:', typeof options.body === 'string' ? options.body.length : 'Not a string');
+    console.log('🔍 [BOT API DEBUG] Request body type:', typeof options.body);
+  }
+
+  const requestOptions = {
     ...options,
     headers: {
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       'Content-Type': 'application/json',
+      // Explicitly set Content-Length to fix ERR_CONTENT_LENGTH_MISMATCH
+      ...(options.body && typeof options.body === 'string' ? { 'Content-Length': new TextEncoder().encode(options.body).length.toString() } : {}),
       ...options.headers,
     },
+  };
+
+  console.log('🔍 [BOT API DEBUG] Final request options:', {
+    method: requestOptions.method,
+    headers: requestOptions.headers,
+    bodyLength: requestOptions.body ? (typeof requestOptions.body === 'string' ? requestOptions.body.length : 'Not string') : 0
   });
+
+  const response = await fetch(url, requestOptions);
 
   console.log('Bot API Response:', {
     status: response.status,
@@ -412,7 +444,14 @@ async function botApiRequest<T>(endpoint: string, options: RequestInit = {}): Pr
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Bot API Error Response:', errorText);
+    console.error('❌ [BOT API ERROR] Bot API Error Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      url,
+      method: options.method || 'GET',
+      errorText,
+      headers: response.headers
+    });
     throw new ApiError(
       'BOT_API_ERROR',
       `Bot API error: ${response.status} ${response.statusText}`,
@@ -492,12 +531,14 @@ export async function getBotByTradingId(tradingId: string): Promise<Bot | null> 
 
 // Complete simulation trading creation according to business logic
 export async function createSimulationTrading(request: CreateTradingRequest): Promise<Trading> {
-  console.log('Creating simulation trading with business logic steps...');
+  console.log('🔍 [SIMULATION DEBUG] Creating simulation trading with business logic steps...');
+  console.log('🔍 [SIMULATION DEBUG] Request received:', request);
 
   try {
     // Step 1: Create the trading
     console.log('Step 1: Creating trading...');
     const trading = await createTrading(request);
+    console.log('🔍 [SIMULATION DEBUG] Trading created, checking info field:', trading.info);
     console.log('Trading created:', trading.id);
 
     // Step 2: Create two sub-accounts (ETH for stock, USDT for balance)

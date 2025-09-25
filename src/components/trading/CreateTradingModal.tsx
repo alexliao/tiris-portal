@@ -7,7 +7,6 @@ import {
   getPublicExchangeBindings,
   getExchangeBindings,
   getStrategies,
-  getExchanges,
   type CreateTradingRequest,
   type ExchangeBinding,
   type Trading,
@@ -179,6 +178,10 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
         };
       }
 
+      console.log('🔍 [MODAL DEBUG] Final requestData being sent:', requestData);
+      console.log('🔍 [MODAL DEBUG] Original formData.info:', formData.info);
+      console.log('🔍 [MODAL DEBUG] Selected strategy:', selectedStrategy);
+
       // Use different creation methods based on trading type
       if (tradingType === 'simulation') {
         console.log('Creating simulation trading with business logic...');
@@ -187,6 +190,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
         console.log('Creating standard trading...');
         newTrading = await createTrading(requestData);
       }
+
+      console.log('🔍 [MODAL DEBUG] Returned trading object:', newTrading);
 
       onSuccess(newTrading);
       onClose();

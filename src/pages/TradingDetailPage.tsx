@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, type Trading, type Bot, type BotCreateRequest, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getBot } from '../utils/api';
+import { getTradings, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getBot } from '../utils/api';
 import { ArrowLeft, Calendar, Activity, TrendingUp, AlertCircle, Play, Square, Loader2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -15,6 +15,7 @@ export const TradingDetailPage: React.FC = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [trading, setTrading] = useState<Trading | null>(null);
   const [bot, setBot] = useState<Bot | null>(null);
+  const [exchangeBinding, setExchangeBinding] = useState<ExchangeBinding | null>(null);
   const [loading, setLoading] = useState(true);
   const [botLoading, setBotLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +54,27 @@ export const TradingDetailPage: React.FC = () => {
         } catch (botErr) {
           console.warn('Failed to fetch bot for trading:', botErr);
           // Don't show error for bot fetch failure, just log it
+        }
+
+        // Fetch exchange binding details
+        try {
+          const isSimulationOrBacktest = foundTrading.type === 'simulation' || foundTrading.type === 'backtest';
+
+          if (isSimulationOrBacktest) {
+            const publicExchangeBindings = await getPublicExchangeBindings();
+            if (publicExchangeBindings.length > 0) {
+              setExchangeBinding(publicExchangeBindings[0]);
+            }
+          } else {
+            const privateExchangeBindings = await getExchangeBindings();
+            const binding = privateExchangeBindings.find(eb => eb.id === foundTrading.exchange_binding_id);
+            if (binding) {
+              setExchangeBinding(binding);
+            }
+          }
+        } catch (exchangeErr) {
+          console.warn('Failed to fetch exchange binding details:', exchangeErr);
+          // Don't show error for exchange binding fetch failure
         }
       } catch (err) {
         console.error('Failed to fetch trading:', err);
@@ -230,27 +252,12 @@ export const TradingDetailPage: React.FC = () => {
       if (!currentBot) {
         console.log('No existing bot found, creating new bot for trading ID:', trading.id);
 
-        // According to business logic: For backtest and simulation trading, use public exchange bindings
-        const isSimulationOrBacktest = trading.type === 'simulation' || trading.type === 'backtest';
-
-        let exchangeBinding;
-
-        if (isSimulationOrBacktest) {
-          console.log('Using public exchange bindings for simulation/backtest trading');
-          const publicExchangeBindings = await getPublicExchangeBindings();
-          console.log('Public exchange bindings received:', publicExchangeBindings);
-
-          if (!Array.isArray(publicExchangeBindings) || publicExchangeBindings.length === 0) {
-            throw new Error('No public exchange bindings available for simulation/backtest trading');
-          }
-
-          // Use the first available public exchange binding (typically Binance public)
-          exchangeBinding = publicExchangeBindings[0];
-          console.log('Selected public exchange binding:', exchangeBinding);
-        } else {
-          // For real trading, this would use private exchange bindings
-          throw new Error('Real trading bot creation not implemented yet');
+        // Use the exchange binding that was already loaded during component initialization
+        if (!exchangeBinding) {
+          throw new Error('Exchange binding information not available. Please try refreshing the page.');
         }
+
+        console.log('Using exchange binding for bot creation:', exchangeBinding);
 
         // Create BotSpec using strategy from trading info
         const createRequest: BotCreateRequest = {
@@ -573,7 +580,7 @@ export const TradingDetailPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.strategy')}</div>
-                <div className="text-sm text-gray-900">{bot?.record.spec.params?.strategy_name || trading.info?.strategy || 'N/A'}</div>
+                <div className="text-sm text-gray-900">{bot?.record.spec.params?.strategy_name || trading.info?.strategy_name || trading.info?.strategy || 'N/A'}</div>
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.riskLevel')}</div>
@@ -581,7 +588,7 @@ export const TradingDetailPage: React.FC = () => {
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.exchangeBinding')}</div>
-                <div className="text-sm text-gray-900">{trading.exchange_binding_id ? `${trading.exchange_binding_id.substring(0, 8)}...` : 'N/A'}</div>
+                <div className="text-sm text-gray-900">{exchangeBinding ? `${exchangeBinding.name} (${exchangeBinding.exchange})` : 'Loading...'}</div>
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.created')}</div>
