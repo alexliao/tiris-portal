@@ -22,7 +22,8 @@
       "Read(/Users/alex/Desktop/**)",
       "Bash(node:*)",
       "Read(//Users/alex/tiris/tiris-portal/docs/backend/**)",
-      "Read(//Users/alex/tiris/tiris-backend/docs/api/**)"
+      "Read(//Users/alex/tiris/tiris-backend/docs/api/**)",
+      "Read(//Users/alex/tiris/tiris-portal/docs/bot/**)"
     ],
     "deny": [],
     "ask": []
