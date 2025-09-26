@@ -389,6 +389,16 @@ export interface BotCreateRequest {
       id: string;
       name: string;
       type: string;
+      stock_sub_account?: {
+        id: string;
+        symbol: string;
+        balance: number;
+      } | null;
+      balance_sub_account?: {
+        id: string;
+        symbol: string;
+        balance: number;
+      } | null;
     };
     exchange: {
       id: string;

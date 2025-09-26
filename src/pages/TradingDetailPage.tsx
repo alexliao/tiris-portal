@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getBot } from '../utils/api';
+import { getTradings, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getBot, getSubAccountsByTrading } from '../utils/api';
 import { ArrowLeft, Calendar, Activity, TrendingUp, AlertCircle, Play, Square, Loader2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -259,13 +259,45 @@ export const TradingDetailPage: React.FC = () => {
 
         console.log('Using exchange binding for bot creation:', exchangeBinding);
 
+        // Fetch sub-accounts for this trading to include in bot creation
+        console.log('Fetching sub-accounts for trading:', trading.id);
+        const subAccounts = await getSubAccountsByTrading(trading.id);
+        console.log('Retrieved sub-accounts:', subAccounts);
+
+        // Identify stock and balance sub-accounts
+        const stockSubAccount = subAccounts.find(account =>
+          account.info?.account_type === 'stock' ||
+          ['ETH', 'BTC'].includes(account.symbol)
+        );
+        const balanceSubAccount = subAccounts.find(account =>
+          account.info?.account_type === 'balance' ||
+          ['USDT', 'USD'].includes(account.symbol)
+        );
+
+        console.log('Stock sub-account:', stockSubAccount);
+        console.log('Balance sub-account:', balanceSubAccount);
+
+        if (!stockSubAccount || !balanceSubAccount) {
+          throw new Error(`Missing required sub-accounts. Found ${subAccounts.length} sub-accounts, but need both stock and balance accounts.`);
+        }
+
         // Create BotSpec using strategy from trading info
         const createRequest: BotCreateRequest = {
           spec: {
             trading: {
               id: trading.id,
               name: trading.name,
-              type: trading.type
+              type: trading.type,
+              stock_sub_account: {
+                id: stockSubAccount.id,
+                symbol: stockSubAccount.symbol,
+                balance: parseFloat(stockSubAccount.balance)
+              },
+              balance_sub_account: {
+                id: balanceSubAccount.id,
+                symbol: balanceSubAccount.symbol,
+                balance: parseFloat(balanceSubAccount.balance)
+              }
             },
             exchange: {
               id: exchangeBinding.id,
