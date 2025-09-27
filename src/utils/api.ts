@@ -539,6 +539,13 @@ export async function getBotByTradingId(tradingId: string): Promise<Bot | null> 
   }
 }
 
+// Delete a bot
+export async function deleteBot(botId: string): Promise<void> {
+  return botApiRequest<void>(`/bots/${botId}`, {
+    method: 'DELETE',
+  });
+}
+
 // Complete simulation trading creation according to business logic
 export async function createSimulationTrading(request: CreateTradingRequest): Promise<Trading> {
   console.log('🔍 [SIMULATION DEBUG] Creating simulation trading with business logic steps...');
@@ -652,9 +659,30 @@ export async function deleteTrading(tradingId: string, tradingType: string): Pro
   console.log('deleteTrading called with tradingId:', tradingId, 'type:', tradingType);
 
   try {
+    // Step 1: Check if there's a bot associated with this trading and delete it first
+    console.log('Checking for associated bot...');
+    const associatedBot = await getBotByTradingId(tradingId);
+
+    if (associatedBot) {
+      console.log('Found associated bot:', associatedBot.record.id, 'Deleting bot first...');
+      try {
+        await deleteBot(associatedBot.record.id);
+        console.log('Bot deleted successfully');
+      } catch (botError) {
+        console.error('Failed to delete bot:', botError);
+        // If bot deletion fails, we must not proceed with trading deletion
+        // to prevent leaving orphaned bots
+        throw new Error(`Cannot delete trading: Failed to delete associated bot (${associatedBot.record.id}). ${botError instanceof Error ? botError.message : 'Unknown error'}`);
+      }
+    } else {
+      console.log('No associated bot found, safe to proceed with trading deletion');
+    }
+
+    // Step 2: Delete the trading (only if bot deletion succeeded or no bot exists)
     // Backend now handles all cascade deletion logic based on trading type:
     // - Hard delete (backtest/simulation): Backend deletes all dependent records in atomic transaction
     // - Soft delete (real trading): Backend marks as deleted while preserving audit trail
+    console.log('Deleting trading...');
     const result = await apiRequest<{ message: string }>(`/tradings/${tradingId}`, {
       method: 'DELETE',
     });
