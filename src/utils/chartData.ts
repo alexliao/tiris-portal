@@ -21,30 +21,6 @@ export interface TradingMetrics {
   totalTrades: number;
 }
 
-// Helper function to find the closest event within a reasonable time window
-function findClosestEvent(
-  targetTime: string, 
-  eventsByTimestamp: Map<string, TradingDataPoint['event']>
-): TradingDataPoint['event'] | undefined {
-  const targetTimestamp = new Date(targetTime).getTime();
-  const timeWindow = 5 * 60 * 1000; // 5 minutes in milliseconds
-  
-  let closestEvent: TradingDataPoint['event'] | undefined;
-  let closestTimeDiff = Infinity;
-  
-  for (const [eventTime, event] of eventsByTimestamp) {
-    const eventTimestamp = new Date(eventTime).getTime();
-    const timeDiff = Math.abs(targetTimestamp - eventTimestamp);
-    
-    // Only consider events within the time window
-    if (timeDiff <= timeWindow && timeDiff < closestTimeDiff) {
-      closestTimeDiff = timeDiff;
-      closestEvent = event;
-    }
-  }
-  
-  return closestEvent;
-}
 
 export function transformEquityCurveToChartData(
   equityCurve: EquityCurveData,
@@ -61,11 +37,9 @@ export function transformEquityCurveToChartData(
     }
   });
 
-  // Transform equity curve points to chart data
+  // First, create all chart data points without events
   const chartData: TradingDataPoint[] = equityCurve.points.map(point => {
     const date = point.time.split('T')[0];
-    // Find exact matching event by timestamp, or closest event within reasonable time window
-    const event = eventsByTimestamp.get(point.time) || findClosestEvent(point.time, eventsByTimestamp);
     
     // Calculate absolute value using the API formula: initial_value * (1 + return)
     const absoluteValue = equityCurve.initial_value * (1 + point.return);
@@ -80,9 +54,38 @@ export function transformEquityCurveToChartData(
       netValue: Math.round(absoluteValue * 100) / 100, // Keep for tooltip
       roi: Math.round(roiPercentage * 100) / 100, // Primary chart value
       benchmark: Math.round(benchmarkPercentage * 100) / 100, // Benchmark for comparison
-      event,
+      event: undefined, // Will be assigned later
     };
   });
+
+  // Now assign each trading event to its nearest equity curve point
+  for (const [eventTime, event] of eventsByTimestamp) {
+    const eventTimestamp = new Date(eventTime).getTime();
+    let closestPoint: TradingDataPoint | undefined;
+    let closestTimeDiff = Infinity;
+    let closestIndex = -1;
+
+    // Find the closest equity curve point to this event
+    chartData.forEach((point, index) => {
+      // Skip points that already have an event assigned
+      if (point.event) return;
+
+      const pointTimestamp = new Date(point.timestamp).getTime();
+      const timeDiff = Math.abs(eventTimestamp - pointTimestamp);
+
+      // Only consider points within the time window (1 minute)
+      if (timeDiff <= 1 * 60 * 1000 && timeDiff < closestTimeDiff) {
+        closestTimeDiff = timeDiff;
+        closestPoint = point;
+        closestIndex = index;
+      }
+    });
+
+    // Assign the event to the closest point if found
+    if (closestPoint && closestIndex >= 0) {
+      chartData[closestIndex].event = event;
+    }
+  }
 
   // Calculate metrics using the equity curve data
   const metrics = calculateMetrics(chartData, tradingLogs, equityCurve.initial_value);
@@ -182,7 +185,6 @@ export function transformTransactionsToChartData(
     const totalPortfolioValue = usdtBalance + ethValueInUSDT;
     
     const roi = ((totalPortfolioValue - initialPortfolioValue) / initialPortfolioValue) * 100;
-    const event = eventsByTimestamp.get(latestTimestamp) || findClosestEvent(latestTimestamp, eventsByTimestamp);
 
     chartData.push({
       date,
@@ -190,10 +192,38 @@ export function transformTransactionsToChartData(
       timestampNum: new Date(latestTimestamp).getTime(),
       netValue: Math.round(totalPortfolioValue * 100) / 100,
       roi: Math.round(roi * 100) / 100,
-      event,
+      event: undefined, // Will be assigned later
     });
   });
-  
+
+  // Now assign each trading event to its nearest chart data point
+  for (const [eventTime, event] of eventsByTimestamp) {
+    const eventTimestamp = new Date(eventTime).getTime();
+    let closestPoint: TradingDataPoint | undefined;
+    let closestTimeDiff = Infinity;
+    let closestIndex = -1;
+
+    // Find the closest chart data point to this event
+    chartData.forEach((point, index) => {
+      // Skip points that already have an event assigned
+      if (point.event) return;
+
+      const pointTimestamp = new Date(point.timestamp).getTime();
+      const timeDiff = Math.abs(eventTimestamp - pointTimestamp);
+
+      // Only consider points within the time window (5 minutes)
+      if (timeDiff <= 5 * 60 * 1000 && timeDiff < closestTimeDiff) {
+        closestTimeDiff = timeDiff;
+        closestPoint = point;
+        closestIndex = index;
+      }
+    });
+
+    // Assign the event to the closest point if found
+    if (closestPoint && closestIndex >= 0) {
+      chartData[closestIndex].event = event;
+    }
+  }
 
   // Calculate metrics
   const metrics = calculateMetrics(chartData, tradingLogs, initialPortfolioValue);
