@@ -10,6 +10,7 @@ interface TradingPerformanceWidgetProps {
   showHeader?: boolean;
   showHighlights?: boolean;
   height?: string;
+  refreshTrigger?: number;
 }
 
 export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> = ({
@@ -17,7 +18,8 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   className = '',
   showHeader = true,
   showHighlights = true,
-  height = 'h-96'
+  height = 'h-96',
+  refreshTrigger = 0
 }) => {
   const { t } = useTranslation();
   const [currentDataIndex, setCurrentDataIndex] = useState(0);
@@ -28,24 +30,28 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   const [error, setError] = useState<string | null>(null);
   const [showTradingDots, setShowTradingDots] = useState(false);
 
-  // Fetch trading data from API
-  useEffect(() => {
-    const fetchTradingData = async () => {
-      try {
+  // Extract trading data fetching logic into reusable function
+  const fetchTradingData = async (isInitialLoad = false) => {
+    try {
+      // Only show loading state during initial load, not during refresh
+      if (isInitialLoad) {
         setLoading(true);
         setError(null);
+      }
 
-        const [equityCurve, tradingLogs] = await Promise.all([
-          getEquityCurve(trading.id, false, 'ETH'), // Get equity curve with ETH benchmark for comparison
-          getTradingLogs(trading.id)
-        ]);
+      const [equityCurve, tradingLogs] = await Promise.all([
+        getEquityCurve(trading.id, false, 'ETH'), // Get equity curve with ETH benchmark for comparison
+        getTradingLogs(trading.id)
+      ]);
 
-        const { data, metrics: calculatedMetrics } = transformEquityCurveToChartData(equityCurve, tradingLogs);
-        
-        setTradingData(data);
-        setMetrics(calculatedMetrics);
-      } catch (err) {
-        console.error('Failed to fetch trading data:', err);
+      const { data, metrics: calculatedMetrics } = transformEquityCurveToChartData(equityCurve, tradingLogs);
+
+      setTradingData(data);
+      setMetrics(calculatedMetrics);
+    } catch (err) {
+      console.error('Failed to fetch trading data:', err);
+      // Only show errors during initial load, silently handle refresh errors
+      if (isInitialLoad) {
         if (err instanceof ApiError) {
           setError(`API Error (${err.code}): ${err.message}`);
         } else if (err instanceof Error) {
@@ -53,13 +59,27 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
         } else {
           setError('Failed to load trading data - Unknown error');
         }
-      } finally {
+      }
+    } finally {
+      // Only hide loading state if we showed it (initial load)
+      if (isInitialLoad) {
         setLoading(false);
       }
-    };
+    }
+  };
 
-    fetchTradingData();
+  // Initial data loading effect
+  useEffect(() => {
+    fetchTradingData(true); // Mark as initial load
   }, [trading.id]);
+
+  // Refresh trigger effect - refetch data when refreshTrigger changes
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      console.log('Performance widget: Refreshing data due to trigger change');
+      fetchTradingData(false); // Refresh without showing loading state
+    }
+  }, [refreshTrigger]);
 
   const displayData = animationComplete ? tradingData : tradingData.slice(0, currentDataIndex);
 

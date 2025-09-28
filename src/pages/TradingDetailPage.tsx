@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getBot, getSubAccountsByTrading } from '../utils/api';
-import { ArrowLeft, Calendar, Activity, TrendingUp, AlertCircle, Play, Square, Loader2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Activity, TrendingUp, AlertCircle, Play, Square, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
@@ -23,9 +23,84 @@ export const TradingDetailPage: React.FC = () => {
   const isCheckingStatus = useRef(false);
   const monitoringBotId = useRef<string | null>(null);
 
+  // Data refresh state management
+  const [dataRefreshInterval, setDataRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [performanceRefreshTrigger, setPerformanceRefreshTrigger] = useState(0);
+  const isRefreshing2 = useRef(false);
 
+
+  // Extract trading data fetching logic into reusable function
+  const fetchTradingData = async (isInitialLoad = false) => {
+    if (!id) {
+      setError(t('trading.detail.tradingIdRequired'));
+      return;
+    }
+
+    try {
+      // Only clear error and show loading on initial load, not during refresh
+      if (isInitialLoad) {
+        setError(null);
+      }
+
+      // Get all tradings and find the one with matching ID
+      const tradings = await getTradings();
+      const foundTrading = tradings.find(t => t.id === id);
+
+      if (!foundTrading) {
+        setError(t('trading.detail.notFound'));
+        return;
+      }
+
+      setTrading(foundTrading);
+
+      // Try to fetch associated bot
+      try {
+        const associatedBot = await getBotByTradingId(foundTrading.id);
+        setBot(associatedBot);
+      } catch (botErr) {
+        console.warn('Failed to fetch bot for trading:', botErr);
+        // Don't show error for bot fetch failure, just log it
+      }
+
+      // Fetch exchange binding details
+      try {
+        const isSimulationOrBacktest = foundTrading.type === 'simulation' || foundTrading.type === 'backtest';
+
+        if (isSimulationOrBacktest) {
+          const publicExchangeBindings = await getPublicExchangeBindings();
+          if (publicExchangeBindings.length > 0) {
+            setExchangeBinding(publicExchangeBindings[0]);
+          }
+        } else {
+          const privateExchangeBindings = await getExchangeBindings();
+          const binding = privateExchangeBindings.find(eb => eb.id === foundTrading.exchange_binding_id);
+          if (binding) {
+            setExchangeBinding(binding);
+          }
+        }
+      } catch (exchangeErr) {
+        console.warn('Failed to fetch exchange binding details:', exchangeErr);
+        // Don't show error for exchange binding fetch failure
+      }
+    } catch (err) {
+      console.error('Failed to fetch trading:', err);
+      // Only show errors during initial load, silently handle refresh errors
+      if (isInitialLoad) {
+        if (err instanceof ApiError) {
+          setError(t('trading.detail.failedToLoadWithError', { error: err.message }));
+        } else {
+          setError(`${t('trading.detail.failedToLoad')}. ${t('common.tryAgain')}`);
+        }
+      }
+    }
+  };
+
+  // Initial data loading effect
   useEffect(() => {
-    const fetchTrading = async () => {
+    const initialLoad = async () => {
       if (!id) {
         setError(t('trading.detail.tradingIdRequired'));
         setLoading(false);
@@ -34,67 +109,102 @@ export const TradingDetailPage: React.FC = () => {
 
       try {
         setLoading(true);
-        setError(null);
-        
-        // Get all tradings and find the one with matching ID
-        const tradings = await getTradings();
-        const foundTrading = tradings.find(t => t.id === id);
-        
-        if (!foundTrading) {
-          setError(t('trading.detail.notFound'));
-          return;
-        }
-        
-        setTrading(foundTrading);
-
-        // Try to fetch associated bot
-        try {
-          const associatedBot = await getBotByTradingId(foundTrading.id);
-          setBot(associatedBot);
-        } catch (botErr) {
-          console.warn('Failed to fetch bot for trading:', botErr);
-          // Don't show error for bot fetch failure, just log it
-        }
-
-        // Fetch exchange binding details
-        try {
-          const isSimulationOrBacktest = foundTrading.type === 'simulation' || foundTrading.type === 'backtest';
-
-          if (isSimulationOrBacktest) {
-            const publicExchangeBindings = await getPublicExchangeBindings();
-            if (publicExchangeBindings.length > 0) {
-              setExchangeBinding(publicExchangeBindings[0]);
-            }
-          } else {
-            const privateExchangeBindings = await getExchangeBindings();
-            const binding = privateExchangeBindings.find(eb => eb.id === foundTrading.exchange_binding_id);
-            if (binding) {
-              setExchangeBinding(binding);
-            }
-          }
-        } catch (exchangeErr) {
-          console.warn('Failed to fetch exchange binding details:', exchangeErr);
-          // Don't show error for exchange binding fetch failure
-        }
-      } catch (err) {
-        console.error('Failed to fetch trading:', err);
-        if (err instanceof ApiError) {
-          setError(t('trading.detail.failedToLoadWithError', { error: err.message }));
-        } else {
-          setError(`${t('trading.detail.failedToLoad')}. ${t('common.tryAgain')}`);
-        }
+        await fetchTradingData(true); // Mark as initial load
       } finally {
         setLoading(false);
       }
     };
 
     if (isAuthenticated && !authLoading && id) {
-      fetchTrading();
+      initialLoad();
     } else if (!authLoading && !isAuthenticated) {
       // Not authenticated, stop loading
       setLoading(false);
     }
   }, [id, isAuthenticated, authLoading]);
+
+  // Unified data refresh function
+  const refreshAllData = async () => {
+    // Prevent concurrent refreshes
+    if (isRefreshing2.current) {
+      console.log('Data refresh already in progress, skipping');
+      return;
+    }
+
+    isRefreshing2.current = true;
+    setIsRefreshing(true);
+
+    try {
+      console.log('Refreshing all page data');
+
+      // Refresh trading data (without showing loading state)
+      await fetchTradingData(false);
+
+      // Refresh bot status if bot exists
+      if (bot?.record.id) {
+        await checkBotStatus(bot.record.id);
+      }
+
+      // Trigger performance widget refresh
+      setPerformanceRefreshTrigger(prev => prev + 1);
+
+      setLastRefreshTime(new Date());
+      console.log('Data refresh completed successfully');
+    } catch (err) {
+      console.error('Failed to refresh data:', err);
+      // Don't throw error, just log it to avoid breaking the interval
+    } finally {
+      isRefreshing2.current = false;
+      setIsRefreshing(false);
+    }
+  };
+
+  // Manual refresh function for immediate user-triggered refresh
+  const handleManualRefresh = async () => {
+    await refreshAllData();
+  };
+
+  // Data monitoring interval management (similar to bot status monitoring pattern)
+  const startDataMonitoring = () => {
+    if (!autoRefreshEnabled) return;
+
+    // Prevent starting monitoring multiple times
+    if (dataRefreshInterval) {
+      console.log('Data monitoring already active');
+      return;
+    }
+
+    console.log('Starting data monitoring with 60-second interval');
+
+    // Create new interval for data refresh every 60 seconds
+    const interval = setInterval(() => {
+      if (autoRefreshEnabled) {
+        refreshAllData();
+      }
+    }, 60000);
+
+    setDataRefreshInterval(interval);
+  };
+
+  // Stop data monitoring
+  const stopDataMonitoring = () => {
+    console.log('Stopping data monitoring');
+    if (dataRefreshInterval) {
+      clearInterval(dataRefreshInterval);
+      setDataRefreshInterval(null);
+    }
+  };
+
+  // Start data monitoring when page loads and user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && !authLoading && autoRefreshEnabled && !dataRefreshInterval) {
+      console.log('Starting data monitoring on page load');
+      startDataMonitoring();
+    } else if (!autoRefreshEnabled && dataRefreshInterval) {
+      console.log('Auto-refresh disabled, stopping data monitoring');
+      stopDataMonitoring();
+    }
+  }, [isAuthenticated, authLoading, autoRefreshEnabled]);
 
   // Bot status checking function
   const checkBotStatus = async (botId: string) => {
@@ -231,14 +341,17 @@ export const TradingDetailPage: React.FC = () => {
     }
   }, [bot?.record.id, bot?.record.enabled, bot?.alive]); // More specific dependencies
 
-  // Cleanup interval on component unmount
+  // Cleanup intervals on component unmount
   useEffect(() => {
     return () => {
       if (statusCheckInterval) {
         clearInterval(statusCheckInterval);
       }
+      if (dataRefreshInterval) {
+        clearInterval(dataRefreshInterval);
+      }
     };
-  }, [statusCheckInterval]);
+  }, [statusCheckInterval, dataRefreshInterval]);
 
   const handleStartBot = async () => {
     if (!trading) return;
@@ -571,6 +684,45 @@ export const TradingDetailPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-3">
+                {/* Refresh Controls */}
+                <div className="flex items-center space-x-2 border-r border-gray-300 pr-3">
+                  {/* Auto-refresh toggle */}
+                  <button
+                    onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+                    className={`inline-flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
+                      autoRefreshEnabled
+                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <RotateCcw className={`w-4 h-4 mr-2 ${
+                      autoRefreshEnabled && dataRefreshInterval ? 'animate-spin' : ''
+                    }`} />
+                    Auto Refresh
+                  </button>
+
+                  {/* Manual refresh button */}
+                  <button
+                    onClick={handleManualRefresh}
+                    disabled={isRefreshing}
+                    className="inline-flex items-center px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                  >
+                    {isRefreshing ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Refresh
+                  </button>
+
+                  {/* Last updated time */}
+                  {lastRefreshTime && (
+                    <div className="text-xs text-gray-500">
+                      Last updated: {lastRefreshTime.toLocaleTimeString()}
+                    </div>
+                  )}
+                </div>
+
                 {/* Bot Controls - Always show start button, show stop when bot exists and is running */}
                 <div className="flex items-center space-x-2">
                   {bot && bot.record.enabled && bot.alive ? (
@@ -631,10 +783,11 @@ export const TradingDetailPage: React.FC = () => {
           </div>
 
           {/* Performance Widget */}
-          <TradingPerformanceWidget 
+          <TradingPerformanceWidget
             trading={trading}
             showHeader={false}
             showHighlights={false}
+            refreshTrigger={performanceRefreshTrigger}
           />
         </div>
       </div>
