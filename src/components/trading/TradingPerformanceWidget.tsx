@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Line, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, BarChart, Brush } from 'recharts';
+import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Brush } from 'recharts';
 import { getEquityCurve, getTradingLogs, ApiError, type Trading } from '../../utils/api';
 import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 
@@ -29,6 +29,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTradingDots, setShowTradingDots] = useState(false);
+  const [brushDomain, setBrushDomain] = useState<[number, number] | null>(null);
 
   // Extract trading data fetching logic into reusable function
   const fetchTradingData = async (isInitialLoad = false) => {
@@ -86,6 +87,22 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   }, [refreshTrigger]);
 
   const displayData = animationComplete ? tradingData : tradingData.slice(0, currentDataIndex);
+
+  // Handle brush change to synchronize both charts
+  const handleBrushChange = (domain: any) => {
+    if (domain && domain.startIndex !== undefined && domain.endIndex !== undefined) {
+      const startTime = displayData[domain.startIndex]?.timestampNum;
+      const endTime = displayData[domain.endIndex]?.timestampNum;
+      if (startTime && endTime) {
+        setBrushDomain([startTime, endTime]);
+      }
+    } else {
+      setBrushDomain(null);
+    }
+  };
+
+  // Calculate the domain for both charts
+  const chartDomain = brushDomain || ['dataMin', 'dataMax'];
 
   // Animation effect to show chart building over time
   useEffect(() => {
@@ -242,31 +259,31 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
     <div className={className}>
       {/* Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="text-2xl font-['Bebas_Neue'] font-bold text-green-600">
             {formatPercentage(metrics.totalROI)}
           </div>
           <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.totalROI')}</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="text-2xl font-['Bebas_Neue'] font-bold text-blue-600">
             {formatPercentage(metrics.winRate)}
           </div>
           <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.winRate')}</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="text-2xl font-['Bebas_Neue'] font-bold text-purple-600">
             {metrics.sharpeRatio.toFixed(1)}
           </div>
           <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.sharpeRatio')}</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="text-2xl font-['Bebas_Neue'] font-bold text-orange-600">
             {formatPercentage(metrics.maxDrawdown)}
           </div>
           <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.maxDrawdown')}</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="text-2xl font-['Bebas_Neue'] font-bold text-gray-700">
             {metrics.totalTrades}
           </div>
@@ -275,7 +292,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
       </div>
 
       {/* Chart Container */}
-      <div className="bg-white p-6 rounded-lg shadow-lg border">
+      <div className="bg-white p-6 rounded-lg shadow-lg">
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             {showHeader && (
@@ -304,178 +321,255 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
           </p>
         </div>
         
-        <div className={height}>
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={displayData} margin={{ top: 5, right: 80, left: 20, bottom: 50 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis 
-                dataKey="timestampNum"
-                type="number"
-                scale="time"
-                domain={['dataMin', 'dataMax']}
-                stroke="#666"
-                fontSize={12}
-                tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                interval="preserveStartEnd"
-                minTickGap={30}
-              />
-              <YAxis
-                yAxisId="left"
-                stroke="#666"
-                fontSize={12}
-                tickFormatter={(value) => `${value.toFixed(1)}%`}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                stroke="#F59E0B"
-                fontSize={12}
-                tickFormatter={(value) => `$${value.toFixed(0)}`}
-                domain={['dataMin', 'dataMax']}
-                width={60}
-              />
-              <YAxis
-                yAxisId="position"
-                orientation="left"
-                stroke="#8B5CF6"
-                fontSize={12}
-                tickFormatter={(value) => `${value.toFixed(4)} ETH`}
-                domain={[0, (dataMax: number) => dataMax * 5]}
-                hide={true}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              
-              {/* Zero Reference Line */}
-              <ReferenceLine 
-                y={0} 
-                stroke="#94A3B8" 
-                strokeDasharray="2 2" 
-                strokeWidth={1}
-              />
-              
-              {/* Portfolio Return Area Chart */}
-              <Area
-                yAxisId="left"
-                type="linear"
-                dataKey="roi"
-                stroke="#10B981"
-                strokeWidth={2}
-                fill="#10B981"
-                fillOpacity={0.1}
-                dot={false}
-                activeDot={{ r: 4, fill: '#10B981', stroke: '#ffffff', strokeWidth: 2 }}
-                name={t('trading.chart.portfolioReturn')}
-              />
-
-              {/* ETH Benchmark Line */}
-              <Line
-                yAxisId="left"
-                type="linear"
-                dataKey="benchmark"
-                stroke="#F59E0B"
-                strokeWidth={2}
-                dot={(props) => {
-                  const { cx, cy, payload } = props;
-                  if (showTradingDots && payload && payload.event) {
-                    return (
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={6}
-                        fill={payload.event.type === 'buy' ? '#3B82F6' : '#EF4444'}
-                        stroke="white"
-                        strokeWidth={2}
-                        opacity={0.9}
-                      />
-                    );
-                  }
-                  return <></>;
-                }}
-                activeDot={{ r: 4, fill: '#F59E0B', stroke: '#ffffff', strokeWidth: 2 }}
-                name={t('trading.chart.ethBenchmark')}
-              />
-
-              {/* ETH Price Line (Invisible - Just for Y-axis scaling) */}
-              <Line
-                yAxisId="right"
-                type="linear"
-                dataKey="benchmarkPrice"
-                stroke="transparent"
-                strokeWidth={0}
-                dot={false}
-                name="ETH Price"
-              />
-
-              {/* Position Area Chart */}
-              <Area
-                yAxisId="position"
-                type="linear"
-                dataKey="position"
-                stroke="#60A5FA"
-                strokeWidth={2}
-                fill="#60A5FA"
-                fillOpacity={0.3}
-                dot={false}
-                name="ETH Position"
-              />
-
-              {/* Dotted Lines Connecting Signals to Position Area */}
-              {showTradingDots && displayData.filter(point => point.event).map((point, index) => (
-                <ReferenceLine
-                  key={`signal-line-${index}`}
-                  x={point.timestampNum}
-                  stroke="#94A3B8"
-                  strokeDasharray="3 3"
-                  strokeWidth={1}
-                  opacity={0.7}
+        <div
+          className={height}
+          style={{
+            outline: 'none'
+          }}
+          onFocus={(e) => e.preventDefault()}
+          tabIndex={-1}
+        >
+          {/* Main Chart - Performance and Benchmark */}
+          <div style={{ height: '60%', marginBottom: '10px', outline: 'none' }} tabIndex={-1}>
+            <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
+              <ComposedChart
+                data={displayData}
+                margin={{ top: 5, right: 80, left: 20, bottom: 5 }}
+                syncId="tradingCharts"
+                style={{ outline: 'none' }}
+                tabIndex={-1}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="timestampNum"
+                  type="number"
+                  scale="time"
+                  domain={chartDomain}
+                  stroke="#666"
+                  fontSize={12}
+                  tickFormatter={() => ''} // Hide tick labels on main chart
+                  interval="preserveStartEnd"
+                  minTickGap={30}
                 />
-              ))}
-              
-              {/* Zoom Brush */}
-              <Brush 
-                dataKey="timestampNum" 
-                height={30}
-                stroke="#8884d8"
-                tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
+                <YAxis
+                  yAxisId="left"
+                  stroke="#666"
+                  fontSize={12}
+                  tickFormatter={(value) => `${value.toFixed(1)}%`}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#F59E0B"
+                  fontSize={12}
+                  tickFormatter={(value) => `$${value.toFixed(0)}`}
+                  domain={['dataMin', 'dataMax']}
+                  width={60}
+                />
+                <Tooltip content={<CustomTooltip />} />
+
+                {/* Zero Reference Line */}
+                <ReferenceLine
+                  y={0}
+                  stroke="#94A3B8"
+                  strokeDasharray="2 2"
+                  strokeWidth={1}
+                />
+
+                {/* Portfolio Return Area Chart */}
+                <Area
+                  yAxisId="left"
+                  type="linear"
+                  dataKey="roi"
+                  stroke="#10B981"
+                  strokeWidth={2}
+                  fill="#10B981"
+                  fillOpacity={0.1}
+                  dot={false}
+                  activeDot={{ r: 4, fill: '#10B981', stroke: '#ffffff', strokeWidth: 2 }}
+                  name={t('trading.chart.portfolioReturn')}
+                />
+
+                {/* ETH Benchmark Line */}
+                <Line
+                  yAxisId="left"
+                  type="linear"
+                  dataKey="benchmark"
+                  stroke="#F59E0B"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={(props) => {
+                    const { cx, cy, payload } = props;
+                    if (showTradingDots && payload && payload.event) {
+                      return (
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={6}
+                          fill={payload.event.type === 'buy' ? '#3B82F6' : '#EF4444'}
+                          stroke="white"
+                          strokeWidth={2}
+                          opacity={0.9}
+                        />
+                      );
+                    }
+                    return <></>;
+                  }}
+                  activeDot={{ r: 4, fill: '#F59E0B', stroke: '#ffffff', strokeWidth: 2 }}
+                  name={t('trading.chart.ethBenchmark')}
+                />
+
+                {/* ETH Price Line (Invisible - Just for Y-axis scaling) */}
+                <Line
+                  yAxisId="right"
+                  type="linear"
+                  dataKey="benchmarkPrice"
+                  stroke="transparent"
+                  strokeWidth={0}
+                  dot={false}
+                  name="ETH Price"
+                />
+
+                {/* Dotted Lines Connecting Signals to Position Area */}
+                {showTradingDots && displayData.filter(point => point.event).map((point, index) => (
+                  <ReferenceLine
+                    key={`signal-line-${index}`}
+                    x={point.timestampNum}
+                    stroke="#94A3B8"
+                    strokeDasharray="3 3"
+                    strokeWidth={1}
+                    opacity={0.7}
+                  />
+                ))}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Sub-Chart - Position Area */}
+          <div style={{ height: '40%', outline: 'none' }} tabIndex={-1}>
+            <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
+              <ComposedChart
+                data={displayData}
+                margin={{ top: 20, right: 80, left: 20, bottom: 50 }}
+                syncId="tradingCharts"
+                style={{ outline: 'none' }}
+                tabIndex={-1}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="timestampNum"
+                  type="number"
+                  scale="time"
+                  domain={chartDomain}
+                  stroke="#666"
+                  fontSize={12}
+                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  interval="preserveStartEnd"
+                  minTickGap={30}
+                />
+                <YAxis
+                  yAxisId="left"
+                  stroke="transparent"
+                  fontSize={12}
+                  tickFormatter={() => ''}
+                  tick={false}
+                  axisLine={false}
+                  tickLine={false}
+                  width={60}
+                />
+                <YAxis
+                  yAxisId="position"
+                  orientation="right"
+                  stroke="#60A5FA"
+                  fontSize={12}
+                  tickFormatter={(value) => `${value.toFixed(2)} ETH`}
+                  domain={[0, 'dataMax']}
+                />
+
+                {/* Position Area Chart */}
+                <Area
+                  yAxisId="position"
+                  type="linear"
+                  dataKey="position"
+                  stroke="#60A5FA"
+                  strokeWidth={2}
+                  fill="#60A5FA"
+                  fillOpacity={0.3}
+                  dot={false}
+                  activeDot={{ r: 4, fill: '#60A5FA', stroke: '#ffffff', strokeWidth: 2 }}
+                  name="ETH Position"
+                />
+
+                {/* Trading Signal Dots on Position Chart */}
+                {showTradingDots && displayData.filter(point => point.event).map((point, index) => (
+                  <ReferenceLine
+                    key={`position-signal-line-${index}`}
+                    x={point.timestampNum}
+                    stroke="#94A3B8"
+                    strokeDasharray="3 3"
+                    strokeWidth={1}
+                    opacity={0.7}
+                  />
+                ))}
+
+                {/* Zoom Brush for the sub-chart */}
+                <Brush
+                  dataKey="timestampNum"
+                  height={30}
+                  stroke="#8884d8"
+                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  onChange={handleBrushChange}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* Chart Legend */}
-        <div className="flex items-center justify-center mt-4 space-x-4 text-sm font-['Nunito'] flex-wrap">
-          <div className="flex items-center">
-            <div className="w-4 h-3 bg-green-500 bg-opacity-20 border-2 border-green-500 rounded mr-2"></div>
-            <span>{t('trading.chart.portfolioReturn')}</span>
+        <div className="mt-4 space-y-3">
+          {/* Main Chart Legend */}
+          <div className="flex items-center justify-center space-x-4 text-sm font-['Nunito'] flex-wrap">
+            <span className="font-medium text-gray-700">Performance Chart:</span>
+            <div className="flex items-center">
+              <div className="w-4 h-3 bg-green-500 bg-opacity-20 border-2 border-green-500 rounded mr-2"></div>
+              <span>{t('trading.chart.portfolioReturn')}</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-amber-500 mr-2" style={{borderTop: '2px dashed #F59E0B', backgroundColor: 'transparent'}}></div>
+              <span>{t('trading.chart.ethBenchmark')}</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-slate-400 border-dashed border-t mr-2" style={{borderStyle: 'dashed'}}></div>
+              <span>{t('trading.chart.zeroLine')}</span>
+            </div>
+            {showTradingDots && (
+              <>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                  <span>{t('trading.chart.buySignals')}</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                  <span>{t('trading.chart.sellSignals')}</span>
+                </div>
+              </>
+            )}
           </div>
-          <div className="flex items-center">
-            <div className="w-4 h-0.5 bg-amber-500 mr-2"></div>
-            <span>{t('trading.chart.ethBenchmark')}</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-3 bg-blue-400 bg-opacity-30 border-2 border-blue-400 rounded mr-2"></div>
-            <span>ETH Position</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-0.5 bg-slate-400 border-dashed border-t mr-2" style={{borderStyle: 'dashed'}}></div>
-            <span>{t('trading.chart.zeroLine')}</span>
-          </div>
-          {showTradingDots && (
-            <>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                <span>{t('trading.chart.buySignals')}</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                <span>{t('trading.chart.sellSignals')}</span>
-              </div>
+
+          {/* Position Chart Legend */}
+          <div className="flex items-center justify-center space-x-4 text-sm font-['Nunito'] flex-wrap">
+            <span className="font-medium text-gray-700">Position Chart:</span>
+            <div className="flex items-center">
+              <div className="w-4 h-3 bg-blue-400 bg-opacity-30 border-2 border-blue-400 rounded mr-2"></div>
+              <span>ETH Position</span>
+            </div>
+            {showTradingDots && (
               <div className="flex items-center">
                 <div className="w-4 h-0.5 bg-slate-400 border-dashed mr-2" style={{borderStyle: 'dashed'}}></div>
                 <span>Signal Lines</span>
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
