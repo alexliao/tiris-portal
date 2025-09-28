@@ -7,6 +7,8 @@ export interface TradingDataPoint {
   netValue: number; // Keep for tooltip display
   roi: number; // Primary chart value - return percentage
   benchmark?: number; // Benchmark return percentage
+  benchmarkPrice?: number; // ETH price calculated from benchmark return
+  position?: number; // ETH position balance (quantity of ETH held)
   event?: {
     type: 'buy' | 'sell';
     description: string;
@@ -19,6 +21,7 @@ export interface TradingMetrics {
   sharpeRatio: number;
   maxDrawdown: number;
   totalTrades: number;
+  initialPrice: number;
 }
 
 
@@ -38,14 +41,31 @@ export function transformEquityCurveToChartData(
   });
 
   // First, create all chart data points without events
-  const chartData: TradingDataPoint[] = equityCurve.points.map(point => {
+  const chartData: TradingDataPoint[] = equityCurve.points.map((point, index) => {
     const date = point.time.split('T')[0];
-    
+
     // Calculate absolute value using the API formula: initial_value * (1 + return)
     const absoluteValue = equityCurve.initial_value * (1 + point.return);
     // Convert return and benchmark from decimal to percentage for display
     const roiPercentage = point.return * 100;
     const benchmarkPercentage = point.benchmark * 100;
+
+    // Calculate benchmark price from initial market price and benchmark return
+    const benchmarkPrice = equityCurve.initial_market_price * (1 + point.benchmark);
+
+    // Debug: Log first few price calculations
+    if (index < 3) {
+      console.log(`Point ${index}: initial_price=${equityCurve.initial_market_price}, benchmark=${point.benchmark}, calculated_price=${benchmarkPrice}`);
+    }
+
+    // Extract ETH position from breakdown if available
+    let ethPosition = 0;
+    if (point.breakdown) {
+      const ethBreakdown = point.breakdown.find(item => item.symbol === 'ETH');
+      if (ethBreakdown) {
+        ethPosition = ethBreakdown.balance;
+      }
+    }
 
     return {
       date,
@@ -54,6 +74,8 @@ export function transformEquityCurveToChartData(
       netValue: Math.round(absoluteValue * 100) / 100, // Keep for tooltip
       roi: Math.round(roiPercentage * 100) / 100, // Primary chart value
       benchmark: Math.round(benchmarkPercentage * 100) / 100, // Benchmark for comparison
+      benchmarkPrice: Math.round(benchmarkPrice * 100) / 100, // ETH price from benchmark
+      position: Math.round(ethPosition * 10000) / 10000, // ETH position with 4 decimal precision
       event: undefined, // Will be assigned later
     };
   });
@@ -88,7 +110,7 @@ export function transformEquityCurveToChartData(
   }
 
   // Calculate metrics using the equity curve data
-  const metrics = calculateMetrics(chartData, tradingLogs, equityCurve.initial_value);
+  const metrics = calculateMetrics(chartData, tradingLogs, equityCurve.initial_value, equityCurve.initial_market_price);
 
   return { data: chartData, metrics };
 }
@@ -192,6 +214,8 @@ export function transformTransactionsToChartData(
       timestampNum: new Date(latestTimestamp).getTime(),
       netValue: Math.round(totalPortfolioValue * 100) / 100,
       roi: Math.round(roi * 100) / 100,
+      benchmarkPrice: ethPrice, // Use current ETH price from transactions
+      position: Math.round(ethBalance * 10000) / 10000, // ETH position with 4 decimal precision
       event: undefined, // Will be assigned later
     });
   });
@@ -226,7 +250,7 @@ export function transformTransactionsToChartData(
   }
 
   // Calculate metrics
-  const metrics = calculateMetrics(chartData, tradingLogs, initialPortfolioValue);
+  const metrics = calculateMetrics(chartData, tradingLogs, initialPortfolioValue, 0);
 
   return { data: chartData, metrics };
 }
@@ -234,7 +258,8 @@ export function transformTransactionsToChartData(
 function calculateMetrics(
   chartData: TradingDataPoint[],
   tradingLogs: TradingLog[],
-  initialBalance: number
+  initialBalance: number,
+  initialPrice: number = 0
 ): TradingMetrics {
   if (chartData.length === 0) {
     return {
@@ -243,6 +268,7 @@ function calculateMetrics(
       sharpeRatio: 0,
       maxDrawdown: 0,
       totalTrades: 0,
+      initialPrice: initialPrice,
     };
   }
 
@@ -324,5 +350,6 @@ function calculateMetrics(
     sharpeRatio: Math.round(sharpeRatio * 100) / 100,
     maxDrawdown: -Math.round(maxDrawdown * 100) / 100, // Negative for display
     totalTrades,
+    initialPrice: initialPrice,
   };
 }

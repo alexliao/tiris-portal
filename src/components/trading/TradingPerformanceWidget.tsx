@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Brush } from 'recharts';
+import { Line, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, BarChart, Brush } from 'recharts';
 import { getEquityCurve, getTradingLogs, ApiError, type Trading } from '../../utils/api';
 import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 
@@ -40,11 +40,15 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
       }
 
       const [equityCurve, tradingLogs] = await Promise.all([
-        getEquityCurve(trading.id, false, 'ETH'), // Get equity curve with ETH benchmark for comparison
+        getEquityCurve(trading.id, true, 'ETH'), // Get equity curve with breakdown data and ETH benchmark
         getTradingLogs(trading.id)
       ]);
 
       const { data, metrics: calculatedMetrics } = transformEquityCurveToChartData(equityCurve, tradingLogs);
+
+      // Debug: Check if benchmarkPrice data exists
+      console.log('Chart data sample:', data.slice(0, 3));
+      console.log('Metrics:', calculatedMetrics);
 
       setTradingData(data);
       setMetrics(calculatedMetrics);
@@ -124,6 +128,11 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+
+      // Calculate benchmark price (assuming initial ETH price and benchmark return)
+      const benchmarkPrice = data.benchmark !== undefined ?
+        metrics.initialPrice ? metrics.initialPrice * (1 + data.benchmark / 100) : null : null;
+
       return (
         <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
           <p className="font-['Nunito'] text-sm text-gray-600">
@@ -146,10 +155,23 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
               </p>
             </div>
           )}
+          {benchmarkPrice && (
+            <p className="font-['Nunito'] text-xs text-amber-600 ml-6">
+              {`ETH Price: ${formatCurrency(benchmarkPrice)}`}
+            </p>
+          )}
           {data.benchmark !== undefined && (
             <p className="font-['Nunito'] text-xs text-gray-500 mt-2 text-center border-t pt-2">
               {`${t('trading.chart.excessReturn')}: ${formatPercentage(data.roi - data.benchmark)}`}
             </p>
+          )}
+          {data.position !== undefined && (
+            <div className="flex items-center mt-1">
+              <div className="w-3 h-3 bg-blue-400 rounded mr-2"></div>
+              <p className="font-['Nunito'] text-sm text-blue-600 font-semibold">
+                {`ETH Position: ${data.position.toFixed(4)} ETH`}
+              </p>
+            </div>
           )}
           {data.event && (
             <p className="font-['Nunito'] text-xs text-blue-600 mt-2 border-t pt-2">
@@ -284,7 +306,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
         
         <div className={height}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={displayData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <ComposedChart data={displayData} margin={{ top: 5, right: 80, left: 20, bottom: 50 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis 
                 dataKey="timestampNum"
@@ -297,10 +319,29 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                 interval="preserveStartEnd"
                 minTickGap={30}
               />
-              <YAxis 
+              <YAxis
+                yAxisId="left"
                 stroke="#666"
                 fontSize={12}
                 tickFormatter={(value) => `${value.toFixed(1)}%`}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                stroke="#F59E0B"
+                fontSize={12}
+                tickFormatter={(value) => `$${value.toFixed(0)}`}
+                domain={['dataMin', 'dataMax']}
+                width={60}
+              />
+              <YAxis
+                yAxisId="position"
+                orientation="left"
+                stroke="#8B5CF6"
+                fontSize={12}
+                tickFormatter={(value) => `${value.toFixed(4)} ETH`}
+                domain={[0, (dataMax: number) => dataMax * 5]}
+                hide={true}
               />
               <Tooltip content={<CustomTooltip />} />
               
@@ -314,6 +355,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
               
               {/* Portfolio Return Area Chart */}
               <Area
+                yAxisId="left"
                 type="linear"
                 dataKey="roi"
                 stroke="#10B981"
@@ -327,6 +369,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
 
               {/* ETH Benchmark Line */}
               <Line
+                yAxisId="left"
                 type="linear"
                 dataKey="benchmark"
                 stroke="#F59E0B"
@@ -351,6 +394,42 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                 activeDot={{ r: 4, fill: '#F59E0B', stroke: '#ffffff', strokeWidth: 2 }}
                 name={t('trading.chart.ethBenchmark')}
               />
+
+              {/* ETH Price Line (Invisible - Just for Y-axis scaling) */}
+              <Line
+                yAxisId="right"
+                type="linear"
+                dataKey="benchmarkPrice"
+                stroke="transparent"
+                strokeWidth={0}
+                dot={false}
+                name="ETH Price"
+              />
+
+              {/* Position Area Chart */}
+              <Area
+                yAxisId="position"
+                type="linear"
+                dataKey="position"
+                stroke="#60A5FA"
+                strokeWidth={2}
+                fill="#60A5FA"
+                fillOpacity={0.3}
+                dot={false}
+                name="ETH Position"
+              />
+
+              {/* Dotted Lines Connecting Signals to Position Area */}
+              {showTradingDots && displayData.filter(point => point.event).map((point, index) => (
+                <ReferenceLine
+                  key={`signal-line-${index}`}
+                  x={point.timestampNum}
+                  stroke="#94A3B8"
+                  strokeDasharray="3 3"
+                  strokeWidth={1}
+                  opacity={0.7}
+                />
+              ))}
               
               {/* Zoom Brush */}
               <Brush 
@@ -374,6 +453,10 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
             <span>{t('trading.chart.ethBenchmark')}</span>
           </div>
           <div className="flex items-center">
+            <div className="w-4 h-3 bg-blue-400 bg-opacity-30 border-2 border-blue-400 rounded mr-2"></div>
+            <span>ETH Position</span>
+          </div>
+          <div className="flex items-center">
             <div className="w-4 h-0.5 bg-slate-400 border-dashed border-t mr-2" style={{borderStyle: 'dashed'}}></div>
             <span>{t('trading.chart.zeroLine')}</span>
           </div>
@@ -387,10 +470,15 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                 <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
                 <span>{t('trading.chart.sellSignals')}</span>
               </div>
+              <div className="flex items-center">
+                <div className="w-4 h-0.5 bg-slate-400 border-dashed mr-2" style={{borderStyle: 'dashed'}}></div>
+                <span>Signal Lines</span>
+              </div>
             </>
           )}
         </div>
       </div>
+
 
       {/* Performance Highlights */}
       {showHighlights && (
