@@ -313,13 +313,24 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
               />
               
               {/* Portfolio Return Area Chart */}
-              <Area 
-                type="monotone" 
-                dataKey="roi" 
-                stroke="#10B981" 
+              <Area
+                type="linear"
+                dataKey="roi"
+                stroke="#10B981"
                 strokeWidth={2}
                 fill="#10B981"
                 fillOpacity={0.1}
+                dot={false}
+                activeDot={{ r: 4, fill: '#10B981', stroke: '#ffffff', strokeWidth: 2 }}
+                name={t('trading.chart.portfolioReturn')}
+              />
+
+              {/* ETH Benchmark Line */}
+              <Line
+                type="linear"
+                dataKey="benchmark"
+                stroke="#F59E0B"
+                strokeWidth={2}
                 dot={(props) => {
                   const { cx, cy, payload } = props;
                   if (showTradingDots && payload && payload.event) {
@@ -337,17 +348,6 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                   }
                   return <></>;
                 }}
-                activeDot={{ r: 4, fill: '#10B981', stroke: '#ffffff', strokeWidth: 2 }}
-                name={t('trading.chart.portfolioReturn')}
-              />
-              
-              {/* ETH Benchmark Line */}
-              <Line 
-                type="monotone" 
-                dataKey="benchmark" 
-                stroke="#F59E0B" 
-                strokeWidth={2}
-                dot={false}
                 activeDot={{ r: 4, fill: '#F59E0B', stroke: '#ffffff', strokeWidth: 2 }}
                 name={t('trading.chart.ethBenchmark')}
               />
