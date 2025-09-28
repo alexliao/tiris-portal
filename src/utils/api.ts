@@ -5,6 +5,11 @@ const getAccessToken = (): string | null => {
   return localStorage.getItem('access_token');
 };
 
+// Get refresh token from localStorage
+const getRefreshToken = (): string | null => {
+  return localStorage.getItem('refresh_token');
+};
+
 interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -413,12 +418,15 @@ export interface BotCreateRequest {
 async function botApiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${BOT_API_BASE_URL}${endpoint}`;
   const token = getAccessToken();
+  const refreshToken = getRefreshToken();
 
   console.log('🔍 [BOT API DEBUG] Bot API Request:', {
     url,
     method: options.method || 'GET',
     hasToken: !!token,
-    tokenPreview: token ? `${token.substring(0, 20)}...` : 'No token'
+    hasRefreshToken: !!refreshToken,
+    tokenPreview: token ? `${token.substring(0, 20)}...` : 'No token',
+    refreshTokenPreview: refreshToken ? `${refreshToken.substring(0, 20)}...` : 'No refresh token'
   });
 
   if (options.method === 'POST' && options.body) {
@@ -431,6 +439,7 @@ async function botApiRequest<T>(endpoint: string, options: RequestInit = {}): Pr
     ...options,
     headers: {
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(refreshToken ? { 'X-Refresh-Token': refreshToken } : {}),
       'Content-Type': 'application/json',
       // Explicitly set Content-Length to fix ERR_CONTENT_LENGTH_MISMATCH
       ...(options.body && typeof options.body === 'string' ? { 'Content-Length': new TextEncoder().encode(options.body).length.toString() } : {}),
