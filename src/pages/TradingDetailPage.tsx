@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getBot, getSubAccountsByTrading } from '../utils/api';
-import { ArrowLeft, Calendar, Activity, TrendingUp, AlertCircle, Play, Square, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Calendar, Activity, TrendingUp, AlertCircle, Play, Square, Loader2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
@@ -26,8 +26,6 @@ export const TradingDetailPage: React.FC = () => {
   // Data refresh state management
   const [dataRefreshInterval, setDataRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [performanceRefreshTrigger, setPerformanceRefreshTrigger] = useState(0);
   const isRefreshing2 = useRef(false);
 
@@ -148,7 +146,6 @@ export const TradingDetailPage: React.FC = () => {
       // Trigger performance widget refresh
       setPerformanceRefreshTrigger(prev => prev + 1);
 
-      setLastRefreshTime(new Date());
       console.log('Data refresh completed successfully');
     } catch (err) {
       console.error('Failed to refresh data:', err);
@@ -159,52 +156,20 @@ export const TradingDetailPage: React.FC = () => {
     }
   };
 
-  // Manual refresh function for immediate user-triggered refresh
-  const handleManualRefresh = async () => {
-    await refreshAllData();
-  };
 
-  // Data monitoring interval management (similar to bot status monitoring pattern)
-  const startDataMonitoring = () => {
-    if (!autoRefreshEnabled) return;
-
-    // Prevent starting monitoring multiple times
-    if (dataRefreshInterval) {
-      console.log('Data monitoring already active');
-      return;
-    }
-
-    console.log('Starting data monitoring with 60-second interval');
-
-    // Create new interval for data refresh every 60 seconds
-    const interval = setInterval(() => {
-      if (autoRefreshEnabled) {
-        refreshAllData();
-      }
-    }, 60000);
-
-    setDataRefreshInterval(interval);
-  };
-
-  // Stop data monitoring
-  const stopDataMonitoring = () => {
-    console.log('Stopping data monitoring');
-    if (dataRefreshInterval) {
-      clearInterval(dataRefreshInterval);
-      setDataRefreshInterval(null);
-    }
-  };
-
-  // Start data monitoring when page loads and user is authenticated
+  // Start automatic data refresh when page loads and user is authenticated
   useEffect(() => {
-    if (isAuthenticated && !authLoading && autoRefreshEnabled && !dataRefreshInterval) {
-      console.log('Starting data monitoring on page load');
-      startDataMonitoring();
-    } else if (!autoRefreshEnabled && dataRefreshInterval) {
-      console.log('Auto-refresh disabled, stopping data monitoring');
-      stopDataMonitoring();
+    if (isAuthenticated && !authLoading && !dataRefreshInterval) {
+      console.log('Starting automatic data refresh with 60-second interval');
+
+      // Create interval for data refresh every 60 seconds
+      const interval = setInterval(() => {
+        refreshAllData();
+      }, 60000);
+
+      setDataRefreshInterval(interval);
     }
-  }, [isAuthenticated, authLoading, autoRefreshEnabled]);
+  }, [isAuthenticated, authLoading]);
 
   // Bot status checking function
   const checkBotStatus = async (botId: string) => {
@@ -684,44 +649,12 @@ export const TradingDetailPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                {/* Refresh Controls */}
-                <div className="flex items-center space-x-2 border-r border-gray-300 pr-3">
-                  {/* Auto-refresh toggle */}
-                  <button
-                    onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-                    className={`inline-flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
-                      autoRefreshEnabled
-                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    <RotateCcw className={`w-4 h-4 mr-2 ${
-                      autoRefreshEnabled && dataRefreshInterval ? 'animate-spin' : ''
-                    }`} />
-                    Auto Refresh
-                  </button>
-
-                  {/* Manual refresh button */}
-                  <button
-                    onClick={handleManualRefresh}
-                    disabled={isRefreshing}
-                    className="inline-flex items-center px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 transition-colors"
-                  >
-                    {isRefreshing ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                    )}
-                    Refresh
-                  </button>
-
-                  {/* Last updated time */}
-                  {lastRefreshTime && (
-                    <div className="text-xs text-gray-500">
-                      Last updated: {lastRefreshTime.toLocaleTimeString()}
-                    </div>
-                  )}
-                </div>
+                {/* Loading indicator during refresh */}
+                {isRefreshing && (
+                  <div className="flex items-center">
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                  </div>
+                )}
 
                 {/* Bot Controls - Always show start button, show stop when bot exists and is running */}
                 <div className="flex items-center space-x-2">
