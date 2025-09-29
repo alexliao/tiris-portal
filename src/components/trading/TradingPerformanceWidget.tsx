@@ -22,8 +22,6 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   refreshTrigger = 0
 }) => {
   const { t } = useTranslation();
-  const [currentDataIndex, setCurrentDataIndex] = useState(0);
-  const [animationComplete, setAnimationComplete] = useState(false);
   const [tradingData, setTradingData] = useState<TradingDataPoint[]>([]);
   const [metrics, setMetrics] = useState<TradingMetrics>({} as TradingMetrics);
   const [loading, setLoading] = useState(true);
@@ -86,7 +84,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
     }
   }, [refreshTrigger]);
 
-  const displayData = animationComplete ? tradingData : tradingData.slice(0, currentDataIndex);
+  const displayData = tradingData;
 
   // Handle brush change to synchronize both charts
   const handleBrushChange = (domain: any) => {
@@ -104,17 +102,6 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   // Calculate the domain for both charts
   const chartDomain = brushDomain || ['dataMin', 'dataMax'];
 
-  // Animation effect to show chart building over time
-  useEffect(() => {
-    if (!loading && tradingData.length > 0 && currentDataIndex < tradingData.length) {
-      const timer = setTimeout(() => {
-        setCurrentDataIndex(prev => prev + Math.max(10, Math.floor(tradingData.length / 20)));
-      }, 10);
-      return () => clearTimeout(timer);
-    } else if (!loading && currentDataIndex >= tradingData.length) {
-      setAnimationComplete(true);
-    }
-  }, [currentDataIndex, tradingData.length, loading]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -388,6 +375,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                   dot={false}
                   activeDot={{ r: 4, fill: '#10B981', stroke: '#ffffff', strokeWidth: 2 }}
                   name={t('trading.chart.portfolioReturn')}
+                  isAnimationActive={false}
                 />
 
                 {/* ETH Benchmark Line */}
@@ -417,6 +405,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                   }}
                   activeDot={{ r: 4, fill: '#F59E0B', stroke: '#ffffff', strokeWidth: 2 }}
                   name={t('trading.chart.ethBenchmark')}
+                  isAnimationActive={false}
                 />
 
                 {/* ETH Price Line (Invisible - Just for Y-axis scaling) */}
@@ -428,6 +417,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                   strokeWidth={0}
                   dot={false}
                   name="ETH Price"
+                  isAnimationActive={false}
                 />
 
                 {/* Dotted Lines Connecting Signals to Position Area */}
@@ -498,6 +488,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                   dot={false}
                   activeDot={{ r: 4, fill: '#60A5FA', stroke: '#ffffff', strokeWidth: 2 }}
                   name="ETH Position"
+                  isAnimationActive={false}
                 />
 
                 {/* Trading Signal Dots on Position Chart */}
