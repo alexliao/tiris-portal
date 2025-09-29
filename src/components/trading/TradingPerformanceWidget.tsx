@@ -11,6 +11,8 @@ interface TradingPerformanceWidgetProps {
   showHighlights?: boolean;
   height?: string;
   refreshTrigger?: number;
+  autoRefreshEnabled?: boolean;
+  onAutoRefreshToggle?: (enabled: boolean) => void;
 }
 
 export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> = ({
@@ -19,7 +21,9 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   showHeader = true,
   showHighlights = true,
   height = 'h-96',
-  refreshTrigger = 0
+  refreshTrigger = 0,
+  autoRefreshEnabled = true,
+  onAutoRefreshToggle
 }) => {
   const { t } = useTranslation();
   const [tradingData, setTradingData] = useState<TradingDataPoint[]>([]);
@@ -78,21 +82,58 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
 
   // Refresh trigger effect - refetch data when refreshTrigger changes
   useEffect(() => {
-    if (refreshTrigger > 0) {
-      console.log('Performance widget: Refreshing data due to trigger change');
+    console.log('Performance widget: Refresh trigger effect triggered', {
+      refreshTrigger,
+      autoRefreshEnabled,
+      shouldRefresh: refreshTrigger > 0 && autoRefreshEnabled
+    });
+
+    if (refreshTrigger > 0 && autoRefreshEnabled) {
+      console.log('Performance widget: Auto-refresh enabled, refreshing data due to trigger change');
+      fetchTradingData(false); // Refresh without showing loading state
+    } else if (refreshTrigger > 0 && !autoRefreshEnabled) {
+      console.log('Performance widget: Auto-refresh disabled, skipping chart refresh');
+    }
+  }, [refreshTrigger, autoRefreshEnabled]);
+
+  // Auto-refresh state change effect - refresh immediately when turned back on
+  useEffect(() => {
+    console.log('Performance widget: Auto-refresh state changed', {
+      autoRefreshEnabled,
+      refreshTrigger,
+      shouldRefresh: autoRefreshEnabled && refreshTrigger > 0
+    });
+
+    if (autoRefreshEnabled && refreshTrigger > 0) {
+      console.log('Performance widget: Auto-refresh turned on, refreshing chart with latest data');
       fetchTradingData(false); // Refresh without showing loading state
     }
-  }, [refreshTrigger]);
+  }, [autoRefreshEnabled]);
+
+  // Effect to restore brush domain after data refresh when auto-refresh is disabled
+  useEffect(() => {
+    if (tradingData.length > 0 && brushDomain && !autoRefreshEnabled) {
+      // When auto-refresh is disabled and we have brush domain and new data,
+      // ensure the brush domain is maintained
+      setTimeout(() => {
+        setBrushDomain(brushDomain);
+      }, 50);
+    }
+  }, [tradingData, autoRefreshEnabled]);
 
   const displayData = tradingData;
 
   // Handle brush change to synchronize both charts
-  const handleBrushChange = (domain: any) => {
+  const handleBrushChange = (domain: { startIndex?: number; endIndex?: number } | null) => {
     if (domain && domain.startIndex !== undefined && domain.endIndex !== undefined) {
       const startTime = displayData[domain.startIndex]?.timestampNum;
       const endTime = displayData[domain.endIndex]?.timestampNum;
       if (startTime && endTime) {
         setBrushDomain([startTime, endTime]);
+        // Automatically turn off auto-refresh when user manually adjusts brush
+        if (onAutoRefreshToggle && autoRefreshEnabled) {
+          onAutoRefreshToggle(false);
+        }
       }
     } else {
       setBrushDomain(null);
@@ -129,7 +170,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
     });
   };
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
 
@@ -287,19 +328,50 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                 {trading.name} - {t('trading.detail.performance')} Chart
               </h3>
             )}
-            <button
-              onClick={() => setShowTradingDots(!showTradingDots)}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-['Nunito'] transition-colors ${
-                showTradingDots 
-                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <div className={`w-2 h-2 rounded-full mr-2 ${
-                showTradingDots ? 'bg-blue-600' : 'bg-gray-400'
-              }`}></div>
-              {showTradingDots ? t('trading.chart.hideTradingSignals') : t('trading.chart.showTradingSignals')}
-            </button>
+            <div className="flex items-center justify-between flex-1 ml-4">
+              <button
+                onClick={() => setShowTradingDots(!showTradingDots)}
+                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-['Nunito'] transition-colors ${
+                  showTradingDots
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full mr-2 ${
+                  showTradingDots ? 'bg-blue-600' : 'bg-gray-400'
+                }`}></div>
+                {showTradingDots ? t('trading.chart.hideTradingSignals') : t('trading.chart.showTradingSignals')}
+              </button>
+              {onAutoRefreshToggle && (
+                <div className="flex items-center space-x-2 text-sm font-['Nunito']">
+                  <span className="text-gray-600">Auto Refresh:</span>
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={autoRefreshEnabled}
+                      onChange={(e) => onAutoRefreshToggle(e.target.checked)}
+                      className="sr-only"
+                    />
+                    <div
+                      className={`w-10 h-5 rounded-full transition-colors cursor-pointer flex items-center ${
+                        autoRefreshEnabled ? 'bg-green-500' : 'bg-gray-300'
+                      }`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onAutoRefreshToggle(!autoRefreshEnabled);
+                      }}
+                    >
+                      <div
+                        className={`w-3 h-3 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out ml-0.5 pointer-events-none ${
+                          autoRefreshEnabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <p className="text-sm font-['Nunito'] text-gray-600">
             {t('trading.chart.portfolioValue')}: {formatCurrency(displayData[displayData.length - 1]?.netValue || 0)} | 

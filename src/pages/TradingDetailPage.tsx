@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
@@ -27,6 +27,7 @@ export const TradingDetailPage: React.FC = () => {
   const [dataRefreshInterval, setDataRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [performanceRefreshTrigger, setPerformanceRefreshTrigger] = useState(0);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const isRefreshing2 = useRef(false);
 
 
@@ -121,56 +122,6 @@ export const TradingDetailPage: React.FC = () => {
     }
   }, [id, isAuthenticated, authLoading]);
 
-  // Unified data refresh function
-  const refreshAllData = async () => {
-    // Prevent concurrent refreshes
-    if (isRefreshing2.current) {
-      console.log('Data refresh already in progress, skipping');
-      return;
-    }
-
-    isRefreshing2.current = true;
-    setIsRefreshing(true);
-
-    try {
-      console.log('Refreshing all page data');
-
-      // Refresh trading data (without showing loading state)
-      await fetchTradingData(false);
-
-      // Refresh bot status if bot exists
-      if (bot?.record.id) {
-        await checkBotStatus(bot.record.id);
-      }
-
-      // Trigger performance widget refresh
-      setPerformanceRefreshTrigger(prev => prev + 1);
-
-      console.log('Data refresh completed successfully');
-    } catch (err) {
-      console.error('Failed to refresh data:', err);
-      // Don't throw error, just log it to avoid breaking the interval
-    } finally {
-      isRefreshing2.current = false;
-      setIsRefreshing(false);
-    }
-  };
-
-
-  // Start automatic data refresh when page loads and user is authenticated
-  useEffect(() => {
-    if (isAuthenticated && !authLoading && !dataRefreshInterval) {
-      console.log('Starting automatic data refresh with 60-second interval');
-
-      // Create interval for data refresh every 60 seconds
-      const interval = setInterval(() => {
-        refreshAllData();
-      }, 60000);
-
-      setDataRefreshInterval(interval);
-    }
-  }, [isAuthenticated, authLoading]);
-
   // Bot status checking function
   const checkBotStatus = async (botId: string) => {
     // Prevent concurrent status checks
@@ -256,6 +207,70 @@ export const TradingDetailPage: React.FC = () => {
       isCheckingStatus.current = false;
     }
   };
+
+  // Unified data refresh function
+  const refreshAllData = useCallback(async () => {
+    // Prevent concurrent refreshes
+    if (isRefreshing2.current) {
+      console.log('Data refresh already in progress, skipping');
+      return;
+    }
+
+    isRefreshing2.current = true;
+    setIsRefreshing(true);
+
+    try {
+      console.log('Refreshing all page data, auto-refresh enabled:', autoRefreshEnabled);
+
+      // Refresh trading data (without showing loading state)
+      await fetchTradingData(false);
+
+      // Refresh bot status if bot exists
+      if (bot?.record.id) {
+        await checkBotStatus(bot.record.id);
+      }
+
+      // Always trigger performance widget refresh - the widget will decide how to handle it
+      const newTrigger = Date.now();
+      console.log('Setting performance refresh trigger to:', newTrigger);
+      setPerformanceRefreshTrigger(newTrigger);
+
+      console.log('Data refresh completed successfully');
+    } catch (err) {
+      console.error('Failed to refresh data:', err);
+      // Don't throw error, just log it to avoid breaking the interval
+    } finally {
+      isRefreshing2.current = false;
+      setIsRefreshing(false);
+    }
+  }, [autoRefreshEnabled, bot, fetchTradingData, checkBotStatus]);
+
+
+  // Start automatic data refresh when page loads and user is authenticated
+  useEffect(() => {
+    console.log('Data refresh interval effect triggered', {
+      isAuthenticated,
+      authLoading,
+      dataRefreshInterval: !!dataRefreshInterval,
+      shouldStart: isAuthenticated && !authLoading && !dataRefreshInterval
+    });
+
+    if (isAuthenticated && !authLoading && !dataRefreshInterval) {
+      console.log('Starting automatic data refresh with 60-second interval');
+
+      // Create interval for data refresh every 60 seconds
+      const interval = setInterval(() => {
+        console.log('60-second interval triggered, calling refreshAllData');
+        refreshAllData();
+      }, 60000);
+
+      setDataRefreshInterval(interval);
+
+      // Also call it once immediately for testing
+      console.log('Calling refreshAllData immediately for testing');
+      setTimeout(() => refreshAllData(), 1000);
+    }
+  }, [isAuthenticated, authLoading, dataRefreshInterval]);
 
   // Start periodic status checking when bot is running
   const startBotStatusMonitoring = (botId: string) => {
@@ -721,6 +736,8 @@ export const TradingDetailPage: React.FC = () => {
             showHeader={false}
             showHighlights={false}
             refreshTrigger={performanceRefreshTrigger}
+            autoRefreshEnabled={autoRefreshEnabled}
+            onAutoRefreshToggle={setAutoRefreshEnabled}
           />
         </div>
       </div>
