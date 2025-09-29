@@ -240,7 +240,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   // No data state
   if (tradingData.length === 0) {
     return (
-      <div className={`bg-white rounded-lg shadow-lg border p-6 ${className}`}>
+      <div className={`bg-white rounded-lg shadow-lg p-6 ${className}`}>
         {showHeader && (
           <div className="mb-4">
             <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404] mb-2">
@@ -334,7 +334,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
             <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
               <ComposedChart
                 data={displayData}
-                margin={{ top: 5, right: 80, left: 20, bottom: 5 }}
+                margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
                 syncId="tradingCharts"
                 style={{ outline: 'none' }}
                 tabIndex={-1}
@@ -450,7 +450,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
             <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
               <ComposedChart
                 data={displayData}
-                margin={{ top: 20, right: 80, left: 20, bottom: 50 }}
+                margin={{ top: 20, right: 5, left: 5, bottom: 50 }}
                 syncId="tradingCharts"
                 style={{ outline: 'none' }}
                 tabIndex={-1}
