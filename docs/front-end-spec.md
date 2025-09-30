@@ -22,10 +22,10 @@ This document defines the user experience goals, information architecture, user 
 
 ### Usability Goals
 
-1. **Ease of Learning:** New users can understand ML trading concepts and start simulation within 10 minutes of landing
-2. **Education-First Confidence:** 90% of users feel "confident" or "very confident" about trading after completing simulation phase
+1. **Ease of Learning:** New users can understand ML trading concepts and start paper trading within 10 minutes of landing
+2. **Education-First Confidence:** 90% of users feel "confident" or "very confident" about trading after completing paper trading phase
 3. **Transparent Understanding:** 80% of users can correctly explain key performance metrics (ROI, Sharpe ratio) after using the platform
-4. **Efficient Progression:** Users complete 5+ simulation trades before feeling ready for live trading, with clear progress indicators
+4. **Efficient Progression:** Users complete 5+ paper trades before feeling ready for live trading, with clear progress indicators
 5. **Error Prevention:** Clear validation and educational context for all financial decisions and configurations
 
 ### Design Principles
@@ -118,19 +118,19 @@ graph TD
     K --> O[Return to Landing or Share Results]
 ```
 
-### Flow 2: Education-First Onboarding & First Simulation Trade (PLANNED)
+### Flow 2: Education-First Onboarding & First Paper Trade (PLANNED)
 
-**User Goal:** Transform from convinced prospect to confident simulation trader who understands ML strategy performance
+**User Goal:** Transform from convinced prospect to confident paper trader who understands ML strategy performance
 
 **Entry Points:** 
 - Post-performance page with increased trust
 - Direct registration from high-intent users  
 - Return visitor accessing dashboard
 
-**Success Criteria:** 
-- User completes first simulation trade within 10 minutes of authentication
+**Success Criteria:**
+- User completes first paper trade within 10 minutes of authentication
 - User can explain what the ML algorithm decided and why
-- User expresses confidence to continue simulation trading
+- User expresses confidence to continue paper trading
 
 #### Flow Diagram
 
@@ -142,7 +142,7 @@ graph TD
     
     C --> E[See Backtesting Results]
     E --> F[Sign In via Google OAuth]
-    F --> G[Welcome & Simulation Introduction]
+    F --> G[Welcome & Paper Trading Introduction]
     
     D --> G
     G --> H[Select Virtual Portfolio Amount]
@@ -164,8 +164,8 @@ graph TD
 - **Authentication fails:** Clear error message with retry option, fallback to email signup
 - **Market closed/low liquidity:** Educational message explaining timing, option to see historical examples
 - **User confusion about ML recommendation:** Progressive explanation system with "Tell me more" at each level
-- **Technical errors during simulation:** Graceful fallback with apology and alternative learning path
-- **User wants to skip education:** Gentle redirect explaining why simulation comes first, with progress indicators
+- **Technical errors during paper trading:** Graceful fallback with apology and alternative learning path
+- **User wants to skip education:** Gentle redirect explaining why paper trading comes first, with progress indicators
 
 **Notes:** This flow prioritizes education over speed, which aligns with your core principle. The ML recommendation explanation is crucial - users need to trust the algorithm before using real money. The "understanding check" prevents users from blindly clicking through without learning.
 
@@ -182,14 +182,14 @@ graph TD
 **Key Elements:**
 - Compelling headline: "ML-Powered Trading Made Simple" with credibility proof
 - Live/demo trading performance visualization showing profitable ML decisions
-- Clear "Start Learning" CTA that leads to simulation, not immediate signup
+- Clear "Start Learning" CTA that leads to paper trading, not immediate signup
 - Trust indicators: backtesting results, verification badges, testimonials
 
 **Interaction Notes:** Hero section should scroll to reveal more detailed performance proof. ML demo should be interactive but not overwhelming - simple buy/sell indicators with profit/loss visualization.
 
 **Design File Reference:** [Future Figma frame link]
 
-#### Screen 2: Simulation Trading Interface
+#### Screen 2: Paper Trading Interface
 
 **Purpose:** Provide risk-free learning environment where users build confidence in ML strategies
 
@@ -198,7 +198,7 @@ graph TD
 - Current market conditions panel with educational context
 - ML recommendation panel with confidence level and "Why?" explanation
 - Simple Execute/Learn More action buttons
-- Progress tracker showing simulation milestones
+- Progress tracker showing paper trading milestones
 
 **Interaction Notes:** Every ML recommendation includes expandable explanation. Trade execution triggers celebratory micro-interactions for successful learning moments. Portfolio updates should be visually satisfying to encourage continued engagement.
 
@@ -214,7 +214,7 @@ graph TD
 - Backtesting results across different market conditions
 - Recent trading decisions with explanations and outcomes
 
-**Interaction Notes:** All financial metrics include educational tooltips. Charts should be interactive with zoom/filter capabilities. Performance data updates in real-time during simulation mode.
+**Interaction Notes:** All financial metrics include educational tooltips. Charts should be interactive with zoom/filter capabilities. Performance data updates in real-time during paper trading mode.
 
 **Design File Reference:** [Future Figma frame link]
 
@@ -264,7 +264,7 @@ graph TD
 
 **Usage Guidelines:** Always include time period controls. Use consistent color coding (green=profit, red=loss, blue=neutral). Provide both absolute values and percentage changes. Include accessibility features for screen readers.
 
-#### Component 4: SimulationProgressTracker
+#### Component 4: PaperTradingProgressTracker
 
 **Purpose:** Guide users through education-first journey with clear milestones and encouragement
 
@@ -377,7 +377,7 @@ graph TD
 - Manual keyboard navigation testing for all critical trading flows
 - Screen reader testing with NVDA/JAWS for financial data comprehension
 - Color contrast validation for all profit/loss indicators and status messages
-- User testing with actual users who have disabilities, particularly for trading simulation flows
+- User testing with actual users who have disabilities, particularly for paper trading flows
 
 ## Responsiveness Strategy
 
@@ -399,7 +399,7 @@ graph TD
 - Wide: Additional contextual panels, larger charts with more detailed data visualization
 
 **Navigation Changes:** 
-- Mobile: Hamburger menu with clear "Start Simulation" CTA always visible
+- Mobile: Hamburger menu with clear "Start Paper Trading" CTA always visible
 - Tablet: Tab-based navigation with icon + text labels
 - Desktop: Full horizontal navigation with dropdown menus for sub-sections
 - Wide: Additional quick-access shortcuts and breadcrumb navigation
@@ -433,7 +433,7 @@ graph TD
 - **ML Recommendation Reveal:** Gentle slide-in with confidence indicator animation (Duration: 400ms, Easing: ease-in-out) - builds anticipation for algorithm insights
 - **Trade Execution Success:** Subtle green pulse animation with checkmark (Duration: 600ms, Easing: bounce) - provides satisfying confirmation feedback
 - **Chart Data Loading:** Progressive line drawing animation for performance charts (Duration: 1200ms, Easing: ease-in-out) - makes data feel more trustworthy and engaging
-- **Simulation Progress:** Smooth progress bar fill with celebration micro-animations at milestones (Duration: 300ms, Easing: ease-out) - encourages continued learning
+- **Paper Trading Progress:** Smooth progress bar fill with celebration micro-animations at milestones (Duration: 300ms, Easing: ease-out) - encourages continued learning
 - **Error State Recovery:** Gentle shake animation for form errors, smooth fade-in for correction guidance (Duration: 200ms, Easing: ease-out) - helps without alarming users
 - **Navigation Transitions:** Smooth page transitions that maintain context between sections (Duration: 250ms, Easing: ease-in-out) - reduces cognitive load during exploration
 

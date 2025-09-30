@@ -66,9 +66,9 @@ export const TradingDetailPage: React.FC = () => {
 
       // Fetch exchange binding details
       try {
-        const isSimulationOrBacktest = foundTrading.type === 'simulation' || foundTrading.type === 'backtest';
+        const isPaperOrBacktest = foundTrading.type === 'paper' || foundTrading.type === 'backtest';
 
-        if (isSimulationOrBacktest) {
+        if (isPaperOrBacktest) {
           const publicExchangeBindings = await getPublicExchangeBindings();
           if (publicExchangeBindings.length > 0) {
             setExchangeBinding(publicExchangeBindings[0]);

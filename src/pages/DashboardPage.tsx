@@ -17,7 +17,7 @@ export const DashboardPage: React.FC = () => {
   const [bots, setBots] = useState<Bot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'backtest' | 'simulation' | 'real'>('simulation');
+  const [activeTab, setActiveTab] = useState<'backtest' | 'paper' | 'real'>('paper');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
@@ -79,7 +79,7 @@ export const DashboardPage: React.FC = () => {
     // Add the new trading to the list and refresh the data
     setTradings(prev => [newTrading, ...prev]);
     // Optionally switch to the tab of the newly created trading
-    setActiveTab(newTrading.type as 'backtest' | 'simulation' | 'real');
+    setActiveTab(newTrading.type as 'backtest' | 'paper' | 'real');
   };
 
   const handleDeleteClick = (trading: Trading, event: React.MouseEvent) => {
@@ -302,7 +302,7 @@ export const DashboardPage: React.FC = () => {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
               {[
-                { key: 'simulation', label: t('trading.type.simulation') || 'Simulation', icon: Calendar },
+                { key: 'paper', label: t('trading.type.paper') || 'Paper', icon: Calendar },
                 { key: 'backtest', label: t('trading.type.backtest') || 'Backtest', icon: Activity },
                 { key: 'real', label: t('trading.type.real') || 'Real', icon: TrendingUp }
               ].map((tab) => {
@@ -311,7 +311,7 @@ export const DashboardPage: React.FC = () => {
                 return (
                   <button
                     key={tab.key}
-                    onClick={() => setActiveTab(tab.key as 'backtest' | 'simulation' | 'real')}
+                    onClick={() => setActiveTab(tab.key as 'backtest' | 'paper' | 'real')}
                     className={`${
                       isActive
                         ? 'border-blue-500 text-blue-600'

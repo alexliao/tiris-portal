@@ -162,5 +162,5 @@ Epic 1 is complete with significant performance demonstration enhancement that s
 1. ✅ Performance demonstration implemented and proven effective
 2. **Recommended Next Epic**: Google OAuth Integration & User Onboarding
 3. User feedback collection on performance chart effectiveness
-4. Prepare foundation for simulation trading environment
+4. Prepare foundation for paper trading environment
 5. Plan Epic 2: Authentication & User Dashboard

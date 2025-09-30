@@ -11,7 +11,7 @@
 The Tiris Portal is a new ML-powered quantitative trading platform frontend designed for crypto-curious non-technical investors. The platform requires:
 - Modern responsive web application
 - Future integration with tiris-backend REST APIs  
-- Education-first user journey with simulation trading
+- Education-first user journey with paper trading
 - Mobile-first design for cryptocurrency trading
 - Professional appearance to build trust with financial users
 
@@ -505,7 +505,7 @@ describe('HeroSection', () => {
     render(<HeroSection />);
     
     const ctaButton = screen.getByRole('button', { 
-      name: /start simulation/i 
+      name: /start paper trading/i 
     });
     expect(ctaButton).toBeInTheDocument();
   });
@@ -514,8 +514,8 @@ describe('HeroSection', () => {
     const mockOnClick = vi.fn();
     render(<HeroSection onCtaClick={mockOnClick} />);
     
-    const ctaButton = screen.getByRole('button', { 
-      name: /start simulation/i 
+    const ctaButton = screen.getByRole('button', {
+      name: /start paper trading/i
     });
     fireEvent.click(ctaButton);
     

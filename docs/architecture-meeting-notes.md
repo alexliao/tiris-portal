@@ -84,7 +84,7 @@
 - 60fps+ performance for real-time trading data
 - 3D visualizations of portfolio performance and ML model decisions
 - Unity ML-Agents could visualize strategy decision-making processes
-- Natural gamification for "simulation trading" experience
+- Natural gamification for "paper trading" experience
 - Particle systems perfect for market data flow visualization
 
 **Reality Check:** Too experimental for financial platform user trust and accessibility requirements

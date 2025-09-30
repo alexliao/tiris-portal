@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { X, AlertCircle } from 'lucide-react';
 import {
   createTrading,
-  createSimulationTrading,
+  createPaperTrading,
   getPublicExchangeBindings,
   getExchangeBindings,
   getStrategies,
@@ -16,7 +16,7 @@ import {
 interface CreateTradingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  tradingType: 'backtest' | 'simulation' | 'real';
+  tradingType: 'backtest' | 'paper' | 'real';
   onSuccess: (trading: Trading) => void;
 }
 
@@ -59,7 +59,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
 
     const typeNames = {
       backtest: 'Backtest',
-      simulation: 'Simulation',
+      paper: 'Paper',
       real: 'Live Trading'
     };
 
@@ -78,8 +78,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
         type: tradingType,
       }));
 
-      // For simulation, also fetch bot data
-      if (tradingType === 'simulation') {
+      // For paper trading, also fetch bot data
+      if (tradingType === 'paper') {
         fetchBotData();
       }
     }
@@ -90,7 +90,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       setIsLoadingBindings(true);
       setError(null);
 
-      // For simulation, get public exchange bindings
+      // For paper trading, get public exchange bindings
       // For real trading, get user's private exchange bindings
       // For backtest, also use public exchange bindings
       const bindings = tradingType === 'real'
@@ -155,8 +155,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       return;
     }
 
-    // For simulation trading, validate bot parameters
-    if (tradingType === 'simulation') {
+    // For paper trading, validate bot parameters
+    if (tradingType === 'paper') {
       if (!selectedStrategy) {
         setError('Please select a strategy for the trading bot');
         return;
@@ -170,8 +170,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       let newTrading: Trading;
       const requestData = { ...formData };
 
-      // Add bot parameters to info if this is simulation
-      if (tradingType === 'simulation') {
+      // Add bot parameters to info if this is paper trading
+      if (tradingType === 'paper') {
         requestData.info = {
           ...requestData.info,
           strategy_name: selectedStrategy,
@@ -183,9 +183,9 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       console.log('🔍 [MODAL DEBUG] Selected strategy:', selectedStrategy);
 
       // Use different creation methods based on trading type
-      if (tradingType === 'simulation') {
-        console.log('Creating simulation trading with business logic...');
-        newTrading = await createSimulationTrading(requestData);
+      if (tradingType === 'paper') {
+        console.log('Creating paper trading with business logic...');
+        newTrading = await createPaperTrading(requestData);
       } else {
         console.log('Creating standard trading...');
         newTrading = await createTrading(requestData);
@@ -254,11 +254,11 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
           </button>
         </div>
 
-        {/* Simulation Info */}
-        {tradingType === 'simulation' && (
+        {/* Paper Trading Info */}
+        {tradingType === 'paper' && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-sm text-blue-800">
-              <strong>{t('trading.type.simulation')} Setup:</strong> {t('trading.create.simulationInfo')}
+              <strong>{t('trading.type.paper')} Setup:</strong> {t('trading.create.paperInfo')}
             </p>
             <p className="text-sm text-blue-700 mt-1">
               You'll need to select a trading strategy and exchange type for the bot.
@@ -330,8 +330,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
             </select>
           </div>
 
-          {/* Bot Parameters for Simulation */}
-          {tradingType === 'simulation' && (
+          {/* Bot Parameters for Paper Trading */}
+          {tradingType === 'paper' && (
             <>
               {/* Strategy Selection */}
               <div className="mb-4">
@@ -398,7 +398,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isLoading || isLoadingBindings || (tradingType === 'simulation' && isLoadingBotData)}
+              disabled={isLoading || isLoadingBindings || (tradingType === 'paper' && isLoadingBotData)}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? t('common.creating') : t('common.create')}

@@ -22,7 +22,7 @@ Tiris Portal is a user-facing web application that democratizes quantitative cry
 - Most trading platforms assume technical expertise
 - Limited transparency in strategy performance and decision-making
 - No comprehensive education-first onboarding
-- Lack of risk-free simulation environments
+- Lack of risk-free paper trading environments
 - Complex user interfaces designed for professional traders
 
 ### Urgency and Importance
@@ -32,7 +32,7 @@ The cryptocurrency market continues to grow rapidly, but the tools remain inacce
 
 ### Core Concept and Approach
 Tiris Portal serves as the frontend gateway to a comprehensive quantitative trading ecosystem, featuring:
-- **Education-First Journey**: Users start with risk-free simulation trading before any real investment
+- **Education-First Journey**: Users start with risk-free paper trading before any real investment
 - **ML-Powered Strategies**: Advanced machine learning algorithms that continuously learn and adapt to market conditions
 - **Rigorously Verified Performance**: All strategies undergo extensive backtesting across multiple market cycles and real trading validation
 - **Transparent Black-Box**: While users don't see algorithm internals, they have full visibility into buy/sell decisions and performance metrics
@@ -42,7 +42,7 @@ Tiris Portal serves as the frontend gateway to a comprehensive quantitative trad
 1. **Machine Learning Excellence**: Advanced ML algorithms that continuously learn and adapt, unlike static rule-based trading bots
 2. **Rigorous Validation Process**: Multiple rounds of backtesting across different market conditions plus real trading verification
 3. **Non-Custodial Architecture**: Unlike hedge funds, users maintain complete control of their assets in their own exchange accounts
-4. **Education-Before-Investment**: Mandatory simulation environment prevents uninformed trading
+4. **Education-Before-Investment**: Mandatory paper trading environment prevents uninformed trading
 5. **Proven Performance Track Record**: Only strategies with extensively verified profitability are offered to users
 6. **User-Centric Design**: Built specifically for non-technical users with intuitive interfaces
 
@@ -50,7 +50,7 @@ Tiris Portal serves as the frontend gateway to a comprehensive quantitative trad
 - **Superior Technology**: Machine learning algorithms provide adaptive intelligence that outperforms static trading bots
 - **Proven Excellence**: Extensive backtesting and real trading validation creates unmatched credibility
 - **Trust Through Transparency**: Users can see exactly how ML strategies perform across different market conditions
-- **Risk Mitigation**: Education and simulation reduce user losses and increase confidence
+- **Risk Mitigation**: Education and paper trading reduce user losses and increase confidence
 - **Market Gap**: No existing solution combines ML excellence, rigorous validation, education, and user-friendly design
 - **Scalable Architecture**: Microservice design allows for rapid feature expansion
 
@@ -86,20 +86,20 @@ Tiris Portal serves as the frontend gateway to a comprehensive quantitative trad
 
 ### Business Objectives
 - **User Acquisition**: 10,000 registered users within 6 months of MVP launch
-- **User Activation**: 70% of registered users complete simulation trading within first week
-- **Conversion Rate**: 25% of simulation users progress to live trading within 30 days
+- **User Activation**: 70% of registered users complete paper trading within first week
+- **Conversion Rate**: 25% of paper trading users progress to live trading within 30 days
 - **User Retention**: 60% monthly active user retention rate after 3 months
 
 ### User Success Metrics
-- **Education Completion**: Average user completes 5+ simulation trades before live trading
-- **User Confidence**: 90% of users report feeling "confident" or "very confident" about trading after simulation
+- **Education Completion**: Average user completes 5+ paper trades before live trading
+- **User Confidence**: 90% of users report feeling "confident" or "very confident" about trading after paper trading
 - **Performance Understanding**: 80% of users can correctly explain key performance metrics (ROI, Sharpe ratio)
 - **Platform Satisfaction**: Net Promoter Score (NPS) of 50+ within first 6 months
 
 ### Key Performance Indicators (KPIs)
-- **Time to First Simulation Trade**: < 10 minutes from registration
-- **Simulation Engagement**: Average 15+ simulation trades per user before live trading
-- **Live Trading Adoption**: 25% conversion rate from simulation to live trading
+- **Time to First Paper Trade**: < 10 minutes from registration
+- **Paper Trading Engagement**: Average 15+ paper trades per user before live trading
+- **Live Trading Adoption**: 25% conversion rate from paper trading to live trading
 - **User Support Tickets**: < 5% of active users require support per month
 - **Platform Uptime**: 99.9% availability during business hours
 
@@ -125,14 +125,14 @@ Tiris Portal serves as the frontend gateway to a comprehensive quantitative trad
 - **Google OAuth Integration:** Seamless single sign-on authentication for quick and secure user onboarding
 - **User Dashboard Foundation:** Basic dashboard structure for authenticated users
 - **User Profile Management:** Secure user data handling and preferences
-- **Onboarding Flow Design:** Post-authentication welcome experience leading to simulation
+- **Onboarding Flow Design:** Post-authentication welcome experience leading to paper trading
 
-### Phase 3: Simulation & Education (FUTURE)
+### Phase 3: Paper Trading & Education (FUTURE)
 
 **Core Features Planned:**
 
-- **Simulation Trading Environment:** Full-featured paper trading with virtual funds using real market data and actual trading strategies
-- **Educational Content Integration:** Embedded explanations and guidance throughout the simulation experience
+- **Paper Trading Environment:** Full-featured paper trading with virtual funds using real market data and actual trading strategies
+- **Educational Content Integration:** Embedded explanations and guidance throughout the paper trading experience
 - **Progress Tracking:** Clear milestones and progress indicators for user advancement
 
 ### Out of Scope for MVP
@@ -156,7 +156,7 @@ The initial phase successfully establishes trust and credibility through compell
 Authentication and onboarding phase will be successful when:
 - 70%+ of landing page visitors who click "Performance" proceed to sign up
 - 90%+ of authenticated users complete initial profile setup
-- Users report understanding the performance metrics before requesting simulation access
+- Users report understanding the performance metrics before requesting paper trading access
 
 ## Post-MVP Vision
 
@@ -182,7 +182,7 @@ Within 1-2 years, Tiris Portal becomes the leading platform for democratized qua
 ### Platform Requirements
 - **Target Platforms:** Responsive web application with mobile-first design
 - **Browser/OS Support:** Modern browsers (Chrome, Firefox, Safari, Edge) on desktop and mobile
-- **Performance Requirements:** Page load times under 3 seconds, real-time data updates for trading simulation
+- **Performance Requirements:** Page load times under 3 seconds, real-time data updates for paper trading
 
 ### Technology Preferences
 - **Frontend:** Modern JavaScript framework (React recommended) with responsive CSS framework
@@ -205,7 +205,7 @@ Within 1-2 years, Tiris Portal becomes the leading platform for democratized qua
 - **Technical:** Must integrate with existing tiris-backend infrastructure
 
 ### Key Assumptions
-- Users are willing to spend time in simulation before live trading
+- Users are willing to spend time in paper trading before live trading
 - Google OAuth provides sufficient authentication coverage for MVP
 - Single proven trading strategy is adequate for initial validation
 - Responsive web application meets user needs without native mobile apps
@@ -215,21 +215,21 @@ Within 1-2 years, Tiris Portal becomes the leading platform for democratized qua
 ## Risks & Open Questions
 
 ### Key Risks
-- **User Adoption Risk:** Users may abandon the platform if simulation phase feels too lengthy or complex
+- **User Adoption Risk:** Users may abandon the platform if paper trading phase feels too lengthy or complex
 - **Technical Integration Risk:** Dependency on backend services could cause delays if APIs are unstable
 - **Market Competition Risk:** Established platforms may launch similar features before our MVP
 - **User Education Risk:** Non-technical users may still find financial concepts too complex despite simplified presentation
 
 ### Open Questions
-- What is the optimal number of simulation trades before users feel ready for live trading?
+- What is the optimal number of paper trades before users feel ready for live trading?
 - How detailed should performance metrics be without overwhelming non-technical users?
-- Should there be gamification elements to increase engagement during simulation?
+- Should there be gamification elements to increase engagement during paper trading?
 - What specific educational content formats work best for our target audience?
 
 ### Areas Needing Further Research
-- User testing on simulation interface complexity and engagement
+- User testing on paper trading interface complexity and engagement
 - Market analysis of competing education-first trading platforms
-- Technical performance benchmarking for real-time trading simulation
+- Technical performance benchmarking for real-time paper trading
 - User research on preferred authentication methods and privacy concerns
 
 ## Next Steps

@@ -123,7 +123,7 @@ test.describe('Trading Deletion with Bot Management', () => {
     await page.goto('/dashboard');
     await expect(page.locator('h1:has-text("Dashboard")')).toBeVisible({ timeout: 10000 });
 
-    // Check different trading types (real, simulation, backtest)
+    // Check different trading types (real, paper, backtest)
     const realTradingRow = page.locator('table tbody tr:has-text("Real")').first();
 
     if (await realTradingRow.count() > 0) {
@@ -137,11 +137,11 @@ test.describe('Trading Deletion with Bot Management', () => {
       await page.locator('button:has-text("Cancel")').click();
     }
 
-    // Test simulation trading deletion
-    const simulationTradingRow = page.locator('table tbody tr:has-text("Simulation")').first();
+    // Test paper trading deletion
+    const paperTradingRow = page.locator('table tbody tr:has-text("Paper")').first();
 
-    if (await simulationTradingRow.count() > 0) {
-      const deleteButton = simulationTradingRow.locator('button[title="Delete"], button:has-text("Delete")');
+    if (await paperTradingRow.count() > 0) {
+      const deleteButton = paperTradingRow.locator('button[title="Delete"], button:has-text("Delete")');
       await deleteButton.click();
 
       // Should show confirmation dialog

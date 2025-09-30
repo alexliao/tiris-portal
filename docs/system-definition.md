@@ -16,7 +16,7 @@ Tiris is a democratized quantitative trading platform that enables users to crea
 ### 1.2 Core Value Proposition
 - **Automated Intelligence**: ML-powered trading strategies execute automatically on behalf of users
 - **Non-Custodial Security**: Unlike traditional hedge funds, Tiris never controls user assets—all funds remain in users' own exchange accounts
-- **Risk-Free Learning**: Comprehensive simulation and backtesting environments before live trading
+- **Risk-Free Learning**: Comprehensive paper trading and backtesting environments before live trading
 - **Universal Accessibility**: Complex quantitative trading made simple through user-friendly interfaces
 
 ### 1.3 Portal Context
@@ -37,7 +37,7 @@ The Tiris Portal serves as the primary user interface for the Tiris trading ecos
 - Discover and understand automated trading capabilities
 - Manage exchange integrations and trading configurations
 - Monitor real-time trading performance and analytics
-- Access simulation environments for risk-free strategy testing
+- Access paper trading environments for risk-free strategy testing
 
 ### 2.2 Core Features
 
@@ -68,7 +68,7 @@ The Tiris Portal serves as the primary user interface for the Tiris trading ecos
 - Real-time performance monitoring and analytics
 - Comprehensive trading history and audit logs
 
-#### **Simulation Environment**
+#### **Paper Trading Environment**
 - Paper trading with virtual funds
 - Historical backtesting capabilities
 - Strategy performance validation
@@ -79,7 +79,7 @@ The Tiris Portal serves as the primary user interface for the Tiris trading ecos
 2. **Performance Review**: Access dedicated `/performance` page to view ML bot performance data
 3. **Trust Building**: Review interactive charts showing 68.5% win rate and +140% ROI
 4. **Authentication**: Sign in via SSO provider (planned)
-5. **Learning**: Access simulation trading to understand system capabilities (planned)
+5. **Learning**: Access paper trading to understand system capabilities (planned)
 6. **Integration**: Bind cryptocurrency exchange accounts (planned)
 7. **Configuration**: Create and customize trading sessions (planned)
 8. **Monitoring**: Track performance and manage active trades (planned)
@@ -186,7 +186,7 @@ The following features are implemented and operational:
 ### 5.3 Development Roadmap
 - **Sprint 1**: Landing page and authentication infrastructure
 - **Sprint 2**: User dashboard and basic exchange integration
-- **Sprint 3**: Simulation trading environment
+- **Sprint 3**: Paper trading environment
 - **Sprint 4**: Live trading management interface
 - **Sprint 5**: Performance analytics and monitoring tools
 

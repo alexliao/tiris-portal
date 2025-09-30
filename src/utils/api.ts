@@ -264,7 +264,7 @@ export interface ExchangeBinding {
 export interface CreateTradingRequest {
   name: string;
   exchange_binding_id: string;
-  type: 'backtest' | 'simulation' | 'real';
+  type: 'backtest' | 'paper' | 'real';
   info: {
     strategy?: string;
     risk_level?: string;
@@ -555,16 +555,16 @@ export async function deleteBot(botId: string): Promise<void> {
   });
 }
 
-// Complete simulation trading creation according to business logic
-export async function createSimulationTrading(request: CreateTradingRequest): Promise<Trading> {
-  console.log('🔍 [SIMULATION DEBUG] Creating simulation trading with business logic steps...');
-  console.log('🔍 [SIMULATION DEBUG] Request received:', request);
+// Complete paper trading creation according to business logic
+export async function createPaperTrading(request: CreateTradingRequest): Promise<Trading> {
+  console.log('🔍 [PAPER DEBUG] Creating paper trading with business logic steps...');
+  console.log('🔍 [PAPER DEBUG] Request received:', request);
 
   try {
     // Step 1: Create the trading
     console.log('Step 1: Creating trading...');
     const trading = await createTrading(request);
-    console.log('🔍 [SIMULATION DEBUG] Trading created, checking info field:', trading.info);
+    console.log('🔍 [PAPER DEBUG] Trading created, checking info field:', trading.info);
     console.log('Trading created:', trading.id);
 
     // Step 2: Create two sub-accounts (ETH for stock, USDT for balance)
@@ -602,7 +602,7 @@ export async function createSimulationTrading(request: CreateTradingRequest): Pr
       trading_id: trading.id,
       type: 'deposit',
       source: 'manual',
-      message: 'Initial deposit for simulation trading',
+      message: 'Initial deposit for paper trading',
       event_time: new Date().toISOString(),
       info: {
         account_id: usdtSubAccount.id,
@@ -614,7 +614,7 @@ export async function createSimulationTrading(request: CreateTradingRequest): Pr
 
     // Step 4: Sub-account IDs are now available and linked via trading_id
     // No need to update trading info since sub-accounts can be retrieved by trading_id
-    console.log('Step 4: Simulation trading creation completed');
+    console.log('Step 4: Paper trading creation completed');
     console.log('Sub-account IDs:', {
       eth_account_id: ethSubAccount.id,
       usdt_account_id: usdtSubAccount.id
@@ -623,7 +623,7 @@ export async function createSimulationTrading(request: CreateTradingRequest): Pr
     return trading;
 
   } catch (error) {
-    console.error('Failed to create simulation trading:', error);
+    console.error('Failed to create paper trading:', error);
     // Note: In case of failure, the created resources might need cleanup
     // The backend should handle this or we might need to implement cleanup logic
     throw error;
@@ -689,7 +689,7 @@ export async function deleteTrading(tradingId: string, tradingType: string): Pro
 
     // Step 2: Delete the trading (only if bot deletion succeeded or no bot exists)
     // Backend now handles all cascade deletion logic based on trading type:
-    // - Hard delete (backtest/simulation): Backend deletes all dependent records in atomic transaction
+    // - Hard delete (backtest/paper): Backend deletes all dependent records in atomic transaction
     // - Soft delete (real trading): Backend marks as deleted while preserving audit trail
     console.log('Deleting trading...');
     const result = await apiRequest<{ message: string }>(`/tradings/${tradingId}`, {
