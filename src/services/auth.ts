@@ -1,7 +1,6 @@
 import type { AuthProvider } from '../contexts/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend.dev.tiris.ai/v1';
-const DEBUG_MODE = import.meta.env.DEV; // Enable detailed logging in development
 
 export interface BackendUser {
   id: string;

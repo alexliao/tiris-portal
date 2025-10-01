@@ -67,10 +67,6 @@ export const DashboardPage: React.FC = () => {
     return tradings.filter(trading => trading.type.toLowerCase() === type.toLowerCase());
   };
 
-  const getActiveTradings = (tradingList: Trading[]) => {
-    return tradingList.filter(t => ['active', 'running'].includes(t.status.toLowerCase()));
-  };
-
   const handleCreateTrading = () => {
     setIsCreateModalOpen(true);
   };
