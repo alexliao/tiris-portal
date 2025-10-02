@@ -64,25 +64,45 @@ export const TradingDetailPage: React.FC = () => {
         // Don't show error for bot fetch failure, just log it
       }
 
-      // Fetch exchange binding details
-      try {
-        const isPaperOrBacktest = foundTrading.type === 'paper' || foundTrading.type === 'backtest';
+      // Set exchange binding from embedded object if available, otherwise fetch it
+      if (foundTrading.exchange_binding) {
+        // Use the embedded exchange_binding from the trading object
+        setExchangeBinding({
+          id: foundTrading.exchange_binding.id,
+          name: foundTrading.exchange_binding.name,
+          exchange: foundTrading.exchange_binding.exchange,
+          type: foundTrading.exchange_binding.type as 'private' | 'public',
+          status: 'active',
+          created_at: foundTrading.created_at,
+          info: {}
+        });
+      } else {
+        // Fallback: fetch exchange binding details if not embedded
+        try {
+          const isPaperOrBacktest = foundTrading.type === 'paper' || foundTrading.type === 'backtest';
 
-        if (isPaperOrBacktest) {
-          const publicExchangeBindings = await getPublicExchangeBindings();
-          if (publicExchangeBindings.length > 0) {
-            setExchangeBinding(publicExchangeBindings[0]);
+          if (isPaperOrBacktest) {
+            const publicExchangeBindings = await getPublicExchangeBindings();
+            // Find the specific exchange binding that matches the trading's exchange_binding_id
+            const binding = publicExchangeBindings.find(eb => eb.id === foundTrading.exchange_binding_id);
+            if (binding) {
+              setExchangeBinding(binding);
+            } else if (publicExchangeBindings.length > 0) {
+              // Fallback to first binding if specific one not found
+              console.warn(`Exchange binding ${foundTrading.exchange_binding_id} not found, using first available binding`);
+              setExchangeBinding(publicExchangeBindings[0]);
+            }
+          } else {
+            const privateExchangeBindings = await getExchangeBindings();
+            const binding = privateExchangeBindings.find(eb => eb.id === foundTrading.exchange_binding_id);
+            if (binding) {
+              setExchangeBinding(binding);
+            }
           }
-        } else {
-          const privateExchangeBindings = await getExchangeBindings();
-          const binding = privateExchangeBindings.find(eb => eb.id === foundTrading.exchange_binding_id);
-          if (binding) {
-            setExchangeBinding(binding);
-          }
+        } catch (exchangeErr) {
+          console.warn('Failed to fetch exchange binding details:', exchangeErr);
+          // Don't show error for exchange binding fetch failure
         }
-      } catch (exchangeErr) {
-        console.warn('Failed to fetch exchange binding details:', exchangeErr);
-        // Don't show error for exchange binding fetch failure
       }
     } catch (err) {
       console.error('Failed to fetch trading:', err);

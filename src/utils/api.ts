@@ -28,6 +28,12 @@ export interface Trading {
   id: string;
   name: string;
   exchange_binding_id: string;
+  exchange_binding?: {
+    id: string;
+    name: string;
+    exchange: string;
+    type: string;
+  };
   type: string;
   status: string;
   created_at: string;
