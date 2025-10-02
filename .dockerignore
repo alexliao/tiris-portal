@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.claude
+.cursor
+.env.local
+.env.production
+playwright-report
+tests
+docs
+*.md
+.gitignore
