@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend.dev.tiris.ai/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Get access token from localStorage
 const getAccessToken = (): string | null => {

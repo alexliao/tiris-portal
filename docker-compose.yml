@@ -5,7 +5,5 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8081:80"
-    env_file:
-      - .env.local
     restart: unless-stopped
     container_name: tiris-portal

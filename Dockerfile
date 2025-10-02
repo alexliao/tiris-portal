@@ -7,6 +7,11 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+
+# Copy .env file for build-time environment variables (VITE_* vars are embedded during build)
+# Note: .env is required for production builds to set VITE_API_BASE_URL and VITE_BOT_API_BASE_URL
+COPY .env* ./
+
 RUN npm run build
 
 # Production stage
