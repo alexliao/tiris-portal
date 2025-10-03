@@ -264,10 +264,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
         {tradingType === 'paper' && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-sm text-blue-800">
-              <strong>{t('trading.type.paper')} Setup:</strong> {t('trading.create.paperInfo')}
-            </p>
-            <p className="text-sm text-blue-700 mt-1">
-              You'll need to select a trading strategy and exchange type for the bot.
+              {t('trading.create.paperInfo')}
             </p>
           </div>
         )}
