@@ -422,7 +422,7 @@ export const TradingDetailPage: React.FC = () => {
               strategy_name: trading.info?.strategy_name || "platform_test",
               symbol: "ETH/USDT",
               exchange: exchangeBinding.exchange,
-              timeframe: "5m",
+              timeframe: trading.info?.timeframe || "5m",
               initial_balance: 10000
             }
           }
@@ -736,8 +736,8 @@ export const TradingDetailPage: React.FC = () => {
                 <div className="text-sm text-gray-900">{bot?.record.spec.params?.strategy_name || trading.info?.strategy_name || trading.info?.strategy || 'N/A'}</div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-600">{t('trading.detail.riskLevel')}</div>
-                <div className="text-sm text-gray-900">{trading.info?.risk_level || 'N/A'}</div>
+                <div className="text-sm font-medium text-gray-600">{t('trading.detail.timeframe')}</div>
+                <div className="text-sm text-gray-900">{trading.info?.timeframe || 'N/A'}</div>
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.exchangeBinding')}</div>

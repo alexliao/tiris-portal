@@ -186,7 +186,7 @@
       "failedToLoad": "Failed to load trading",
       "failedToLoadWithError": "Failed to load trading: {{error}}",
       "tradingIdRequired": "Trading ID is required",
-      "riskLevel": "Risk Level",
+      "timeframe": "Timeframe",
       "exchangeBinding": "Exchange Binding",
       "performanceChart": "Performance Chart",
       "noDataAvailable": "No performance data available"
@@ -215,7 +215,7 @@
       "selectExchange": "Select an exchange",
       "exchangeBindingRequired": "Exchange selection is required",
       "strategy": "Strategy",
-      "riskLevel": "Risk Level",
+      "timeframe": "Timeframe",
       "description": "Description",
       "descriptionPlaceholder": "Optional description for this trading",
       "paperInfo": "This will create a paper trading with 10,000 USDT initial balance and set up ETH/USDT trading accounts automatically.",
@@ -227,6 +227,7 @@
       "description": "Select strategy and exchange type for your trading bot.",
       "strategy": "Strategy",
       "selectStrategy": "Select a strategy",
+      "timeframe": "Timeframe",
       "exchangeType": "Exchange Type",
       "selectExchange": "Select an exchange type",
       "failedToLoad": "Failed to load bot parameters: {{error}}",
@@ -237,11 +238,6 @@
       "meanReversion": "Mean Reversion",
       "trendFollowing": "Trend Following",
       "arbitrage": "Arbitrage"
-    },
-    "riskLevel": {
-      "low": "Low",
-      "medium": "Medium",
-      "high": "High"
     },
     "metrics": {
       "totalROI": "Total ROI",

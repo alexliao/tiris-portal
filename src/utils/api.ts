@@ -39,7 +39,7 @@ export interface Trading {
   created_at: string;
   info: {
     strategy?: string;
-    risk_level?: string;
+    timeframe?: string;
     bot_id?: string;
     [key: string]: any;
   };
@@ -273,7 +273,7 @@ export interface CreateTradingRequest {
   type: 'backtest' | 'paper' | 'real';
   info: {
     strategy?: string;
-    risk_level?: string;
+    timeframe?: string;
     description?: string;
     [key: string]: any;
   };

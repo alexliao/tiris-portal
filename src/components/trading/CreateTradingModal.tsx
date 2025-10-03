@@ -32,7 +32,6 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
     exchange_binding_id: '',
     type: tradingType,
     info: {
-      risk_level: 'medium',
       description: '',
     },
   });
@@ -43,6 +42,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
   const [strategies, setStrategies] = useState<string[]>([]);
   const [isLoadingBotData, setIsLoadingBotData] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState<string>('');
+  const [selectedTimeframe, setSelectedTimeframe] = useState<string>('5m');
 
   const generateDefaultName = (type: string): string => {
     const now = new Date();
@@ -170,6 +170,12 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       let newTrading: Trading;
       const requestData = { ...formData };
 
+      // Add timeframe to info for all trading types
+      requestData.info = {
+        ...requestData.info,
+        timeframe: selectedTimeframe,
+      };
+
       // Add bot parameters to info if this is paper trading
       if (tradingType === 'paper') {
         requestData.info = {
@@ -202,11 +208,11 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
         exchange_binding_id: '',
         type: tradingType,
         info: {
-          risk_level: 'medium',
           description: '',
         },
       });
       setSelectedStrategy('');
+      setSelectedTimeframe('5m');
     } catch (err) {
       console.error('Failed to create trading:', err);
       if (err instanceof ApiError) {
@@ -312,21 +318,28 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
             )}
           </div>
 
-
-          {/* Risk Level */}
+          {/* Timeframe Selection */}
           <div className="mb-4">
-            <label htmlFor="risk_level" className="block text-sm font-medium text-gray-700 mb-1">
-              {t('trading.create.riskLevel')}
+            <label htmlFor="timeframe" className="block text-sm font-medium text-gray-700 mb-1">
+              {t('trading.create.timeframe')}
             </label>
             <select
-              id="risk_level"
-              value={formData.info.risk_level}
-              onChange={(e) => handleInfoChange('risk_level', e.target.value)}
+              id="timeframe"
+              value={selectedTimeframe}
+              onChange={(e) => setSelectedTimeframe(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="low">{t('trading.riskLevel.low')}</option>
-              <option value="medium">{t('trading.riskLevel.medium')}</option>
-              <option value="high">{t('trading.riskLevel.high')}</option>
+              <option value="5m">5 minutes</option>
+              <option value="15m">15 minutes</option>
+              <option value="30m">30 minutes</option>
+              <option value="1h">1 hour</option>
+              <option value="2h">2 hours</option>
+              <option value="4h">4 hours</option>
+              <option value="8h">8 hours</option>
+              <option value="12h">12 hours</option>
+              <option value="1d">1 day</option>
+              <option value="2d">2 days</option>
+              <option value="1w">1 week</option>
             </select>
           </div>
 
