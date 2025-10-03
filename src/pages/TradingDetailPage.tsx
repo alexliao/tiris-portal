@@ -263,7 +263,7 @@ export const TradingDetailPage: React.FC = () => {
       isRefreshing2.current = false;
       setIsRefreshing(false);
     }
-  }, [autoRefreshEnabled, bot, fetchTradingData, checkBotStatus]);
+  }, [autoRefreshEnabled, bot?.record.id]);
 
 
   // Start automatic data refresh when page loads and user is authenticated
@@ -271,11 +271,10 @@ export const TradingDetailPage: React.FC = () => {
     console.log('Data refresh interval effect triggered', {
       isAuthenticated,
       authLoading,
-      dataRefreshInterval: !!dataRefreshInterval,
-      shouldStart: isAuthenticated && !authLoading && !dataRefreshInterval
+      shouldStart: isAuthenticated && !authLoading
     });
 
-    if (isAuthenticated && !authLoading && !dataRefreshInterval) {
+    if (isAuthenticated && !authLoading) {
       console.log('Starting automatic data refresh with 60-second interval');
 
       // Create interval for data refresh every 60 seconds
@@ -289,8 +288,14 @@ export const TradingDetailPage: React.FC = () => {
       // Also call it once immediately for testing
       console.log('Calling refreshAllData immediately for testing');
       setTimeout(() => refreshAllData(), 1000);
+
+      // Cleanup on unmount or when dependencies change
+      return () => {
+        console.log('Cleaning up data refresh interval');
+        clearInterval(interval);
+      };
     }
-  }, [isAuthenticated, authLoading, dataRefreshInterval]);
+  }, [isAuthenticated, authLoading, refreshAllData]);
 
   // Start periodic status checking when bot is running
   const startBotStatusMonitoring = (botId: string) => {
