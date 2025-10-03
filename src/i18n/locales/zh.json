@@ -163,7 +163,7 @@
     "title": "仪表板",
     "welcome": "欢迎回来，{{name}}",
     "totalTradings": "总交易数",
-    "activeTradings": "活跃交易",
+    "activeTradings": "在线交易",
     "backtests": "回测",
     "yourTradings": "您的交易",
     "loadingTradings": "正在加载交易...",

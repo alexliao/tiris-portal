@@ -164,7 +164,7 @@
     "title": "Dashboard",
     "welcome": "Welcome back, {{name}}",
     "totalTradings": "Total Tradings",
-    "activeTradings": "Active Tradings",
+    "activeTradings": "Online Tradings",
     "backtests": "Backtests",
     "yourTradings": "Your Tradings",
     "loadingTradings": "Loading tradings...",

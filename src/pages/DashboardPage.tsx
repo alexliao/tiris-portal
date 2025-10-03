@@ -252,7 +252,10 @@ export const DashboardPage: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">{t('dashboard.activeTradings')}</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {tradings.filter(t => ['active', 'running'].includes(t.status.toLowerCase())).length}
+                  {tradings.filter(t => {
+                    const bot = getBotForTrading(t);
+                    return bot?.alive === true;
+                  }).length}
                 </p>
               </div>
             </div>
