@@ -20,9 +20,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     >
       <div className="text-center">
         <div className="flex items-center justify-center mb-4">
-          <img 
-            src="/tiris-gold.png" 
-            alt="Tiris Logo" 
+          <img
+            src="/tiris-gold.png"
+            alt={t('common.tirisLogo')}
             className="w-16 h-16 md:w-20 md:h-20 mr-2"
           />
           <h1 className="text-[48px] md:text-[64px] font-['Bebas_Neue'] text-white leading-none">

@@ -202,7 +202,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
           )}
           {benchmarkPrice && (
             <p className="font-['Nunito'] text-xs text-amber-600 ml-6">
-              {`ETH Price: ${formatCurrency(benchmarkPrice)}`}
+              {`${t('trading.chart.ethPrice')}: ${formatCurrency(benchmarkPrice)}`}
             </p>
           )}
           {data.benchmark !== undefined && (
@@ -214,7 +214,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
             <div className="flex items-center mt-1">
               <div className="w-3 h-3 bg-blue-400 rounded mr-2"></div>
               <p className="font-['Nunito'] text-sm text-blue-600 font-semibold">
-                {`ETH Position: ${data.position.toFixed(4)} ETH`}
+                {`${t('trading.chart.ethPosition')}: ${data.position.toFixed(4)} ETH`}
               </p>
             </div>
           )}
@@ -325,7 +325,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
           <div className="flex items-center justify-between mb-2">
             {showHeader && (
               <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404]">
-                {trading.name} - {t('trading.detail.performance')} Chart
+                {trading.name} - {t('trading.detail.performanceChart')}
               </h3>
             )}
             <div className="flex items-center justify-between flex-1 ml-4">
@@ -344,7 +344,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
               </button>
               {onAutoRefreshToggle && (
                 <div className="flex items-center space-x-2 text-sm font-['Nunito']">
-                  <span className="text-gray-600">Auto Refresh:</span>
+                  <span className="text-gray-600">{t('common.autoRefresh')}:</span>
                   <div className="relative">
                     <input
                       type="checkbox"
@@ -592,7 +592,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
         <div className="mt-4 space-y-3">
           {/* Main Chart Legend */}
           <div className="flex items-center justify-center space-x-4 text-sm font-['Nunito'] flex-wrap">
-            <span className="font-medium text-gray-700">Performance Chart:</span>
+            <span className="font-medium text-gray-700">{t('trading.chart.performanceChart')}:</span>
             <div className="flex items-center">
               <div className="w-4 h-3 bg-green-500 bg-opacity-20 border-2 border-green-500 rounded mr-2"></div>
               <span>{t('trading.chart.portfolioReturn')}</span>
@@ -621,15 +621,15 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
 
           {/* Position Chart Legend */}
           <div className="flex items-center justify-center space-x-4 text-sm font-['Nunito'] flex-wrap">
-            <span className="font-medium text-gray-700">Position Chart:</span>
+            <span className="font-medium text-gray-700">{t('trading.chart.positionChart')}:</span>
             <div className="flex items-center">
               <div className="w-4 h-3 bg-blue-400 bg-opacity-30 border-2 border-blue-400 rounded mr-2"></div>
-              <span>ETH Position</span>
+              <span>{t('trading.chart.ethPosition')}</span>
             </div>
             {showTradingDots && (
               <div className="flex items-center">
                 <div className="w-4 h-0.5 bg-slate-400 border-dashed mr-2" style={{borderStyle: 'dashed'}}></div>
-                <span>Signal Lines</span>
+                <span>{t('trading.chart.signalLines')}</span>
               </div>
             )}
           </div>
@@ -641,17 +641,17 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
       {showHighlights && (
         <div className="mt-8 bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg">
           <h3 className="text-lg font-['Bebas_Neue'] font-bold text-[#080404] mb-4">
-            Performance Highlights
+            {t('trading.chart.performanceHighlights')}
           </h3>
           <div className="grid md:grid-cols-3 gap-4 text-sm font-['Nunito']">
             <div>
-              Our AI strategy consistently outperforms ETH by analyzing market patterns and timing trades precisely.
+              {t('trading.chart.highlight1')}
             </div>
             <div>
-              Advanced risk management keeps drawdowns minimal while maximizing return potential through diversified positions.
+              {t('trading.chart.highlight2')}
             </div>
             <div>
-              Real-time market analysis and instant trade execution ensure you never miss profitable opportunities.
+              {t('trading.chart.highlight3')}
             </div>
           </div>
         </div>

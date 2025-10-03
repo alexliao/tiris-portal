@@ -158,7 +158,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
     // For paper trading, validate bot parameters
     if (tradingType === 'paper') {
       if (!selectedStrategy) {
-        setError('Please select a strategy for the trading bot');
+        setError(t('trading.create.selectStrategyError'));
         return;
       }
     }
@@ -326,17 +326,17 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
               onChange={(e) => setSelectedTimeframe(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="5m">5 minutes</option>
-              <option value="15m">15 minutes</option>
-              <option value="30m">30 minutes</option>
-              <option value="1h">1 hour</option>
-              <option value="2h">2 hours</option>
-              <option value="4h">4 hours</option>
-              <option value="8h">8 hours</option>
-              <option value="12h">12 hours</option>
-              <option value="1d">1 day</option>
-              <option value="2d">2 days</option>
-              <option value="1w">1 week</option>
+              <option value="5m">{t('trading.timeframe.5m')}</option>
+              <option value="15m">{t('trading.timeframe.15m')}</option>
+              <option value="30m">{t('trading.timeframe.30m')}</option>
+              <option value="1h">{t('trading.timeframe.1h')}</option>
+              <option value="2h">{t('trading.timeframe.2h')}</option>
+              <option value="4h">{t('trading.timeframe.4h')}</option>
+              <option value="8h">{t('trading.timeframe.8h')}</option>
+              <option value="12h">{t('trading.timeframe.12h')}</option>
+              <option value="1d">{t('trading.timeframe.1d')}</option>
+              <option value="2d">{t('trading.timeframe.2d')}</option>
+              <option value="1w">{t('trading.timeframe.1w')}</option>
             </select>
           </div>
 

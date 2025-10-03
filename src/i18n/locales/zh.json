@@ -144,7 +144,20 @@
     "goToHome": "回到首页",
     "accessDenied": "访问被拒绝",
     "notFound": "未找到",
-    "tryAgain": "请重试"
+    "tryAgain": "请重试",
+    "underConstruction": "建设中",
+    "underConstructionMessage": "此功能目前正在开发中，即将推出。",
+    "autoRefresh": "自动刷新",
+    "online": "在线",
+    "offline": "离线",
+    "close": "关闭",
+    "notifications": "通知",
+    "dismissNotification": "关闭通知",
+    "tirisLogo": "Tiris 徽标",
+    "wechat": "微信",
+    "userMenu": "用户菜单",
+    "toggleMobileMenu": "切换移动菜单",
+    "tabs": "标签页"
   },
   "dashboard": {
     "title": "仪表板",
@@ -171,7 +184,13 @@
       "status": "状态",
       "strategy": "策略",
       "created": "创建时间",
-      "actions": "操作"
+      "actions": "操作",
+      "botStatus": "机器人状态"
+    },
+    "botStatus": {
+      "noBot": "无机器人",
+      "online": "在线",
+      "offline": "离线"
     }
   },
   "trading": {
@@ -188,7 +207,10 @@
       "timeframe": "时间周期",
       "exchangeBinding": "交易所绑定",
       "performanceChart": "表现图表",
-      "noDataAvailable": "无表现数据可用"
+      "noDataAvailable": "无表现数据可用",
+      "stopBot": "停止机器人",
+      "startBot": "启动机器人",
+      "bot": "机器人"
     },
     "status": {
       "active": "活跃",
@@ -219,7 +241,8 @@
       "descriptionPlaceholder": "可选的交易描述",
       "paperInfo": "这将创建一个模拟交易，初始余额为10,000 USDT，并自动设置ETH/USDT交易账户。",
       "failedToLoadBindings": "加载交易所绑定失败：{{error}}",
-      "failedToCreate": "创建交易失败：{{error}}"
+      "failedToCreate": "创建交易失败：{{error}}",
+      "selectStrategyError": "请为交易机器人选择策略"
     },
     "botParams": {
       "title": "机器人参数",
@@ -257,13 +280,35 @@
       "return": "收益率",
       "zeroLine": "零线",
       "buySignals": "买入信号",
-      "sellSignals": "卖出信号"
+      "sellSignals": "卖出信号",
+      "ethPrice": "ETH价格",
+      "ethPosition": "ETH仓位",
+      "signalLines": "信号线",
+      "performanceChart": "表现图表",
+      "positionChart": "仓位图表",
+      "performanceHighlights": "表现亮点",
+      "highlight1": "我们的AI策略通过分析市场模式和精确把握交易时机，始终优于ETH表现。",
+      "highlight2": "先进的风险管理通过多元化仓位保持回撤最小化，同时最大化回报潜力。",
+      "highlight3": "实时市场分析和即时交易执行确保您不会错过任何盈利机会。"
     },
     "events": {
       "buy": "买入",
       "sell": "卖出",
       "long": "做多",
       "short": "做空"
+    },
+    "timeframe": {
+      "5m": "5分钟",
+      "15m": "15分钟",
+      "30m": "30分钟",
+      "1h": "1小时",
+      "2h": "2小时",
+      "4h": "4小时",
+      "8h": "8小时",
+      "12h": "12小时",
+      "1d": "1天",
+      "2d": "2天",
+      "1w": "1周"
     }
   },
   "footer": {

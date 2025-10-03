@@ -31,11 +31,11 @@ export const Navigation: React.FC = () => {
     <nav className="fixed top-0 w-full bg-[#1a1a1a] z-50 py-4">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             className="flex items-center space-x-2 font-['Bebas_Neue'] text-2xl font-bold text-white hover:bg-white/10 transition-colors px-3 py-1 rounded"
           >
-            <img src="/tiris-gold.png" alt="Tiris Logo" width="36" height="36" />
+            <img src="/tiris-gold.png" alt={t('common.tirisLogo')} width="36" height="36" />
             <span>TIRIS</span>
           </Link>
           {/* Desktop Navigation */}
@@ -78,7 +78,7 @@ export const Navigation: React.FC = () => {
             <button
               onClick={toggleMobileMenu}
               className="text-white hover:bg-white/10 transition-colors p-2 rounded"
-              aria-label="Toggle mobile menu"
+              aria-label={t('common.toggleMobileMenu')}
             >
               {/* Hamburger Menu Icon */}
               <div className="w-6 h-6 flex flex-col justify-center space-y-1">

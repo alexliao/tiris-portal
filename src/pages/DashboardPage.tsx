@@ -304,7 +304,7 @@ export const DashboardPage: React.FC = () => {
 
           {/* Tab Navigation */}
           <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+            <nav className="-mb-px flex space-x-8 px-6" aria-label={t('common.tabs')}>
               {[
                 { key: 'paper', label: t('trading.type.paper') || 'Paper', icon: Calendar },
                 { key: 'backtest', label: t('trading.type.backtest') || 'Backtest', icon: Activity },
@@ -377,7 +377,7 @@ export const DashboardPage: React.FC = () => {
                       {t('dashboard.tableHeaders.strategy')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Bot Status
+                      {t('dashboard.tableHeaders.botStatus')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {t('dashboard.tableHeaders.created')}
@@ -422,7 +422,7 @@ export const DashboardPage: React.FC = () => {
                           if (!bot) {
                             return (
                               <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                                No Bot
+                                {t('dashboard.botStatus.noBot')}
                               </span>
                             );
                           }
@@ -430,7 +430,7 @@ export const DashboardPage: React.FC = () => {
                             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                               bot.alive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                             }`}>
-                              {bot.alive ? 'Online' : 'Offline'}
+                              {bot.alive ? t('dashboard.botStatus.online') : t('dashboard.botStatus.offline')}
                             </span>
                           );
                         })()}

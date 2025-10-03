@@ -676,7 +676,7 @@ export const TradingDetailPage: React.FC = () => {
                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${
                           bot.alive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                         }`}>
-                          Bot {bot.alive ? 'Online' : 'Offline'}
+                          {t('trading.detail.bot')} {bot.alive ? t('common.online') : t('common.offline')}
                         </span>
                       )}
                     </div>
@@ -704,7 +704,7 @@ export const TradingDetailPage: React.FC = () => {
                       ) : (
                         <Square className="w-4 h-4 mr-2" />
                       )}
-                      Stop Bot
+                      {t('trading.detail.stopBot')}
                     </button>
                   ) : (
                     <button
@@ -717,7 +717,7 @@ export const TradingDetailPage: React.FC = () => {
                       ) : (
                         <Play className="w-4 h-4 mr-2" />
                       )}
-                      Start Bot
+                      {t('trading.detail.startBot')}
                     </button>
                   )}
                 </div>

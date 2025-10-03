@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, XCircle, Info, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Toast as ToastType } from './types';
 import { useToastContext } from './ToastProvider';
 
@@ -8,6 +9,7 @@ interface ToastProps {
 }
 
 export const Toast: React.FC<ToastProps> = ({ toast }) => {
+  const { t } = useTranslation();
   const { removeToast } = useToastContext();
   const [isVisible, setIsVisible] = useState(false);
 
@@ -91,7 +93,7 @@ export const Toast: React.FC<ToastProps> = ({ toast }) => {
               handleDismiss();
             }}
             className="flex-shrink-0 ml-2 p-1 rounded-md hover:bg-black hover:bg-opacity-10 transition-colors duration-200"
-            aria-label="Dismiss notification"
+            aria-label={t('common.dismissNotification')}
           >
             <X className="w-4 h-4" />
           </button>

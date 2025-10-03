@@ -53,7 +53,7 @@ export const UserProfile: React.FC = () => {
       <button
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
         className="flex items-center gap-2 hover:bg-white/10 transition-colors px-3 py-2 rounded"
-        aria-label="User menu"
+        aria-label={t('common.userMenu')}
         aria-haspopup="menu"
         aria-expanded={isDropdownOpen}
       >
@@ -100,7 +100,7 @@ export const UserProfile: React.FC = () => {
                   <button
                     onClick={handleCopyEmail}
                     className="p-1 rounded hover:bg-gray-100 text-gray-500"
-                    title="Copy email"
+                    title={t('auth.copyEmail')}
                   >
                     {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>

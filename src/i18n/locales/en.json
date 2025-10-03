@@ -145,7 +145,20 @@
     "goToHome": "Go to Home",
     "accessDenied": "Access Denied",
     "notFound": "Not Found",
-    "tryAgain": "Please try again"
+    "tryAgain": "Please try again",
+    "underConstruction": "Under Construction",
+    "underConstructionMessage": "This feature is currently being built and will be available soon.",
+    "autoRefresh": "Auto Refresh",
+    "online": "Online",
+    "offline": "Offline",
+    "close": "Close",
+    "notifications": "Notifications",
+    "dismissNotification": "Dismiss notification",
+    "tirisLogo": "Tiris Logo",
+    "wechat": "WeChat",
+    "userMenu": "User menu",
+    "toggleMobileMenu": "Toggle mobile menu",
+    "tabs": "Tabs"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -172,7 +185,13 @@
       "status": "Status",
       "strategy": "Strategy",
       "created": "Created",
-      "actions": "Actions"
+      "actions": "Actions",
+      "botStatus": "Bot Status"
+    },
+    "botStatus": {
+      "noBot": "No Bot",
+      "online": "Online",
+      "offline": "Offline"
     }
   },
   "trading": {
@@ -189,7 +208,10 @@
       "timeframe": "Timeframe",
       "exchangeBinding": "Exchange Binding",
       "performanceChart": "Performance Chart",
-      "noDataAvailable": "No performance data available"
+      "noDataAvailable": "No performance data available",
+      "stopBot": "Stop Bot",
+      "startBot": "Start Bot",
+      "bot": "Bot"
     },
     "status": {
       "active": "Active",
@@ -220,7 +242,8 @@
       "descriptionPlaceholder": "Optional description for this trading",
       "paperInfo": "This will create a paper trading with 10,000 USDT initial balance and set up ETH/USDT trading accounts automatically.",
       "failedToLoadBindings": "Failed to load exchange bindings: {{error}}",
-      "failedToCreate": "Failed to create trading: {{error}}"
+      "failedToCreate": "Failed to create trading: {{error}}",
+      "selectStrategyError": "Please select a strategy for the trading bot"
     },
     "botParams": {
       "title": "Bot Parameters",
@@ -250,7 +273,7 @@
       "showTradingSignals": "Show Trading Signals",
       "hideTradingSignals": "Hide Trading Signals",
       "portfolioValue": "Portfolio Value",
-      "portfolioReturn": "Portfolio Return", 
+      "portfolioReturn": "Portfolio Return",
       "ethBenchmark": "ETH Benchmark",
       "ethReturn": "ETH Return",
       "excessReturn": "Excess Return",
@@ -258,13 +281,35 @@
       "return": "Return",
       "zeroLine": "Zero Line",
       "buySignals": "Buy Signals",
-      "sellSignals": "Sell Signals"
+      "sellSignals": "Sell Signals",
+      "ethPrice": "ETH Price",
+      "ethPosition": "ETH Position",
+      "signalLines": "Signal Lines",
+      "performanceChart": "Performance Chart",
+      "positionChart": "Position Chart",
+      "performanceHighlights": "Performance Highlights",
+      "highlight1": "Our AI strategy consistently outperforms ETH by analyzing market patterns and timing trades precisely.",
+      "highlight2": "Advanced risk management keeps drawdowns minimal while maximizing return potential through diversified positions.",
+      "highlight3": "Real-time market analysis and instant trade execution ensure you never miss profitable opportunities."
     },
     "events": {
       "buy": "buy",
       "sell": "sell",
       "long": "long",
       "short": "short"
+    },
+    "timeframe": {
+      "5m": "5 minutes",
+      "15m": "15 minutes",
+      "30m": "30 minutes",
+      "1h": "1 hour",
+      "2h": "2 hours",
+      "4h": "4 hours",
+      "8h": "8 hours",
+      "12h": "12 hours",
+      "1d": "1 day",
+      "2d": "2 days",
+      "1w": "1 week"
     }
   },
   "footer": {

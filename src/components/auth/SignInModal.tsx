@@ -66,7 +66,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <X className="w-6 h-6" />
           </button>
@@ -139,9 +139,9 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
                     {isLoading ? (
                       <div className="w-5 h-5 mr-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
                     ) : (
-                      <img 
+                      <img
                         src="/wechat-96.png"
-                        alt="WeChat"
+                        alt={t('common.wechat')}
                         className="w-5 h-5 mr-3"
                       />
                     )}
