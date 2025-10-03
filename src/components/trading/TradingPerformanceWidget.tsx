@@ -286,7 +286,13 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   return (
     <div className={className}>
       {/* Metrics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="bg-white p-4 rounded-lg shadow-sm">
+          <div className="text-2xl font-['Bebas_Neue'] font-bold text-gray-700">
+            {formatCurrency(displayData[displayData.length - 1]?.netValue || 0)}
+          </div>
+          <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.chart.portfolioValue')}</div>
+        </div>
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="text-2xl font-['Bebas_Neue'] font-bold text-green-600">
             {formatPercentage(metrics.totalROI)}
@@ -373,11 +379,6 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
               )}
             </div>
           </div>
-          <p className="text-sm font-['Nunito'] text-gray-600">
-            {t('trading.chart.portfolioValue')}: {formatCurrency(displayData[displayData.length - 1]?.netValue || 0)} | 
-            {t('trading.chart.return')}: {formatPercentage(displayData[displayData.length - 1]?.roi || 0)} | 
-            {t('trading.chart.ethReturn')}: {formatPercentage(displayData[displayData.length - 1]?.benchmark || 0)}
-          </p>
         </div>
         
         <div
@@ -592,9 +593,14 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
         <div className="mt-4 space-y-3">
           {/* Main Chart Legend */}
           <div className="flex items-center justify-center space-x-4 text-sm font-['Nunito'] flex-wrap">
-            <span className="font-medium text-gray-700">{t('trading.chart.performanceChart')}:</span>
             <div className="flex items-center">
-              <div className="w-4 h-3 bg-green-500 bg-opacity-20 border-2 border-green-500 rounded mr-2"></div>
+              <div
+                className="w-4 h-3 rounded mr-2"
+                style={{
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  border: '2px solid #10B981'
+                }}
+              ></div>
               <span>{t('trading.chart.portfolioReturn')}</span>
             </div>
             <div className="flex items-center">
@@ -602,8 +608,14 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
               <span>{t('trading.chart.ethBenchmark')}</span>
             </div>
             <div className="flex items-center">
-              <div className="w-4 h-0.5 bg-slate-400 border-dashed border-t mr-2" style={{borderStyle: 'dashed'}}></div>
-              <span>{t('trading.chart.zeroLine')}</span>
+              <div
+                className="w-4 h-3 rounded mr-2"
+                style={{
+                  backgroundColor: 'rgba(96, 165, 250, 0.3)',
+                  border: '2px solid #60A5FA'
+                }}
+              ></div>
+              <span>{t('trading.chart.ethPosition')}</span>
             </div>
             {showTradingDots && (
               <>
@@ -616,21 +628,6 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                   <span>{t('trading.chart.sellSignals')}</span>
                 </div>
               </>
-            )}
-          </div>
-
-          {/* Position Chart Legend */}
-          <div className="flex items-center justify-center space-x-4 text-sm font-['Nunito'] flex-wrap">
-            <span className="font-medium text-gray-700">{t('trading.chart.positionChart')}:</span>
-            <div className="flex items-center">
-              <div className="w-4 h-3 bg-blue-400 bg-opacity-30 border-2 border-blue-400 rounded mr-2"></div>
-              <span>{t('trading.chart.ethPosition')}</span>
-            </div>
-            {showTradingDots && (
-              <div className="flex items-center">
-                <div className="w-4 h-0.5 bg-slate-400 border-dashed mr-2" style={{borderStyle: 'dashed'}}></div>
-                <span>{t('trading.chart.signalLines')}</span>
-              </div>
             )}
           </div>
         </div>
