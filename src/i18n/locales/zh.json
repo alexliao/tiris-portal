@@ -1,7 +1,7 @@
 {
   "nav": {
     "home": "主页",
-    "performance": "表现",
+    "performance": "绩效",
     "highlights": "亮点"
   },
   "hero": {
@@ -10,12 +10,12 @@
   },
   "about": {
     "title": "Tiris是什么",
-    "description": "Tiris致力于利用人工智能技术实现能够持续盈利的量化交易策略。并使每个交易者都能享受量化交易的好处，即使他们完全不会编写程序。"
+    "description": "Tiris是一个迷你量化交易平台，不但包含完整的回测，模拟和实盘交易功能，还内置一个经过验证，确保能盈利的交易策略，使每个交易者不需要编写程序，甚至不需要进行技术分析即可享受自动化的交易并且持续盈利。"
   },
   "features": {
     "profitable": {
       "title": "盈利性",
-      "description": "我们的交易策略采用前沿的机器学习技术开发，并经过大量历史数据回测验证，在2024年整年的ETH/USDT交易中获得了140%的回报率。"
+      "description": "我们的交易策略采用前沿的人工智能技术开发，并经过大量历史数据回测验证，在2024年整年的ETH/USDT交易中获得了140%的回报率。"
     },
     "secure": {
       "title": "安全性",
@@ -23,25 +23,25 @@
     },
     "automatic": {
       "title": "自动化",
-      "description": "我们的智能策略封装在交易机器人中。机器人可以24/7工作，不需要休息，不受情绪影响。"
+      "description": "我们的智能策略封装在交易机器人中。机器人可以24/7工作，不需要休息，不受情绪影响，在您休息时它也能捕捉到市场机会。"
     },
     "simple": {
       "title": "简单性",
-      "description": "我们隐藏了所有技术细节，用户可以在简单易用的界面中一键开启自动化量化交易。"
+      "description": "我们隐藏了所有技术细节，用户可以在简单易用的界面中一键开启自动化量化交易，完全不需要任何编程和技术分析知识。"
     }
   },
   "performance": {
-    "title": "实时表现演示",
-    "description": "查看我们的机器学习驱动交易机器人在真实回测数据中与ETH基准相比的表现。这显示了我们的算法基于历史市场分析做出的实际交易决策。",
-    "loading": "正在从我们的机器学习交易系统加载实时交易数据...",
+    "title": "实时绩效演示",
+    "description": "查看我们的交易机器人在真实市场交易中与基准收益率相比的表现。基准收益率指的是买入并持有策略的收益率。买入并持有策略就是用全部资金买入ETH后什么都不做一直持有，收益率完全取决于市场价格。这个比较显示了我们的算法是如何利用市场价格波动获得超额收益的。",
+    "loading": "正在加载实时交易数据...",
     "noData": "目前没有可用的交易数据。",
     "chart": {
-      "title": "投资组合收益 vs ETH基准",
+      "title": "投资组合收益率 vs 基准收益率",
       "toggleShow": "显示交易信号",
       "toggleHide": "隐藏交易信号",
       "portfolioValue": "投资组合价值",
-      "return": "收益",
-      "ethReturn": "ETH收益"
+      "return": "收益率",
+      "ethReturn": "基准收益率"
     },
     "metrics": {
       "totalROI": "总投资回报率",
@@ -51,26 +51,26 @@
       "totalTrades": "总交易次数"
     },
     "legend": {
-      "portfolioReturn": "投资组合收益（面积图）",
-      "ethBenchmark": "ETH基准（线图）",
+      "portfolioReturn": "投资组合收益率（面积图）",
+      "ethBenchmark": "基准收益率（线图）",
       "zeroLine": "零线",
-      "buySignals": "买入信号",
-      "sellSignals": "卖出信号"
+      "buySignals": "买入",
+      "sellSignals": "卖出"
     },
     "tooltip": {
       "time": "时间",
       "portfolioValue": "投资组合价值",
-      "portfolioReturn": "投资组合收益",
-      "ethBenchmark": "ETH基准",
-      "excessReturn": "超额收益",
+      "portfolioReturn": "投资组合收益率",
+      "ethBenchmark": "基准收益率",
+      "excessReturn": "超额收益率",
       "buy": "买入",
       "sell": "卖出"
     },
     "highlights": {
-      "title": "关键表现亮点",
-      "outperforming": "超越ETH：算法相比直接持有ETH获得了更优的收益",
-      "riskManagement": "风险管理：通过智能仓位控制和机器学习决策控制回撤",
-      "realTimeAnalysis": "实时分析：表现数据从实时后端权益曲线计算中更新"
+      "title": "关键绩效亮点",
+      "outperforming": "超越基准：算法相比直接持有获得了更优的收益率",
+      "riskManagement": "风险管理：通过智能仓位控制和人工智能决策控制回撤",
+      "realTimeAnalysis": "实时分析：绩效数据从实时后端权益曲线计算中更新"
     }
   },
   "language": {
@@ -160,7 +160,7 @@
     "tabs": "标签页"
   },
   "dashboard": {
-    "title": "仪表板",
+    "title": "交易中心",
     "welcome": "欢迎回来，{{name}}",
     "totalTradings": "总交易数",
     "activeTradings": "在线交易",
@@ -169,7 +169,7 @@
     "loadingTradings": "正在加载交易...",
     "noTradingsFound": "未找到交易",
     "noTradingsDescription": "创建交易后，它们将在此处显示。",
-    "createNew": "创建新的{{type}}",
+    "createNew": "创建新的{{type}}交易",
     "deleteTradingTitle": "删除交易",
     "deleteTradingMessage": "您确定要删除 '{{name}}' 吗？这将永久删除所有相关数据，包括仓位、日志、交易记录和子账户。此操作无法撤销。",
     "deleteTradingMessageReal": "您确定要删除 '{{name}}' 吗？这将标记交易为已删除，但保留所有历史数据。此操作无法撤销。",
@@ -196,18 +196,18 @@
   "trading": {
     "detail": {
       "title": "交易详情",
-      "backToDashboard": "返回仪表板",
+      "backToDashboard": "返回交易中心",
       "overview": "概览",
-      "performance": "表现",
+      "performance": "绩效",
       "settings": "设置",
       "notFound": "未找到交易",
       "failedToLoad": "加载交易失败",
       "failedToLoadWithError": "加载交易失败：{{error}}",
       "tradingIdRequired": "需要交易ID",
-      "timeframe": "时间周期",
-      "exchangeBinding": "交易所绑定",
-      "performanceChart": "表现图表",
-      "noDataAvailable": "无表现数据可用",
+      "timeframe": "周期",
+      "exchangeBinding": "交易所",
+      "performanceChart": "绩效图表",
+      "noDataAvailable": "无绩效数据可用",
       "stopBot": "停止机器人",
       "startBot": "启动机器人",
       "bot": "机器人"
@@ -228,7 +228,7 @@
       "real": "实盘"
     },
     "create": {
-      "title": "创建新的{{type}}",
+      "title": "创建新的{{type}}交易",
       "name": "交易名称",
       "namePlaceholder": "请输入交易名称",
       "nameRequired": "交易名称是必需的",
@@ -236,24 +236,24 @@
       "selectExchange": "选择交易所",
       "exchangeBindingRequired": "必须选择交易所",
       "strategy": "策略",
-      "timeframe": "时间周期",
+      "timeframe": "周期",
       "description": "描述",
       "descriptionPlaceholder": "可选的交易描述",
-      "paperInfo": "这将创建一个模拟交易，初始余额为10,000 USDT，并自动设置ETH/USDT交易账户。",
+      "paperInfo": "这将创建一个模拟交易，初始余额为10,000 USDT，并自动设置交易账户。",
       "failedToLoadBindings": "加载交易所绑定失败：{{error}}",
       "failedToCreate": "创建交易失败：{{error}}",
-      "selectStrategyError": "请为交易机器人选择策略"
+      "selectStrategyError": "请为交易选择策略"
     },
     "botParams": {
       "title": "机器人参数",
       "description": "为您的交易机器人选择策略和交易所类型。",
       "strategy": "策略",
       "selectStrategy": "选择策略",
-      "timeframe": "时间周期",
-      "exchangeType": "交易所类型",
-      "selectExchange": "选择交易所类型",
+      "timeframe": "周期",
+      "exchangeType": "交易所",
+      "selectExchange": "选择交易所",
       "failedToLoad": "加载机器人参数失败：{{error}}",
-      "allFieldsRequired": "请选择策略和交易所类型"
+      "allFieldsRequired": "请选择策略和交易所"
     },
     "strategy": {
       "momentum": "动量策略",
@@ -273,20 +273,20 @@
       "hideTradingSignals": "隐藏交易信号",
       "portfolioValue": "投资组合价值",
       "portfolioReturn": "投资组合收益率",
-      "ethBenchmark": "ETH基准",
-      "ethReturn": "ETH收益率",
+      "ethBenchmark": "基准收益率",
+      "ethReturn": "基准收益率",
       "excessReturn": "超额收益",
       "time": "时间",
       "return": "收益率",
       "zeroLine": "零线",
-      "buySignals": "买入信号",
-      "sellSignals": "卖出信号",
+      "buySignals": "买入",
+      "sellSignals": "卖出",
       "ethPrice": "ETH价格",
       "ethPosition": "ETH仓位",
       "signalLines": "信号线",
-      "performanceChart": "表现图表",
+      "performanceChart": "绩效图表",
       "positionChart": "仓位图表",
-      "performanceHighlights": "表现亮点",
+      "performanceHighlights": "绩效亮点",
       "highlight1": "我们的AI策略通过分析市场模式和精确把握交易时机，始终优于ETH表现。",
       "highlight2": "先进的风险管理通过多元化仓位保持回撤最小化，同时最大化回报潜力。",
       "highlight3": "实时市场分析和即时交易执行确保您不会错过任何盈利机会。"

@@ -10,12 +10,12 @@
   },
   "about": {
     "title": "WHAT TIRIS DOES",
-    "description": "Tiris is committed to utilizing artificial intelligence technology to implement quantitative trading strategies that can be consistently profitable. And to make the benefits of quantitative trading available to every trader, even if they are completely technically illiterate."
+    "description": "Tiris is a compact quantitative trading platform that delivers full backtesting, paper, and live trading capabilities. It also includes a proven, profitable trading strategy so every trader can enjoy automated trading without writing code or performing technical analysis."
   },
   "features": {
     "profitable": {
       "title": "Profitable",
-      "description": "Our trading strategy, developed based on the cutting edge machine learning technology and validated by extensive historical data backtesting, has earned a 140% return on ETH/USDT trading throughout 2024."
+      "description": "Our trading strategy is built on cutting-edge artificial intelligence techniques and validated through extensive historical backtesting, delivering a 140% return on ETH/USDT trading throughout 2024."
     },
     "secure": {
       "title": "Secure",
@@ -23,25 +23,25 @@
     },
     "automatic": {
       "title": "Automatic",
-      "description": "Our smart strategies are encapsulated in trading robots. The robot can work 24/7 without any breaks and is not affected by emotions."
+      "description": "Our smart strategies are encapsulated in trading robots. The robot works 24/7 without breaks, stays emotionless, and keeps capturing market opportunities even while you rest."
     },
     "simple": {
       "title": "Simple",
-      "description": "We have hidden all the technical details so that users can turn on automated quantitative trading with a single click in a simple and easy-to-use interface."
+      "description": "We have hidden all the technical details so that users can turn on automated quantitative trading with a single click in a simple interface—no programming or technical analysis knowledge required."
     }
   },
   "performance": {
-    "title": "LIVE PERFORMANCE DEMONSTRATION",
-    "description": "See how our ML-powered trading bot has performed with real backtest data compared to ETH benchmark. This shows actual trading decisions made by our algorithm based on historical market analysis.",
-    "loading": "Loading real trading data from our ML-powered trading system...",
+    "title": "LIVE PERFORMANCE SHOWCASE",
+    "description": "See how our trading bot performs in live markets compared with the benchmark return. The benchmark represents a buy-and-hold strategy: invest all capital in ETH and simply hold it, letting performance follow price. This comparison shows how our algorithm captures excess returns from market volatility.",
+    "loading": "Loading live trading data...",
     "noData": "No trading data available at this time.",
     "chart": {
-      "title": "PORTFOLIO RETURN vs ETH BENCHMARK",
+      "title": "PORTFOLIO RETURN RATE vs BENCHMARK RETURN RATE",
       "toggleShow": "Show Trading Signals",
       "toggleHide": "Hide Trading Signals",
       "portfolioValue": "Portfolio Value",
-      "return": "Return",
-      "ethReturn": "ETH Return"
+      "return": "Return Rate",
+      "ethReturn": "Benchmark Return Rate"
     },
     "metrics": {
       "totalROI": "Total ROI",
@@ -51,26 +51,26 @@
       "totalTrades": "Total Trades"
     },
     "legend": {
-      "portfolioReturn": "Portfolio Return (Area)",
-      "ethBenchmark": "ETH Benchmark (Line)",
+      "portfolioReturn": "Portfolio Return Rate (Area)",
+      "ethBenchmark": "Benchmark Return Rate (Line)",
       "zeroLine": "Zero Line",
-      "buySignals": "Buy Signals",
-      "sellSignals": "Sell Signals"
+      "buySignals": "Buy",
+      "sellSignals": "Sell"
     },
     "tooltip": {
       "time": "Time",
       "portfolioValue": "Portfolio Value",
-      "portfolioReturn": "Portfolio Return",
-      "ethBenchmark": "ETH Benchmark",
-      "excessReturn": "Excess Return",
+      "portfolioReturn": "Portfolio Return Rate",
+      "ethBenchmark": "Benchmark Return Rate",
+      "excessReturn": "Excess Return Rate",
       "buy": "BUY",
       "sell": "SELL"
     },
     "highlights": {
       "title": "KEY PERFORMANCE HIGHLIGHTS",
-      "outperforming": "Outperforming ETH: Algorithm achieved superior returns compared to holding ETH directly",
-      "riskManagement": "Risk Management: Controlled drawdowns through intelligent position sizing and ML-driven decisions", 
-      "realTimeAnalysis": "Real-time Analysis: Performance data updated from live backend equity curve calculations"
+      "outperforming": "Outperforming the Benchmark: Algorithm delivered superior returns compared to a simple buy-and-hold approach",
+      "riskManagement": "Risk Management: Controlled drawdowns through intelligent position sizing and AI-driven decisions",
+      "realTimeAnalysis": "Real-time Analysis: Performance data updates continuously from live backend equity curve calculations"
     }
   },
   "language": {
@@ -161,7 +161,7 @@
     "tabs": "Tabs"
   },
   "dashboard": {
-    "title": "Dashboard",
+    "title": "Trading Center",
     "welcome": "Welcome back, {{name}}",
     "totalTradings": "Total Tradings",
     "activeTradings": "Online Tradings",
@@ -170,7 +170,7 @@
     "loadingTradings": "Loading tradings...",
     "noTradingsFound": "No tradings found",
     "noTradingsDescription": "Your tradings will appear here once you create them.",
-    "createNew": "Create New {{type}}",
+    "createNew": "Create New {{type}} Trading",
     "deleteTradingTitle": "Delete Trading",
     "deleteTradingMessage": "Are you sure you want to delete '{{name}}'? This will permanently remove all associated data including positions, logs, transactions, and sub-accounts. This action cannot be undone.",
     "deleteTradingMessageReal": "Are you sure you want to delete '{{name}}'? This will mark the trading as deleted but preserve all historical data. This action cannot be undone.",
@@ -197,7 +197,7 @@
   "trading": {
     "detail": {
       "title": "Trading Details",
-      "backToDashboard": "Back to Dashboard",
+      "backToDashboard": "Back to Trading Center",
       "overview": "Overview",
       "performance": "Performance",
       "settings": "Settings",
@@ -205,8 +205,8 @@
       "failedToLoad": "Failed to load trading",
       "failedToLoadWithError": "Failed to load trading: {{error}}",
       "tradingIdRequired": "Trading ID is required",
-      "timeframe": "Timeframe",
-      "exchangeBinding": "Exchange Binding",
+      "timeframe": "Period",
+      "exchangeBinding": "Exchange",
       "performanceChart": "Performance Chart",
       "noDataAvailable": "No performance data available",
       "stopBot": "Stop Bot",
@@ -229,7 +229,7 @@
       "real": "Real"
     },
     "create": {
-      "title": "Create New {{type}}",
+      "title": "Create New {{type}} Trading",
       "name": "Trading Name",
       "namePlaceholder": "Enter trading name",
       "nameRequired": "Trading name is required",
@@ -237,24 +237,24 @@
       "selectExchange": "Select an exchange",
       "exchangeBindingRequired": "Exchange selection is required",
       "strategy": "Strategy",
-      "timeframe": "Timeframe",
+      "timeframe": "Period",
       "description": "Description",
       "descriptionPlaceholder": "Optional description for this trading",
-      "paperInfo": "This will create a paper trading with 10,000 USDT initial balance and set up ETH/USDT trading accounts automatically.",
+      "paperInfo": "This will create a paper trading with a 10,000 USDT initial balance and automatically set up the trading account.",
       "failedToLoadBindings": "Failed to load exchange bindings: {{error}}",
       "failedToCreate": "Failed to create trading: {{error}}",
-      "selectStrategyError": "Please select a strategy for the trading bot"
+      "selectStrategyError": "Please select a strategy for the trading"
     },
     "botParams": {
       "title": "Bot Parameters",
-      "description": "Select strategy and exchange type for your trading bot.",
+      "description": "Select strategy and exchange for your trading bot.",
       "strategy": "Strategy",
       "selectStrategy": "Select a strategy",
-      "timeframe": "Timeframe",
-      "exchangeType": "Exchange Type",
-      "selectExchange": "Select an exchange type",
+      "timeframe": "Period",
+      "exchangeType": "Exchange",
+      "selectExchange": "Select an exchange",
       "failedToLoad": "Failed to load bot parameters: {{error}}",
-      "allFieldsRequired": "Please select both strategy and exchange type"
+      "allFieldsRequired": "Please select both a strategy and an exchange"
     },
     "strategy": {
       "momentum": "Momentum",
@@ -274,14 +274,14 @@
       "hideTradingSignals": "Hide Trading Signals",
       "portfolioValue": "Portfolio Value",
       "portfolioReturn": "Portfolio Return",
-      "ethBenchmark": "ETH Benchmark",
-      "ethReturn": "ETH Return",
+      "ethBenchmark": "Benchmark Return Rate",
+      "ethReturn": "Benchmark Return Rate",
       "excessReturn": "Excess Return",
       "time": "Time",
-      "return": "Return",
+      "return": "Return Rate",
       "zeroLine": "Zero Line",
-      "buySignals": "Buy Signals",
-      "sellSignals": "Sell Signals",
+      "buySignals": "Buy",
+      "sellSignals": "Sell",
       "ethPrice": "ETH Price",
       "ethPosition": "ETH Position",
       "signalLines": "Signal Lines",
