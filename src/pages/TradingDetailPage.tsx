@@ -486,24 +486,6 @@ export const TradingDetailPage: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
-      case 'running':
-        return 'text-green-600 bg-green-100';
-      case 'stopped':
-      case 'completed':
-        return 'text-blue-600 bg-blue-100';
-      case 'failed':
-      case 'error':
-        return 'text-red-600 bg-red-100';
-      case 'paused':
-        return 'text-yellow-600 bg-yellow-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
-    }
-  };
-
   const getTypeIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case 'backtest':
@@ -666,9 +648,6 @@ export const TradingDetailPage: React.FC = () => {
                     <h1 className="text-2xl font-bold text-gray-900">{trading.name}</h1>
                     <div className="flex items-center space-x-4 text-sm text-gray-600">
                       <span>ID: {trading.id.substring(0, 8)}...</span>
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(trading.status)}`}>
-                        {t(`trading.status.${trading.status.toLowerCase()}`) || trading.status}
-                      </span>
                       <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
                         {t(`trading.type.${trading.type.toLowerCase()}`) || trading.type}
                       </span>
