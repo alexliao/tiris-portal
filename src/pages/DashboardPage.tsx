@@ -8,6 +8,7 @@ import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import CreateTradingModal from '../components/trading/CreateTradingModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import InfoDialog from '../components/common/InfoDialog';
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
@@ -28,6 +29,7 @@ export const DashboardPage: React.FC = () => {
     trading: null,
     isDeleting: false,
   });
+  const [showUnderConstructionDialog, setShowUnderConstructionDialog] = useState(false);
 
   const fetchTradings = async () => {
     try {
@@ -68,6 +70,12 @@ export const DashboardPage: React.FC = () => {
   };
 
   const handleCreateTrading = () => {
+    // Show "under construction" message for real and backtest trading
+    if (activeTab === 'real' || activeTab === 'backtest') {
+      setShowUnderConstructionDialog(true);
+      return;
+    }
+
     setIsCreateModalOpen(true);
   };
 
@@ -488,6 +496,15 @@ export const DashboardPage: React.FC = () => {
         cancelText={t('common.cancel')}
         isDestructive={true}
         isLoading={deleteConfirmation.isDeleting}
+      />
+
+      {/* Under Construction Dialog */}
+      <InfoDialog
+        isOpen={showUnderConstructionDialog}
+        onClose={() => setShowUnderConstructionDialog(false)}
+        title="Under Construction"
+        message="This feature is under construction"
+        buttonText="OK"
       />
     </div>
   );
