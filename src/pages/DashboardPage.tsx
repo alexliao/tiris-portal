@@ -8,7 +8,7 @@ import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import CreateTradingModal from '../components/trading/CreateTradingModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
-import InfoDialog from '../components/common/InfoDialog';
+import UnderConstruction from '../components/common/UnderConstruction';
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
@@ -499,13 +499,21 @@ export const DashboardPage: React.FC = () => {
       />
 
       {/* Under Construction Dialog */}
-      <InfoDialog
-        isOpen={showUnderConstructionDialog}
-        onClose={() => setShowUnderConstructionDialog(false)}
-        title="Under Construction"
-        message="This feature is under construction"
-        buttonText="OK"
-      />
+      {showUnderConstructionDialog && (
+        <div className="fixed inset-0 overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-20 backdrop-blur-sm">
+          <div className="relative mx-auto p-6 border border-gray-200 w-96 shadow-2xl rounded-lg bg-white/95">
+            <button
+              onClick={() => setShowUnderConstructionDialog(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <UnderConstruction />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
