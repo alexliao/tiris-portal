@@ -273,7 +273,6 @@ export interface CreateTradingRequest {
   type: 'backtest' | 'paper' | 'real';
   info: {
     strategy?: string;
-    timeframe?: string;
     description?: string;
     [key: string]: any;
   };

@@ -427,7 +427,6 @@ export const TradingDetailPage: React.FC = () => {
               strategy_name: trading.info?.strategy_name || "platform_test",
               symbol: "ETH/USDT",
               exchange: exchangeBinding.exchange,
-              timeframe: trading.info?.timeframe || "5m",
               initial_balance: 10000
             }
           }
@@ -461,9 +460,23 @@ export const TradingDetailPage: React.FC = () => {
       console.log('Bot started:', updatedBot);
       setBot(updatedBot);
 
+      // Wait a moment for bot to initialize, then refresh bot data to get timeframe
+      console.log('Waiting for bot to initialize and set timeframe...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Refresh bot data to get updated params including timeframe
+      console.log('Refreshing bot data to get updated timeframe...');
+      const refreshedBot = await getBot(updatedBot.record.id);
+      console.log('Refreshed bot data:', refreshedBot);
+      setBot(refreshedBot);
+
+      // Also refresh trading data
+      console.log('Refreshing trading data...');
+      await fetchTradingData(false);
+
       // Start monitoring bot status if the bot is now running
-      if (updatedBot.record.enabled && updatedBot.alive) {
-        startBotStatusMonitoring(updatedBot.record.id);
+      if (refreshedBot.record.enabled && refreshedBot.alive) {
+        startBotStatusMonitoring(refreshedBot.record.id);
       }
     } catch (err) {
       console.error('Failed to start bot:', err);
@@ -721,7 +734,7 @@ export const TradingDetailPage: React.FC = () => {
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.timeframe')}</div>
-                <div className="text-sm text-gray-900">{trading.info?.timeframe || 'N/A'}</div>
+                <div className="text-sm text-gray-900">{bot?.record.spec.params?.timeframe || trading.info?.timeframe || 'N/A'}</div>
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.exchangeBinding')}</div>

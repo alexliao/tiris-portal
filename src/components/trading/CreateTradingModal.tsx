@@ -42,7 +42,6 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
   const [strategies, setStrategies] = useState<string[]>([]);
   const [isLoadingBotData, setIsLoadingBotData] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState<string>('');
-  const [selectedTimeframe, setSelectedTimeframe] = useState<string>('5m');
 
   const generateDefaultName = (type: string): string => {
     const now = new Date();
@@ -170,12 +169,6 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       let newTrading: Trading;
       const requestData = { ...formData };
 
-      // Add timeframe to info for all trading types
-      requestData.info = {
-        ...requestData.info,
-        timeframe: selectedTimeframe,
-      };
-
       // Add bot parameters to info if this is paper trading
       if (tradingType === 'paper') {
         requestData.info = {
@@ -212,7 +205,6 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
         },
       });
       setSelectedStrategy('');
-      setSelectedTimeframe('5m');
     } catch (err) {
       console.error('Failed to create trading:', err);
       if (err instanceof ApiError) {
@@ -313,31 +305,6 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                 ))}
               </select>
             )}
-          </div>
-
-          {/* Timeframe Selection */}
-          <div className="mb-4">
-            <label htmlFor="timeframe" className="block text-sm font-medium text-gray-700 mb-1">
-              {t('trading.create.timeframe')}
-            </label>
-            <select
-              id="timeframe"
-              value={selectedTimeframe}
-              onChange={(e) => setSelectedTimeframe(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="5m">{t('trading.timeframe.5m')}</option>
-              <option value="15m">{t('trading.timeframe.15m')}</option>
-              <option value="30m">{t('trading.timeframe.30m')}</option>
-              <option value="1h">{t('trading.timeframe.1h')}</option>
-              <option value="2h">{t('trading.timeframe.2h')}</option>
-              <option value="4h">{t('trading.timeframe.4h')}</option>
-              <option value="8h">{t('trading.timeframe.8h')}</option>
-              <option value="12h">{t('trading.timeframe.12h')}</option>
-              <option value="1d">{t('trading.timeframe.1d')}</option>
-              <option value="2d">{t('trading.timeframe.2d')}</option>
-              <option value="1w">{t('trading.timeframe.1w')}</option>
-            </select>
           </div>
 
           {/* Bot Parameters for Paper Trading */}
