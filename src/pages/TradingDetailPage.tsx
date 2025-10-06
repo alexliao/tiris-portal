@@ -514,6 +514,10 @@ export const TradingDetailPage: React.FC = () => {
       if (refreshedBot.record.enabled && refreshedBot.alive) {
         startBotStatusMonitoring(refreshedBot.record.id);
       }
+
+      // Reload the page to ensure fresh state and avoid interval issues
+      console.log('Bot started successfully, reloading page...');
+      window.location.reload();
     } catch (err) {
       console.error('Failed to start bot:', err);
       // Could add a toast notification here
