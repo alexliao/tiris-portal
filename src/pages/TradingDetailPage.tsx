@@ -56,7 +56,7 @@ export const TradingDetailPage: React.FC = () => {
     const intervalSeconds = Math.floor(timeframeSeconds / 5);
 
     // Clamp between 1 and 60 seconds
-    const clampedSeconds = Math.max(1, Math.min(60, intervalSeconds));
+    const clampedSeconds = Math.max(3, Math.min(60, intervalSeconds));
 
     return clampedSeconds * 1000; // Convert to milliseconds
   };

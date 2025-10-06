@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Brush } from 'recharts';
+import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Brush, type TooltipProps } from 'recharts';
 import { getEquityCurve, getTradingLogs, ApiError, type Trading } from '../../utils/api';
 import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 
@@ -17,7 +17,73 @@ interface TradingPerformanceWidgetProps {
   onAutoRefreshToggle?: (enabled: boolean) => void;
 }
 
-export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> = ({
+const areTradingPointsEqual = (a: TradingDataPoint, b: TradingDataPoint): boolean => {
+  if (a.timestampNum !== b.timestampNum) return false;
+  if (a.netValue !== b.netValue) return false;
+  if (a.roi !== b.roi) return false;
+  if ((a.benchmark ?? null) !== (b.benchmark ?? null)) return false;
+  if ((a.benchmarkPrice ?? null) !== (b.benchmarkPrice ?? null)) return false;
+  if ((a.position ?? null) !== (b.position ?? null)) return false;
+
+  const aEventType = a.event?.type ?? null;
+  const bEventType = b.event?.type ?? null;
+  if (aEventType !== bEventType) return false;
+
+  const aEventDescription = a.event?.description ?? null;
+  const bEventDescription = b.event?.description ?? null;
+  if (aEventDescription !== bEventDescription) return false;
+
+  return true;
+};
+
+const areMetricsEqual = (prev: TradingMetrics, next: TradingMetrics): boolean => {
+  return (
+    prev.totalROI === next.totalROI &&
+    prev.winRate === next.winRate &&
+    prev.sharpeRatio === next.sharpeRatio &&
+    prev.maxDrawdown === next.maxDrawdown &&
+    prev.totalTrades === next.totalTrades &&
+    prev.initialPrice === next.initialPrice
+  );
+};
+
+const mergeTradingDataSets = (
+  prev: TradingDataPoint[],
+  next: TradingDataPoint[]
+): { value: TradingDataPoint[]; changed: boolean } => {
+  if (prev.length === 0) {
+    return { value: next, changed: true };
+  }
+
+  const prevByTimestamp = new Map<number, TradingDataPoint>();
+  prev.forEach(point => {
+    prevByTimestamp.set(point.timestampNum, point);
+  });
+
+  let changed = prev.length !== next.length;
+  const merged = next.map(point => {
+    const previousPoint = prevByTimestamp.get(point.timestampNum);
+    if (previousPoint && areTradingPointsEqual(previousPoint, point)) {
+      return previousPoint;
+    }
+
+    changed = true;
+    return point;
+  });
+
+  if (!changed) {
+    return { value: prev, changed: false };
+  }
+
+  return { value: merged, changed: true };
+};
+
+type ChartState = {
+  data: TradingDataPoint[];
+  metrics: TradingMetrics;
+};
+
+const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps> = ({
   trading,
   className = '',
   showHeader = true,
@@ -28,8 +94,10 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   onAutoRefreshToggle
 }) => {
   const { t } = useTranslation();
-  const [tradingData, setTradingData] = useState<TradingDataPoint[]>([]);
-  const [metrics, setMetrics] = useState<TradingMetrics>({} as TradingMetrics);
+  const [chartState, setChartState] = useState<ChartState>({
+    data: [],
+    metrics: {} as TradingMetrics
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTradingDots, setShowTradingDots] = useState(false);
@@ -37,7 +105,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('all');
 
   // Extract trading data fetching logic into reusable function
-  const fetchTradingData = async (isInitialLoad = false) => {
+  const fetchTradingData = useCallback(async (isInitialLoad = false) => {
     try {
       // Only show loading state during initial load, not during refresh
       if (isInitialLoad) {
@@ -52,12 +120,19 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
 
       const { data, metrics: calculatedMetrics } = transformEquityCurveToChartData(equityCurve, tradingLogs);
 
-      // Debug: Check if benchmarkPrice data exists
-      console.log('Chart data sample:', data.slice(0, 3));
-      console.log('Metrics:', calculatedMetrics);
+      setChartState((previous) => {
+        const mergedData = mergeTradingDataSets(previous.data, data);
+        const metricsChanged = !areMetricsEqual(previous.metrics, calculatedMetrics);
 
-      setTradingData(data);
-      setMetrics(calculatedMetrics);
+        if (!mergedData.changed && !metricsChanged) {
+          return previous;
+        }
+
+        return {
+          data: mergedData.changed ? mergedData.value : previous.data,
+          metrics: metricsChanged ? calculatedMetrics : previous.metrics
+        };
+      });
     } catch (err) {
       console.error('Failed to fetch trading data:', err);
       // Only show errors during initial load, silently handle refresh errors
@@ -76,64 +151,48 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
         setLoading(false);
       }
     }
-  };
+  }, [trading.id]);
 
   // Initial data loading effect
   useEffect(() => {
     fetchTradingData(true); // Mark as initial load
-  }, [trading.id]);
+  }, [fetchTradingData]);
 
   // Refresh trigger effect - refetch data when refreshTrigger changes
   useEffect(() => {
-    console.log('Performance widget: Refresh trigger effect triggered', {
-      refreshTrigger,
-      autoRefreshEnabled,
-      shouldRefresh: refreshTrigger > 0 && autoRefreshEnabled
-    });
-
     if (refreshTrigger > 0 && autoRefreshEnabled) {
-      console.log('Performance widget: Auto-refresh enabled, refreshing data due to trigger change');
       fetchTradingData(false); // Refresh without showing loading state
-    } else if (refreshTrigger > 0 && !autoRefreshEnabled) {
-      console.log('Performance widget: Auto-refresh disabled, skipping chart refresh');
     }
-  }, [refreshTrigger, autoRefreshEnabled]);
+  }, [refreshTrigger, autoRefreshEnabled, fetchTradingData]);
 
   // Auto-refresh state change effect - refresh immediately when turned back on
   useEffect(() => {
-    console.log('Performance widget: Auto-refresh state changed', {
-      autoRefreshEnabled,
-      refreshTrigger,
-      shouldRefresh: autoRefreshEnabled && refreshTrigger > 0
-    });
-
     if (autoRefreshEnabled && refreshTrigger > 0) {
-      console.log('Performance widget: Auto-refresh turned on, refreshing chart with latest data');
       fetchTradingData(false); // Refresh without showing loading state
     }
-  }, [autoRefreshEnabled]);
+  }, [autoRefreshEnabled, fetchTradingData, refreshTrigger]);
 
   // Effect to restore brush domain after data refresh when auto-refresh is disabled
   useEffect(() => {
-    if (tradingData.length > 0 && brushDomain && !autoRefreshEnabled) {
+    if (chartState.data.length > 0 && brushDomain && !autoRefreshEnabled) {
       // When auto-refresh is disabled and we have brush domain and new data,
       // ensure the brush domain is maintained
       setTimeout(() => {
         setBrushDomain(brushDomain);
       }, 50);
     }
-  }, [tradingData, autoRefreshEnabled]);
+  }, [chartState.data, brushDomain, autoRefreshEnabled]);
 
   // Function to filter data based on selected time range
-  const getFilteredData = (range: TimeRange): TradingDataPoint[] => {
-    if (range === 'all' || tradingData.length === 0) {
-      return tradingData;
+  const filteredData = useMemo(() => {
+    if (selectedTimeRange === 'all' || chartState.data.length === 0) {
+      return chartState.data;
     }
 
-    const now = tradingData[tradingData.length - 1]?.timestampNum || Date.now();
+    const now = chartState.data[chartState.data.length - 1]?.timestampNum || Date.now();
     let cutoffTime: number;
 
-    switch (range) {
+    switch (selectedTimeRange) {
       case '10m':
         cutoffTime = now - (10 * 60 * 1000); // 10 minutes
         break;
@@ -144,14 +203,12 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
         cutoffTime = now - (30 * 24 * 60 * 60 * 1000); // 1 month (30 days)
         break;
       default:
-        return tradingData;
+        return chartState.data;
     }
 
-    const filtered = tradingData.filter(point => point.timestampNum >= cutoffTime);
-    return filtered.length > 0 ? filtered : tradingData;
-  };
-
-  const displayData = getFilteredData(selectedTimeRange);
+    const filtered = chartState.data.filter(point => point.timestampNum >= cutoffTime);
+    return filtered.length > 0 ? filtered : chartState.data;
+  }, [chartState.data, selectedTimeRange]);
 
   // Handle time range selection
   const handleTimeRangeChange = (range: TimeRange) => {
@@ -162,8 +219,8 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   // Handle brush change to synchronize both charts
   const handleBrushChange = (domain: { startIndex?: number; endIndex?: number } | null) => {
     if (domain && domain.startIndex !== undefined && domain.endIndex !== undefined) {
-      const startTime = displayData[domain.startIndex]?.timestampNum;
-      const endTime = displayData[domain.endIndex]?.timestampNum;
+      const startTime = filteredData[domain.startIndex]?.timestampNum;
+      const endTime = filteredData[domain.endIndex]?.timestampNum;
       if (startTime && endTime) {
         setBrushDomain([startTime, endTime]);
         // Automatically turn off auto-refresh when user manually adjusts brush
@@ -177,15 +234,15 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   };
 
   // Calculate the domain for both charts
-  const getChartDomain = (): [number, number] | ['dataMin', 'dataMax'] => {
+  const chartDomain = useMemo<[number, number] | ['dataMin', 'dataMax']>(() => {
     // If brush is active, use brush domain
     if (brushDomain) {
       return brushDomain;
     }
 
     // If a time range is selected (not 'all'), fix the domain to that time range
-    if (selectedTimeRange !== 'all' && tradingData.length > 0) {
-      const now = tradingData[tradingData.length - 1]?.timestampNum || Date.now();
+    if (selectedTimeRange !== 'all' && chartState.data.length > 0) {
+      const now = chartState.data[chartState.data.length - 1]?.timestampNum || Date.now();
       let cutoffTime: number;
 
       switch (selectedTimeRange) {
@@ -207,9 +264,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
 
     // For 'all' time range, use dynamic domain
     return ['dataMin', 'dataMax'];
-  };
-
-  const chartDomain = getChartDomain();
+  }, [brushDomain, chartState.data, selectedTimeRange]);
 
 
   const formatCurrency = (value: number) => {
@@ -238,13 +293,16 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
     });
   };
 
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
+  const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
+      const data = payload[0]?.payload as TradingDataPoint | undefined;
+      if (!data) {
+        return null;
+      }
 
       // Calculate benchmark price (assuming initial ETH price and benchmark return)
       const benchmarkPrice = data.benchmark !== undefined ?
-        metrics.initialPrice ? metrics.initialPrice * (1 + data.benchmark / 100) : null : null;
+        chartState.metrics.initialPrice ? chartState.metrics.initialPrice * (1 + data.benchmark / 100) : null : null;
 
       return (
         <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
@@ -282,7 +340,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
             <div className="flex items-center mt-1">
               <div className="w-3 h-3 bg-blue-400 rounded mr-2"></div>
               <p className="font-['Nunito'] text-sm text-blue-600 font-semibold">
-                {`${t('trading.chart.ethPosition')}: ${data.position.toFixed(4)} ETH`}
+              {`${t('trading.chart.ethPosition')}: ${data.position.toFixed(4)} ETH`}
               </p>
             </div>
           )}
@@ -334,7 +392,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   }
 
   // No data state
-  if (tradingData.length === 0) {
+  if (chartState.data.length === 0) {
     return (
       <div className={`bg-white rounded-lg shadow-lg p-6 ${className}`}>
         {showHeader && (
@@ -357,37 +415,37 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="text-2xl font-['Bebas_Neue'] font-bold text-gray-700">
-            {formatCurrency(displayData[displayData.length - 1]?.netValue || 0)}
+            {formatCurrency(filteredData[filteredData.length - 1]?.netValue ?? 0)}
           </div>
           <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.chart.portfolioValue')}</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="text-2xl font-['Bebas_Neue'] font-bold text-green-600">
-            {formatPercentage(metrics.totalROI)}
+            {formatPercentage(chartState.metrics.totalROI ?? 0)}
           </div>
           <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.totalROI')}</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="text-2xl font-['Bebas_Neue'] font-bold text-blue-600">
-            {formatPercentage(metrics.winRate)}
+            {formatPercentage(chartState.metrics.winRate ?? 0)}
           </div>
           <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.winRate')}</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="text-2xl font-['Bebas_Neue'] font-bold text-purple-600">
-            {metrics.sharpeRatio.toFixed(1)}
+            {(chartState.metrics.sharpeRatio ?? 0).toFixed(1)}
           </div>
           <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.sharpeRatio')}</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="text-2xl font-['Bebas_Neue'] font-bold text-orange-600">
-            {formatPercentage(metrics.maxDrawdown)}
+            {formatPercentage(chartState.metrics.maxDrawdown ?? 0)}
           </div>
           <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.maxDrawdown')}</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm">
           <div className="text-2xl font-['Bebas_Neue'] font-bold text-gray-700">
-            {metrics.totalTrades}
+            {chartState.metrics.totalTrades ?? 0}
           </div>
           <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.totalTrades')}</div>
         </div>
@@ -479,9 +537,8 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
           <div style={{ height: '60%', marginBottom: '10px', outline: 'none' }} tabIndex={-1}>
             <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
               <ComposedChart
-                data={displayData}
+                data={filteredData}
                 margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-                syncId="tradingCharts"
                 style={{ outline: 'none' }}
                 tabIndex={-1}
               >
@@ -580,7 +637,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                 />
 
                 {/* Dotted Lines Connecting Signals to Position Area */}
-                {showTradingDots && displayData.filter(point => point.event).map((point, index) => (
+                {showTradingDots && filteredData.filter(point => point.event).map((point, index) => (
                   <ReferenceLine
                     key={`signal-line-${index}`}
                     x={point.timestampNum}
@@ -598,9 +655,8 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
           <div style={{ height: '40%', outline: 'none' }} tabIndex={-1}>
             <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
               <ComposedChart
-                data={displayData}
+                data={filteredData}
                 margin={{ top: 20, right: 5, left: 5, bottom: 50 }}
-                syncId="tradingCharts"
                 style={{ outline: 'none' }}
                 tabIndex={-1}
               >
@@ -651,7 +707,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                 />
 
                 {/* Trading Signal Dots on Position Chart */}
-                {showTradingDots && displayData.filter(point => point.event).map((point, index) => (
+                {showTradingDots && filteredData.filter(point => point.event).map((point, index) => (
                   <ReferenceLine
                     key={`position-signal-line-${index}`}
                     x={point.timestampNum}
@@ -745,4 +801,24 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   );
 };
 
+const arePropsEqual = (
+  prev: TradingPerformanceWidgetProps,
+  next: TradingPerformanceWidgetProps
+): boolean => {
+  return (
+    prev.trading.id === next.trading.id &&
+    prev.trading.name === next.trading.name &&
+    prev.className === next.className &&
+    prev.showHeader === next.showHeader &&
+    prev.showHighlights === next.showHighlights &&
+    prev.height === next.height &&
+    prev.refreshTrigger === next.refreshTrigger &&
+    prev.autoRefreshEnabled === next.autoRefreshEnabled &&
+    prev.onAutoRefreshToggle === next.onAutoRefreshToggle
+  );
+};
+
+const TradingPerformanceWidget = memo(TradingPerformanceWidgetComponent, arePropsEqual);
+
+export { TradingPerformanceWidget };
 export default TradingPerformanceWidget;
