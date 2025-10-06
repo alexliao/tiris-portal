@@ -4,6 +4,8 @@ import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
 import { getEquityCurve, getTradingLogs, ApiError, type Trading } from '../../utils/api';
 import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 
+type TimeRange = '10m' | '1d' | '1M' | 'all';
+
 interface TradingPerformanceWidgetProps {
   trading: Trading;
   className?: string;
@@ -32,6 +34,7 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   const [error, setError] = useState<string | null>(null);
   const [showTradingDots, setShowTradingDots] = useState(false);
   const [brushDomain, setBrushDomain] = useState<[number, number] | null>(null);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('all');
 
   // Extract trading data fetching logic into reusable function
   const fetchTradingData = async (isInitialLoad = false) => {
@@ -121,7 +124,40 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
     }
   }, [tradingData, autoRefreshEnabled]);
 
-  const displayData = tradingData;
+  // Function to filter data based on selected time range
+  const getFilteredData = (range: TimeRange): TradingDataPoint[] => {
+    if (range === 'all' || tradingData.length === 0) {
+      return tradingData;
+    }
+
+    const now = tradingData[tradingData.length - 1]?.timestampNum || Date.now();
+    let cutoffTime: number;
+
+    switch (range) {
+      case '10m':
+        cutoffTime = now - (10 * 60 * 1000); // 10 minutes
+        break;
+      case '1d':
+        cutoffTime = now - (24 * 60 * 60 * 1000); // 1 day
+        break;
+      case '1M':
+        cutoffTime = now - (30 * 24 * 60 * 60 * 1000); // 1 month (30 days)
+        break;
+      default:
+        return tradingData;
+    }
+
+    const filtered = tradingData.filter(point => point.timestampNum >= cutoffTime);
+    return filtered.length > 0 ? filtered : tradingData;
+  };
+
+  const displayData = getFilteredData(selectedTimeRange);
+
+  // Handle time range selection
+  const handleTimeRangeChange = (range: TimeRange) => {
+    setSelectedTimeRange(range);
+    setBrushDomain(null); // Reset brush when changing time range
+  };
 
   // Handle brush change to synchronize both charts
   const handleBrushChange = (domain: { startIndex?: number; endIndex?: number } | null) => {
@@ -141,7 +177,39 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
   };
 
   // Calculate the domain for both charts
-  const chartDomain = brushDomain || ['dataMin', 'dataMax'];
+  const getChartDomain = (): [number, number] | ['dataMin', 'dataMax'] => {
+    // If brush is active, use brush domain
+    if (brushDomain) {
+      return brushDomain;
+    }
+
+    // If a time range is selected (not 'all'), fix the domain to that time range
+    if (selectedTimeRange !== 'all' && tradingData.length > 0) {
+      const now = tradingData[tradingData.length - 1]?.timestampNum || Date.now();
+      let cutoffTime: number;
+
+      switch (selectedTimeRange) {
+        case '10m':
+          cutoffTime = now - (10 * 60 * 1000); // 10 minutes
+          break;
+        case '1d':
+          cutoffTime = now - (24 * 60 * 60 * 1000); // 1 day
+          break;
+        case '1M':
+          cutoffTime = now - (30 * 24 * 60 * 60 * 1000); // 1 month (30 days)
+          break;
+        default:
+          return ['dataMin', 'dataMax'];
+      }
+
+      return [cutoffTime, now];
+    }
+
+    // For 'all' time range, use dynamic domain
+    return ['dataMin', 'dataMax'];
+  };
+
+  const chartDomain = getChartDomain();
 
 
   const formatCurrency = (value: number) => {
@@ -328,26 +396,44 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
       {/* Chart Container */}
       <div className="bg-white p-6 rounded-lg shadow-lg">
         <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
             {showHeader && (
               <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404]">
                 {trading.name} - {t('trading.detail.performanceChart')}
               </h3>
             )}
-            <div className="flex items-center justify-between flex-1 ml-4">
-              <button
-                onClick={() => setShowTradingDots(!showTradingDots)}
-                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-['Nunito'] transition-colors ${
-                  showTradingDots
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                <div className={`w-2 h-2 rounded-full mr-2 ${
-                  showTradingDots ? 'bg-blue-600' : 'bg-gray-400'
-                }`}></div>
-                {showTradingDots ? t('trading.chart.hideTradingSignals') : t('trading.chart.showTradingSignals')}
-              </button>
+            <div className="flex items-center justify-between flex-1 ml-4 flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowTradingDots(!showTradingDots)}
+                  className={`flex items-center px-3 py-1.5 rounded-md text-sm font-['Nunito'] transition-colors ${
+                    showTradingDots
+                      ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <div className={`w-2 h-2 rounded-full mr-2 ${
+                    showTradingDots ? 'bg-blue-600' : 'bg-gray-400'
+                  }`}></div>
+                  {showTradingDots ? t('trading.chart.hideTradingSignals') : t('trading.chart.showTradingSignals')}
+                </button>
+                {/* Time Range Selector Buttons */}
+                <div className="flex items-center gap-1">
+                  {(['10m', '1d', '1M', 'all'] as TimeRange[]).map((range) => (
+                    <button
+                      key={range}
+                      onClick={() => handleTimeRangeChange(range)}
+                      className={`px-3 py-1 rounded-md text-sm font-['Nunito'] transition-colors ${
+                        selectedTimeRange === range
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {t(`trading.chart.timeRange.${range}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {onAutoRefreshToggle && (
                 <div className="flex items-center space-x-2 text-sm font-['Nunito']">
                   <span className="text-gray-600">{t('common.autoRefresh')}:</span>
@@ -576,14 +662,16 @@ export const TradingPerformanceWidget: React.FC<TradingPerformanceWidgetProps> =
                   />
                 ))}
 
-                {/* Zoom Brush for the sub-chart */}
-                <Brush
-                  dataKey="timestampNum"
-                  height={30}
-                  stroke="#8884d8"
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  onChange={handleBrushChange}
-                />
+                {/* Zoom Brush for the sub-chart - only show when 'all' time range is selected */}
+                {selectedTimeRange === 'all' && (
+                  <Brush
+                    dataKey="timestampNum"
+                    height={30}
+                    stroke="#8884d8"
+                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    onChange={handleBrushChange}
+                  />
+                )}
               </ComposedChart>
             </ResponsiveContainer>
           </div>

@@ -290,7 +290,12 @@
       "performanceHighlights": "Performance Highlights",
       "highlight1": "Our AI strategy consistently outperforms ETH by analyzing market patterns and timing trades precisely.",
       "highlight2": "Advanced risk management keeps drawdowns minimal while maximizing return potential through diversified positions.",
-      "highlight3": "Real-time market analysis and instant trade execution ensure you never miss profitable opportunities."
+      "highlight3": "Real-time market analysis and instant trade execution ensure you never miss profitable opportunities.",
+      "timeRange": "Time Range",
+      "timeRange.10m": "10 Min",
+      "timeRange.1d": "1 Day",
+      "timeRange.1M": "1 Month",
+      "timeRange.all": "All"
     },
     "events": {
       "buy": "buy",

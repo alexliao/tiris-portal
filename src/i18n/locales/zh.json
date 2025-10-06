@@ -289,7 +289,12 @@
       "performanceHighlights": "绩效亮点",
       "highlight1": "我们的AI策略通过分析市场模式和精确把握交易时机，始终优于ETH表现。",
       "highlight2": "先进的风险管理通过多元化仓位保持回撤最小化，同时最大化回报潜力。",
-      "highlight3": "实时市场分析和即时交易执行确保您不会错过任何盈利机会。"
+      "highlight3": "实时市场分析和即时交易执行确保您不会错过任何盈利机会。",
+      "timeRange": "时间范围",
+      "timeRange.10m": "10分钟",
+      "timeRange.1d": "1天",
+      "timeRange.1M": "1个月",
+      "timeRange.all": "全部"
     },
     "events": {
       "buy": "买入",
