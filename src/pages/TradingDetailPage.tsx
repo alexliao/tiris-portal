@@ -30,6 +30,37 @@ export const TradingDetailPage: React.FC = () => {
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const isRefreshing2 = useRef(false);
 
+  // Convert timeframe string to seconds
+  const timeframeToSeconds = (timeframe: string): number => {
+    const match = timeframe.match(/^(\d+)([smhd]|w)$/);
+    if (!match) return 300; // Default 5 minutes if invalid format
+
+    const value = parseInt(match[1]);
+    const unit = match[2];
+
+    switch (unit) {
+      case 's': return value;
+      case 'm': return value * 60;
+      case 'h': return value * 3600;
+      case 'd': return value * 86400;
+      case 'w': return value * 604800;
+      default: return 300;
+    }
+  };
+
+  // Calculate refresh interval based on timeframe (timeframe/5, min 1s, max 60s)
+  const calculateRefreshInterval = (timeframe?: string): number => {
+    if (!timeframe) return 60000; // Default 60 seconds if no timeframe
+
+    const timeframeSeconds = timeframeToSeconds(timeframe);
+    const intervalSeconds = Math.floor(timeframeSeconds / 5);
+
+    // Clamp between 1 and 60 seconds
+    const clampedSeconds = Math.max(1, Math.min(60, intervalSeconds));
+
+    return clampedSeconds * 1000; // Convert to milliseconds
+  };
+
 
   // Extract trading data fetching logic into reusable function
   const fetchTradingData = async (isInitialLoad = false) => {
@@ -271,17 +302,22 @@ export const TradingDetailPage: React.FC = () => {
     console.log('Data refresh interval effect triggered', {
       isAuthenticated,
       authLoading,
+      botTimeframe: bot?.record.spec.params?.timeframe,
       shouldStart: isAuthenticated && !authLoading
     });
 
     if (isAuthenticated && !authLoading) {
-      console.log('Starting automatic data refresh with 60-second interval');
+      // Get timeframe from bot params or trading info
+      const timeframe = bot?.record.spec.params?.timeframe || trading?.info?.timeframe;
+      const refreshIntervalMs = calculateRefreshInterval(timeframe);
 
-      // Create interval for data refresh every 60 seconds
+      console.log(`Starting automatic data refresh with ${refreshIntervalMs}ms interval (timeframe: ${timeframe || 'default'})`);
+
+      // Create interval for data refresh based on timeframe
       const interval = setInterval(() => {
-        console.log('60-second interval triggered, calling refreshAllData');
+        console.log(`${refreshIntervalMs}ms interval triggered, calling refreshAllData`);
         refreshAllData();
-      }, 60000);
+      }, refreshIntervalMs);
 
       setDataRefreshInterval(interval);
 
@@ -295,7 +331,7 @@ export const TradingDetailPage: React.FC = () => {
         clearInterval(interval);
       };
     }
-  }, [isAuthenticated, authLoading, refreshAllData]);
+  }, [isAuthenticated, authLoading, refreshAllData, bot?.record.spec.params?.timeframe, trading?.info?.timeframe]);
 
   // Start periodic status checking when bot is running
   const startBotStatusMonitoring = (botId: string) => {
