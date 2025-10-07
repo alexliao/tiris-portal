@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, deleteTrading, type Trading, ApiError, getBots, type Bot } from '../utils/api';
-import { TrendingUp, Calendar, Activity, AlertCircle, RefreshCw, Plus, Trash2 } from 'lucide-react';
+import { getTradings, deleteTrading, type Trading, ApiError, getBots, type Bot, getExchangeBindings, type ExchangeBinding } from '../utils/api';
+import { TrendingUp, Calendar, Activity, AlertCircle, RefreshCw, Plus, Trash2, Building2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -16,6 +16,7 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [tradings, setTradings] = useState<Trading[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
+  const [exchanges, setExchanges] = useState<ExchangeBinding[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'backtest' | 'paper' | 'real'>('paper');
@@ -47,6 +48,16 @@ export const DashboardPage: React.FC = () => {
         // Don't show error for bot fetch failure, just log it
         setBots([]);
       }
+
+      // Try to fetch exchanges
+      try {
+        const exchangesData = await getExchangeBindings();
+        setExchanges(exchangesData);
+      } catch (exchangeErr) {
+        console.warn('Failed to fetch exchanges:', exchangeErr);
+        // Don't show error for exchange fetch failure, just log it
+        setExchanges([]);
+      }
     } catch (err) {
       console.error('Failed to fetch tradings:', err);
       if (err instanceof ApiError) {
@@ -70,8 +81,8 @@ export const DashboardPage: React.FC = () => {
   };
 
   const handleCreateTrading = () => {
-    // Show "under construction" message for real and backtest trading
-    if (activeTab === 'real' || activeTab === 'backtest') {
+    // Show "under construction" message for backtest trading
+    if (activeTab === 'backtest') {
       setShowUnderConstructionDialog(true);
       return;
     }
@@ -245,7 +256,7 @@ export const DashboardPage: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <Activity className="w-8 h-8 text-green-600" />
@@ -269,6 +280,15 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
           </div>
+          <Link to="/exchanges" className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center">
+              <Building2 className="w-8 h-8 text-purple-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">{t('dashboard.exchanges')}</p>
+                <p className="text-2xl font-bold text-gray-900">{exchanges.length}</p>
+              </div>
+            </div>
+          </Link>
         </div>
 
         {/* Trading List */}

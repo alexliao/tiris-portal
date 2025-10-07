@@ -284,7 +284,7 @@ export async function getPublicExchangeBindings(): Promise<ExchangeBinding[]> {
 }
 
 export async function getExchangeBindings(): Promise<ExchangeBinding[]> {
-  const response = await apiRequest<ExchangeBinding[]>('/exchange-bindings');
+  const response = await apiRequest<any>('/exchange-bindings');
   console.log('getExchangeBindings raw response:', response);
   console.log('getExchangeBindings response type:', typeof response);
   console.log('getExchangeBindings is array:', Array.isArray(response));
@@ -292,6 +292,11 @@ export async function getExchangeBindings(): Promise<ExchangeBinding[]> {
   // If response is already an array, return it directly
   if (Array.isArray(response)) {
     return response;
+  }
+
+  // If response is an object with items property (paginated response)
+  if (response && typeof response === 'object' && 'items' in response) {
+    return (response as any).items || [];
   }
 
   // If response is an object with exchange_bindings property, extract it
@@ -307,6 +312,53 @@ export async function getExchangeBindings(): Promise<ExchangeBinding[]> {
 
   console.warn('Unexpected exchange bindings response format:', response);
   return [];
+}
+
+export interface CreateExchangeBindingRequest {
+  name: string;
+  exchange: string;
+  type: 'private' | 'public';
+  api_key: string;
+  api_secret: string;
+  info?: {
+    testnet?: boolean;
+    description?: string;
+    quote_currency?: string;
+    [key: string]: any;
+  };
+}
+
+export async function createExchangeBinding(request: CreateExchangeBindingRequest): Promise<ExchangeBinding> {
+  return apiRequest<ExchangeBinding>('/exchange-bindings', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+}
+
+export interface UpdateExchangeBindingRequest {
+  name?: string;
+  api_key?: string;
+  api_secret?: string;
+  status?: string;
+  info?: {
+    testnet?: boolean;
+    description?: string;
+    quote_currency?: string;
+    [key: string]: any;
+  };
+}
+
+export async function updateExchangeBinding(id: string, request: UpdateExchangeBindingRequest): Promise<ExchangeBinding> {
+  return apiRequest<ExchangeBinding>(`/exchange-bindings/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(request),
+  });
+}
+
+export async function deleteExchangeBinding(id: string): Promise<void> {
+  return apiRequest<void>(`/exchange-bindings/${id}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function createTrading(request: CreateTradingRequest): Promise<Trading> {

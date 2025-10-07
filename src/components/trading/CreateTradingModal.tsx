@@ -42,6 +42,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
   const [strategies, setStrategies] = useState<string[]>([]);
   const [isLoadingBotData, setIsLoadingBotData] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState<string>('');
+  const [quoteCurrency, setQuoteCurrency] = useState<'USDT' | 'USDC'>('USDT');
 
   const generateDefaultName = (type: string): string => {
     const now = new Date();
@@ -77,8 +78,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
         type: tradingType,
       }));
 
-      // For paper trading, also fetch bot data
-      if (tradingType === 'paper') {
+      // For paper and real trading, also fetch bot data
+      if (tradingType === 'paper' || tradingType === 'real') {
         fetchBotData();
       }
     }
@@ -154,8 +155,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       return;
     }
 
-    // For paper trading, validate bot parameters
-    if (tradingType === 'paper') {
+    // For paper and real trading, validate bot parameters
+    if (tradingType === 'paper' || tradingType === 'real') {
       if (!selectedStrategy) {
         setError(t('trading.create.selectStrategyError'));
         return;
@@ -173,6 +174,15 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       if (tradingType === 'paper') {
         requestData.info = {
           ...requestData.info,
+          strategy_name: selectedStrategy,
+        };
+      }
+
+      // Add quote currency and strategy to info if this is real trading
+      if (tradingType === 'real') {
+        requestData.info = {
+          ...requestData.info,
+          quote_currency: quoteCurrency,
           strategy_name: selectedStrategy,
         };
       }
@@ -261,6 +271,18 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
           </div>
         )}
 
+        {/* Real Trading Info */}
+        {tradingType === 'real' && !isLoadingBindings && exchangeBindings.length === 0 && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-sm text-yellow-800">
+              No exchange connections found. Please add an exchange connection first in the{' '}
+              <a href="/exchanges" className="underline font-medium" onClick={(e) => { e.preventDefault(); window.location.href = '/exchanges'; }}>
+                Exchanges page
+              </a>.
+            </p>
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit}>
           {/* Trading Name */}
@@ -306,6 +328,55 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
               </select>
             )}
           </div>
+
+          {/* Quote Currency and Strategy for Real Trading */}
+          {tradingType === 'real' && (
+            <>
+              <div className="mb-4">
+                <label htmlFor="quote_currency" className="block text-sm font-medium text-gray-700 mb-1">
+                  Quote Currency <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="quote_currency"
+                  value={quoteCurrency}
+                  onChange={(e) => setQuoteCurrency(e.target.value as 'USDT' | 'USDC')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="USDT">USDT</option>
+                  <option value="USDC">USDC</option>
+                </select>
+              </div>
+
+              {/* Strategy Selection */}
+              <div className="mb-4">
+                <label htmlFor="bot_strategy_real" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('trading.botParams.strategy')} <span className="text-red-500">*</span>
+                </label>
+                {isLoadingBotData ? (
+                  <div className="flex items-center py-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <span className="text-sm text-gray-600">{t('common.loading')}</span>
+                  </div>
+                ) : (
+                  <select
+                    id="bot_strategy_real"
+                    value={selectedStrategy}
+                    onChange={(e) => setSelectedStrategy(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">{t('trading.botParams.selectStrategy')}</option>
+                    {strategies.map((strategy) => (
+                      <option key={strategy} value={strategy}>
+                        {strategy}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Bot Parameters for Paper Trading */}
           {tradingType === 'paper' && (
@@ -375,7 +446,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isLoading || isLoadingBindings || (tradingType === 'paper' && isLoadingBotData)}
+              disabled={isLoading || isLoadingBindings || ((tradingType === 'paper' || tradingType === 'real') && isLoadingBotData)}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? t('common.creating') : t('common.create')}

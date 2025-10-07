@@ -6,6 +6,7 @@ import LandingPage from './pages/landing/LandingPage';
 import PerformancePage from './pages/PerformancePage';
 import DashboardPage from './pages/DashboardPage';
 import TradingDetailPage from './pages/TradingDetailPage';
+import ExchangesPage from './pages/ExchangesPage';
 import { OAuthCallback } from './pages/auth/OAuthCallback';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
             <Route path="/performance" element={<PerformancePage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/trading/:id" element={<TradingDetailPage />} />
+            <Route path="/exchanges" element={<ExchangesPage />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
           </Routes>
           <ToastContainer />
