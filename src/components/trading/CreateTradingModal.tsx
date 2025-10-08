@@ -4,6 +4,7 @@ import { X, AlertCircle } from 'lucide-react';
 import {
   createTrading,
   createPaperTrading,
+  createRealTrading,
   getPublicExchangeBindings,
   getExchangeBindings,
   getStrategies,
@@ -195,6 +196,9 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       if (tradingType === 'paper') {
         console.log('Creating paper trading with business logic...');
         newTrading = await createPaperTrading(requestData);
+      } else if (tradingType === 'real') {
+        console.log('Creating real trading with business logic...');
+        newTrading = await createRealTrading(requestData);
       } else {
         console.log('Creating standard trading...');
         newTrading = await createTrading(requestData);

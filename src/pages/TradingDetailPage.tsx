@@ -2,11 +2,47 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getBot, getSubAccountsByTrading } from '../utils/api';
+import { getTradings, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading } from '../utils/api';
 import { ArrowLeft, Calendar, Activity, TrendingUp, AlertCircle, Play, Square, Loader2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
+
+const extractExchangeCredentials = (binding?: ExchangeBinding | null) => {
+  if (!binding) {
+    return { apiKey: null as string | null, apiSecret: null as string | null };
+  }
+
+  const info = binding.info || {};
+  const credentialsSections = [info.credentials, info.credential, info.security, info.api_credentials, info.apiCredentials];
+
+  const candidateKeys: Array<string | null | undefined> = [
+    binding.api_key,
+    info.api_key,
+    info.apiKey,
+    info.api_key_plain,
+    info.apiKeyPlain,
+    info.api_key_preview,
+    info.apiKeyPreview,
+    ...credentialsSections.map(section => section?.api_key ?? section?.apiKey ?? section?.key ?? null),
+  ];
+
+  const candidateSecrets: Array<string | null | undefined> = [
+    binding.api_secret,
+    info.api_secret,
+    info.apiSecret,
+    info.api_secret_plain,
+    info.apiSecretPlain,
+    info.api_secret_preview,
+    info.apiSecretPreview,
+    ...credentialsSections.map(section => section?.api_secret ?? section?.apiSecret ?? section?.secret ?? null),
+  ];
+
+  const apiKey = candidateKeys.find((value): value is string => typeof value === 'string' && value.trim().length > 0) ?? null;
+  const apiSecret = candidateSecrets.find((value): value is string => typeof value === 'string' && value.trim().length > 0) ?? null;
+
+  return { apiKey, apiSecret };
+};
 
 export const TradingDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +58,7 @@ export const TradingDetailPage: React.FC = () => {
   const [statusCheckInterval, setStatusCheckInterval] = useState<NodeJS.Timeout | null>(null);
   const isCheckingStatus = useRef(false);
   const monitoringBotId = useRef<string | null>(null);
+
 
   // Data refresh state management
   const [dataRefreshInterval, setDataRefreshInterval] = useState<NodeJS.Timeout | null>(null);
@@ -96,44 +133,75 @@ export const TradingDetailPage: React.FC = () => {
       }
 
       // Set exchange binding from embedded object if available, otherwise fetch it
-      if (foundTrading.exchange_binding) {
-        // Use the embedded exchange_binding from the trading object
-        setExchangeBinding({
-          id: foundTrading.exchange_binding.id,
-          name: foundTrading.exchange_binding.name,
-          exchange: foundTrading.exchange_binding.exchange,
-          type: foundTrading.exchange_binding.type as 'private' | 'public',
-          status: 'active',
-          created_at: foundTrading.created_at,
-          info: {}
-        });
-      } else {
-        // Fallback: fetch exchange binding details if not embedded
-        try {
+      try {
+        let resolvedBinding: ExchangeBinding | null = null;
+
+        if (foundTrading.exchange_binding) {
+          const embeddedBinding = foundTrading.exchange_binding;
+          resolvedBinding = {
+            id: embeddedBinding.id,
+            name: embeddedBinding.name,
+            exchange: embeddedBinding.exchange,
+            type: (embeddedBinding.type as 'private' | 'public') || 'private',
+            status: embeddedBinding.status || 'active',
+            created_at: embeddedBinding.created_at || foundTrading.created_at,
+            info: embeddedBinding.info ? { ...embeddedBinding.info } : {}
+          };
+          const embeddedCredentials = extractExchangeCredentials(resolvedBinding);
+          resolvedBinding.api_key = embeddedCredentials.apiKey;
+          resolvedBinding.api_secret = embeddedCredentials.apiSecret;
+        }
+
+        if (foundTrading.type === 'real') {
+          const bindingId = foundTrading.exchange_binding_id || foundTrading.exchange_binding?.id;
+          try {
+            if (!bindingId) {
+              throw new Error('Missing exchange binding ID for real trading.');
+            }
+
+            const binding = await getExchangeBindingById(bindingId);
+            resolvedBinding = {
+              ...binding,
+              info: binding.info ? { ...binding.info } : resolvedBinding?.info ? { ...resolvedBinding.info } : {}
+            };
+            const bindingCredentials = extractExchangeCredentials(resolvedBinding);
+            resolvedBinding.api_key = bindingCredentials.apiKey ?? resolvedBinding.api_key ?? null;
+            resolvedBinding.api_secret = bindingCredentials.apiSecret ?? resolvedBinding.api_secret ?? null;
+          } catch (realBindingErr) {
+            console.warn('Failed to fetch real trading exchange binding with credentials:', realBindingErr);
+          }
+        } else if (!resolvedBinding) {
           const isPaperOrBacktest = foundTrading.type === 'paper' || foundTrading.type === 'backtest';
 
           if (isPaperOrBacktest) {
             const publicExchangeBindings = await getPublicExchangeBindings();
-            // Find the specific exchange binding that matches the trading's exchange_binding_id
-            const binding = publicExchangeBindings.find(eb => eb.id === foundTrading.exchange_binding_id);
+            const binding = publicExchangeBindings.find(eb => eb.id === foundTrading.exchange_binding_id) || publicExchangeBindings[0];
             if (binding) {
-              setExchangeBinding(binding);
-            } else if (publicExchangeBindings.length > 0) {
-              // Fallback to first binding if specific one not found
-              console.warn(`Exchange binding ${foundTrading.exchange_binding_id} not found, using first available binding`);
-              setExchangeBinding(publicExchangeBindings[0]);
+              const publicBinding: ExchangeBinding = { ...binding };
+              const publicCredentials = extractExchangeCredentials(publicBinding);
+              publicBinding.api_key = publicCredentials.apiKey;
+              publicBinding.api_secret = publicCredentials.apiSecret;
+              resolvedBinding = publicBinding;
             }
           } else {
             const privateExchangeBindings = await getExchangeBindings();
             const binding = privateExchangeBindings.find(eb => eb.id === foundTrading.exchange_binding_id);
             if (binding) {
-              setExchangeBinding(binding);
+              const privateBinding: ExchangeBinding = { ...binding };
+              const privateCredentials = extractExchangeCredentials(privateBinding);
+              privateBinding.api_key = privateCredentials.apiKey;
+              privateBinding.api_secret = privateCredentials.apiSecret;
+              resolvedBinding = privateBinding;
             }
           }
-        } catch (exchangeErr) {
-          console.warn('Failed to fetch exchange binding details:', exchangeErr);
-          // Don't show error for exchange binding fetch failure
         }
+
+        if (resolvedBinding) {
+          setExchangeBinding(resolvedBinding);
+        }
+      } catch (exchangeErr) {
+        console.warn('Failed to fetch exchange binding details:', exchangeErr);
+        // Don't show error for exchange binding fetch failure
       }
     } catch (err) {
       console.error('Failed to fetch trading:', err);
@@ -400,6 +468,20 @@ export const TradingDetailPage: React.FC = () => {
     console.log('Starting bot for trading:', trading.id);
     setBotLoading(true);
     try {
+      const isRealTrading = trading.type === 'real';
+      let finalApiKey: string | null = null;
+      let finalApiSecret: string | null = null;
+
+      if (isRealTrading) {
+        const { apiKey, apiSecret } = extractExchangeCredentials(exchangeBinding);
+        finalApiKey = apiKey;
+        finalApiSecret = apiSecret;
+
+        if (!finalApiKey || !finalApiSecret) {
+          console.warn('Missing API credentials for real trading');
+          throw new Error('Exchange API credentials are required to run a real trading bot. Please update your exchange binding.');
+        }
+      }
       let currentBot = bot;
 
       // If no bot exists, create one first
@@ -435,6 +517,17 @@ export const TradingDetailPage: React.FC = () => {
           throw new Error(`Missing required sub-accounts. Found ${subAccounts.length} sub-accounts, but need both stock and balance accounts.`);
         }
 
+        const exchangeSpec: BotCreateRequest['spec']['exchange'] = {
+          id: exchangeBinding.id,
+          name: exchangeBinding.name,
+          type: exchangeBinding.exchange
+        };
+
+        if (isRealTrading) {
+          exchangeSpec.api_key = finalApiKey!;
+          exchangeSpec.api_secret = finalApiSecret!;
+        }
+
         // Create BotSpec using strategy from trading info
         const createRequest: BotCreateRequest = {
           spec: {
@@ -453,11 +546,7 @@ export const TradingDetailPage: React.FC = () => {
                 balance: parseFloat(balanceSubAccount.balance)
               }
             },
-            exchange: {
-              id: exchangeBinding.id,
-              name: exchangeBinding.name,
-              type: exchangeBinding.exchange
-            },
+            exchange: exchangeSpec,
             params: {
               // Use strategy_name from trading info if available, otherwise default
               strategy_name: trading.info?.strategy_name || "platform_test",
@@ -745,7 +834,7 @@ export const TradingDetailPage: React.FC = () => {
                     </button>
                   ) : (
                     <button
-                      onClick={handleStartBot}
+                      onClick={() => handleStartBot()}
                       disabled={botLoading}
                       className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
                     >

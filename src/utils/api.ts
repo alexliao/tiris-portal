@@ -33,6 +33,11 @@ export interface Trading {
     name: string;
     exchange: string;
     type: string;
+    status?: string;
+    created_at?: string;
+    info?: { [key: string]: any };
+    api_key?: string | null;
+    api_secret?: string | null;
   };
   type: string;
   status: string;
@@ -259,10 +264,14 @@ export interface ExchangeBinding {
   type: 'private' | 'public';
   status: string;
   created_at: string;
+  api_key?: string | null;
+  api_secret?: string | null;
   info: {
     description?: string;
     testnet?: boolean;
     permissions?: string[];
+    api_key?: string;
+    api_secret?: string;
     [key: string]: any;
   };
 }
@@ -312,6 +321,10 @@ export async function getExchangeBindings(): Promise<ExchangeBinding[]> {
 
   console.warn('Unexpected exchange bindings response format:', response);
   return [];
+}
+
+export async function getExchangeBindingById(id: string): Promise<ExchangeBinding> {
+  return apiRequest<ExchangeBinding>(`/exchange-bindings/${id}`);
 }
 
 export interface CreateExchangeBindingRequest {
@@ -371,6 +384,55 @@ export async function createTrading(request: CreateTradingRequest): Promise<Trad
   return result;
 }
 
+export async function createRealTrading(request: CreateTradingRequest): Promise<Trading> {
+  console.log('🔍 [REAL DEBUG] Creating real trading with business logic steps...');
+  console.log('🔍 [REAL DEBUG] Request received:', request);
+
+  const quoteCurrency = request.info?.quote_currency;
+
+  if (!quoteCurrency) {
+    throw new Error('Quote currency is required to create a real trading.');
+  }
+
+  try {
+    console.log('Step 1: Creating real trading...');
+    const trading = await createTrading(request);
+    console.log('Real trading created:', trading.id);
+
+    console.log('Step 2: Creating sub-accounts for real trading...');
+
+    const stockSubAccount = await createSubAccount({
+      name: 'ETH Stock Account',
+      symbol: 'ETH',
+      balance: '0',
+      trading_id: trading.id,
+      info: {
+        description: 'Sub-account for ETH stock holdings',
+        account_type: 'stock'
+      }
+    });
+    console.log('ETH sub-account created:', stockSubAccount.id);
+
+    const balanceSubAccount = await createSubAccount({
+      name: `${quoteCurrency} Balance Account`,
+      symbol: quoteCurrency,
+      balance: '0',
+      trading_id: trading.id,
+      info: {
+        description: `Sub-account for ${quoteCurrency} balance`,
+        account_type: 'balance'
+      }
+    });
+    console.log(`${quoteCurrency} sub-account created:`, balanceSubAccount.id);
+
+    console.log('Real trading creation completed with sub-accounts.');
+    return trading;
+  } catch (error) {
+    console.error('Failed to create real trading:', error);
+    throw error;
+  }
+}
+
 // Interface for creating sub-account
 export interface CreateSubAccountRequest {
   name: string;
@@ -426,6 +488,8 @@ export interface Bot {
         id: string;
         name: string;
         type: string;
+        api_key?: string | null;
+        api_secret?: string | null;
       };
       params?: { [key: string]: any };
     };
@@ -466,6 +530,8 @@ export interface BotCreateRequest {
       id: string;
       name: string;
       type: string;
+      api_key?: string | null;
+      api_secret?: string | null;
     };
     params?: { [key: string]: any };
   };
@@ -759,4 +825,3 @@ export async function deleteTrading(tradingId: string, tradingType: string): Pro
     throw error;
   }
 }
-
