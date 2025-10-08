@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getExchangeBindings, createExchangeBinding, deleteExchangeBinding, updateExchangeBinding, getTradings, type ExchangeBinding, type CreateExchangeBindingRequest, type UpdateExchangeBindingRequest, type Trading, ApiError } from '../utils/api';
+import { getExchangeBindings, createExchangeBinding, deleteExchangeBinding, updateExchangeBinding, getTradings, getExchanges, type ExchangeBinding, type CreateExchangeBindingRequest, type UpdateExchangeBindingRequest, type Trading, ApiError } from '../utils/api';
 import { Building2, Plus, Trash2, Edit2, AlertCircle, Shield } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -322,6 +322,8 @@ interface ExchangeModalProps {
 
 const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSuccess, exchange }) => {
   const { t } = useTranslation();
+  const [availableExchanges, setAvailableExchanges] = useState<string[]>([]);
+  const [loadingExchanges, setLoadingExchanges] = useState(true);
 
   // Helper function to generate default name based on exchange type
   const getDefaultName = (exchangeType: string) => {
@@ -337,14 +339,43 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
   };
 
   const [formData, setFormData] = useState({
-    name: exchange?.name || getDefaultName('binance'),
-    exchange: exchange?.exchange || 'binance',
+    name: exchange?.name || getDefaultName(availableExchanges[0] || 'binance'),
+    exchange: exchange?.exchange || availableExchanges[0] || 'binance',
     api_key: '',
     api_secret: '',
     description: exchange?.info?.description || '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch available exchanges from the API
+  useEffect(() => {
+    const fetchExchanges = async () => {
+      try {
+        setLoadingExchanges(true);
+        const exchanges = await getExchanges();
+        setAvailableExchanges(exchanges);
+
+        // If this is a new exchange (not editing), set the first exchange as default
+        if (!exchange && exchanges.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            exchange: exchanges[0],
+            name: getDefaultName(exchanges[0]),
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch exchanges:', err);
+        setError('Failed to load available exchanges');
+      } finally {
+        setLoadingExchanges(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchExchanges();
+    }
+  }, [isOpen, exchange]);
 
   // Update default name when exchange type changes (only for new exchanges)
   useEffect(() => {
@@ -461,13 +492,19 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
                 onChange={(e) => setFormData({ ...formData, exchange: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 required
+                disabled={loadingExchanges}
               >
-                <option value="binance">Binance</option>
-                <option value="okx">OKX</option>
-                <option value="bybit">Bybit</option>
-                <option value="kraken">Kraken</option>
-                <option value="gate">Gate.io</option>
-                <option value="coinbase">Coinbase</option>
+                {loadingExchanges ? (
+                  <option value="">Loading exchanges...</option>
+                ) : availableExchanges.length > 0 ? (
+                  availableExchanges.map((exchangeName) => (
+                    <option key={exchangeName} value={exchangeName}>
+                      {exchangeName.charAt(0).toUpperCase() + exchangeName.slice(1)}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">No exchanges available</option>
+                )}
               </select>
             </div>
           ) : (
