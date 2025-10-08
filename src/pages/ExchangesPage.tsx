@@ -343,6 +343,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
     exchange: exchange?.exchange || availableExchanges[0] || 'binance',
     api_key: '',
     api_secret: '',
+    passphrase: '',
     description: exchange?.info?.description || '',
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -423,14 +424,22 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
           updateData.api_secret = formData.api_secret;
         }
 
-        updateData.info = {
+        const updatedInfo = {
           ...exchange.info,
           description: formData.description,
         };
 
+        const trimmedPassphrase = formData.passphrase.trim();
+        if (trimmedPassphrase) {
+          updatedInfo.passphrase = trimmedPassphrase;
+        }
+
+        updateData.info = updatedInfo;
+
         await updateExchangeBinding(exchange.id, updateData);
       } else {
         // Create new exchange
+        const trimmedPassphrase = formData.passphrase.trim();
         const request: CreateExchangeBindingRequest = {
           name: formData.name,
           exchange: formData.exchange,
@@ -440,6 +449,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
           info: {
             testnet: false,
             description: formData.description,
+            ...(trimmedPassphrase ? { passphrase: trimmedPassphrase } : {}),
           },
         };
 
@@ -565,6 +575,23 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               placeholder={t('exchanges.apiSecretPlaceholder')}
               required={!exchange}
+            />
+          </div>
+
+          {/* Passphrase */}
+          <div>
+            <label htmlFor="passphrase" className="block text-sm font-medium text-gray-700 mb-1">
+              {t('exchanges.passphrase')}
+              {!exchange && <span className="text-gray-500 text-xs ml-1">{t('common.optional')}</span>}
+              {exchange && <span className="text-gray-500 text-xs ml-1">(leave empty to keep current)</span>}
+            </label>
+            <input
+              type="password"
+              id="passphrase"
+              value={formData.passphrase}
+              onChange={(e) => setFormData({ ...formData, passphrase: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              placeholder={t('exchanges.passphrasePlaceholder')}
             />
           </div>
 

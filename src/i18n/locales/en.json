@@ -214,6 +214,8 @@
     "apiSecret": "API Secret",
     "apiSecretPlaceholder": "Enter your API secret",
     "apiSecretRequired": "API secret is required",
+    "passphrase": "API Passphrase",
+    "passphrasePlaceholder": "Enter your API passphrase",
     "testnet": "Testnet",
     "testnetDescription": "Use testnet/sandbox environment",
     "description": "Description",

@@ -272,6 +272,7 @@ export interface ExchangeBinding {
     permissions?: string[];
     api_key?: string;
     api_secret?: string;
+    passphrase?: string;
     [key: string]: any;
   };
 }
@@ -337,6 +338,7 @@ export interface CreateExchangeBindingRequest {
     testnet?: boolean;
     description?: string;
     quote_currency?: string;
+    passphrase?: string;
     [key: string]: any;
   };
 }
@@ -357,6 +359,7 @@ export interface UpdateExchangeBindingRequest {
     testnet?: boolean;
     description?: string;
     quote_currency?: string;
+    passphrase?: string;
     [key: string]: any;
   };
 }
@@ -490,6 +493,7 @@ export interface Bot {
         type: string;
         api_key?: string | null;
         api_secret?: string | null;
+        info?: { [key: string]: any };
       };
       params?: { [key: string]: any };
     };
@@ -532,6 +536,7 @@ export interface BotCreateRequest {
       type: string;
       api_key?: string | null;
       api_secret?: string | null;
+      info?: { [key: string]: any };
     };
     params?: { [key: string]: any };
   };
@@ -609,9 +614,10 @@ async function botApiRequest<T>(endpoint: string, options: RequestInit = {}): Pr
 
 // Create a bot
 export async function createBot(request: BotCreateRequest): Promise<Bot> {
+  const payload = JSON.stringify(request);
   return botApiRequest<Bot>(`/bots`, {
     method: 'POST',
-    body: JSON.stringify(request),
+    body: payload,
   });
 }
 

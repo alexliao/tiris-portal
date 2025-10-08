@@ -213,6 +213,8 @@
     "apiSecret": "API Secret",
     "apiSecretPlaceholder": "输入您的API Secret",
     "apiSecretRequired": "API Secret是必需的",
+    "passphrase": "API Passphrase",
+    "passphrasePlaceholder": "输入您的API Passphrase",
     "testnet": "测试网",
     "testnetDescription": "使用测试网/沙盒环境",
     "description": "描述",

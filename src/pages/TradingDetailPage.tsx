@@ -517,10 +517,12 @@ export const TradingDetailPage: React.FC = () => {
           throw new Error(`Missing required sub-accounts. Found ${subAccounts.length} sub-accounts, but need both stock and balance accounts.`);
         }
 
+        const exchangeInfo = exchangeBinding.info ? { ...exchangeBinding.info } : undefined;
         const exchangeSpec: BotCreateRequest['spec']['exchange'] = {
           id: exchangeBinding.id,
           name: exchangeBinding.name,
-          type: exchangeBinding.exchange
+          type: exchangeBinding.exchange,
+          ...(exchangeInfo ? { info: exchangeInfo } : {}),
         };
 
         if (isRealTrading) {
