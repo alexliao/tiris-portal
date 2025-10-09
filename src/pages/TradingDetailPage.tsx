@@ -858,7 +858,7 @@ export const TradingDetailPage: React.FC = () => {
           {/* Trading Info */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
             <h2 className="text-lg font-medium text-gray-900 mb-4">{t('trading.detail.overview')}</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${trading.type === 'real' && trading.info?.initial_balance !== undefined ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.strategy')}</div>
                 <div className="text-sm text-gray-900">{bot?.record.spec.params?.strategy_name || trading.info?.strategy_name || trading.info?.strategy || 'N/A'}</div>
@@ -871,6 +871,17 @@ export const TradingDetailPage: React.FC = () => {
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.exchangeBinding')}</div>
                 <div className="text-sm text-gray-900">{exchangeBinding ? `${exchangeBinding.name} (${exchangeBinding.exchange})` : 'Loading...'}</div>
               </div>
+              {trading.type === 'real' && trading.info?.initial_balance !== undefined && (
+                <div>
+                  <div className="text-sm font-medium text-gray-600">{t('trading.detail.initialFunds')}</div>
+                  <div className="text-sm text-gray-900">
+                    {trading.info.initial_balance.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })} {trading.info?.quote_currency || 'USDT'}
+                  </div>
+                </div>
+              )}
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.created')}</div>
                 <div className="text-sm text-gray-900">{new Date(trading.created_at).toLocaleDateString()}</div>

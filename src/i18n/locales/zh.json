@@ -248,6 +248,7 @@
       "tradingIdRequired": "需要交易ID",
       "timeframe": "周期",
       "exchangeBinding": "交易所",
+      "initialFunds": "初始资金",
       "performanceChart": "绩效图表",
       "noDataAvailable": "无绩效数据可用",
       "stopBot": "停止机器人",

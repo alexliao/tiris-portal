@@ -139,7 +139,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   const token = getAccessToken();
 
   // Debug log for POST requests
-  if (options.method === 'POST' && endpoint.includes('tradings')) {
+  if (options.method === 'POST' && (endpoint.includes('tradings') || endpoint.includes('trading-logs'))) {
     console.log('🔍 [HTTP DEBUG] POST request to:', url);
     console.log('🔍 [HTTP DEBUG] Request body:', options.body);
   }
@@ -156,12 +156,16 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   const data: ApiResponse<T> = await response.json();
 
   // Debug log for POST responses
-  if (options.method === 'POST' && endpoint.includes('tradings')) {
+  if (options.method === 'POST' && (endpoint.includes('tradings') || endpoint.includes('trading-logs'))) {
     console.log('🔍 [HTTP DEBUG] Response status:', response.status);
     console.log('🔍 [HTTP DEBUG] Response data:', data);
   }
 
   if (!response.ok || !data.success) {
+    // Log error details for debugging
+    if (endpoint.includes('trading-logs')) {
+      console.error('🔍 [HTTP ERROR] Trading log error details:', JSON.stringify(data.error, null, 2));
+    }
     throw new ApiError(
       data.error?.code || 'UNKNOWN_ERROR',
       data.error?.message || 'An unknown error occurred',
@@ -387,6 +391,43 @@ export async function createTrading(request: CreateTradingRequest): Promise<Trad
   return result;
 }
 
+// Helper function to extract exchange credentials from binding
+function extractExchangeCredentials(binding?: ExchangeBinding | null): { apiKey: string | null; apiSecret: string | null } {
+  if (!binding) {
+    return { apiKey: null, apiSecret: null };
+  }
+
+  const info = binding.info || {};
+  const credentialsSections = [info.credentials, info.credential, info.security, info.api_credentials, info.apiCredentials];
+
+  const candidateKeys: Array<string | null | undefined> = [
+    binding.api_key,
+    info.api_key,
+    info.apiKey,
+    info.api_key_plain,
+    info.apiKeyPlain,
+    info.api_key_preview,
+    info.apiKeyPreview,
+    ...credentialsSections.map(section => section?.api_key ?? section?.apiKey ?? section?.key ?? null),
+  ];
+
+  const candidateSecrets: Array<string | null | undefined> = [
+    binding.api_secret,
+    info.api_secret,
+    info.apiSecret,
+    info.api_secret_plain,
+    info.apiSecretPlain,
+    info.api_secret_preview,
+    info.apiSecretPreview,
+    ...credentialsSections.map(section => section?.api_secret ?? section?.apiSecret ?? section?.secret ?? null),
+  ];
+
+  const apiKey = candidateKeys.find((value): value is string => typeof value === 'string' && value.trim().length > 0) ?? null;
+  const apiSecret = candidateSecrets.find((value): value is string => typeof value === 'string' && value.trim().length > 0) ?? null;
+
+  return { apiKey, apiSecret };
+}
+
 export async function createRealTrading(request: CreateTradingRequest): Promise<Trading> {
   console.log('🔍 [REAL DEBUG] Creating real trading with business logic steps...');
   console.log('🔍 [REAL DEBUG] Request received:', request);
@@ -398,16 +439,68 @@ export async function createRealTrading(request: CreateTradingRequest): Promise<
   }
 
   try {
-    console.log('Step 1: Creating real trading...');
+    // Step 1: Fetch initial balance from exchange account before creating trading
+    console.log('Step 1: Fetching initial balance from exchange account...');
+
+    // Get exchange binding to extract credentials
+    const exchangeBindingId = request.exchange_binding_id;
+    if (!exchangeBindingId) {
+      throw new Error('Exchange binding ID is required to fetch account balance.');
+    }
+
+    const exchangeBinding = await getExchangeBindingById(exchangeBindingId);
+    const { apiKey, apiSecret } = extractExchangeCredentials(exchangeBinding);
+
+    if (!apiKey || !apiSecret) {
+      throw new Error('Exchange credentials are required to fetch account balance.');
+    }
+
+    // Construct symbol for balance check (e.g., ETH/USDT)
+    const symbol = `ETH/${quoteCurrency}`;
+
+    // Extract passphrase if needed (for exchanges like OKX)
+    const passphrase = exchangeBinding.info?.passphrase || undefined;
+
+    try {
+      const accountData = await getExchangeAccount(
+        exchangeBinding.exchange,
+        symbol,
+        apiKey,
+        apiSecret,
+        passphrase
+      );
+
+      // Store initial balance in trading info
+      request.info = {
+        ...request.info,
+        initial_balance: accountData.balance,
+        initial_frozen_balance: accountData.frozen_balance,
+        initial_stocks: accountData.stocks,
+        initial_frozen_stocks: accountData.frozen_stocks,
+      };
+
+      console.log('Initial balance fetched:', {
+        balance: accountData.balance,
+        frozen_balance: accountData.frozen_balance,
+        stocks: accountData.stocks,
+        frozen_stocks: accountData.frozen_stocks,
+      });
+    } catch (balanceError) {
+      console.warn('Failed to fetch initial balance, will proceed without it:', balanceError);
+      // Continue with trading creation even if balance fetch fails
+    }
+
+    console.log('Step 2: Creating real trading...');
     const trading = await createTrading(request);
     console.log('Real trading created:', trading.id);
 
-    console.log('Step 2: Creating sub-accounts for real trading...');
+    console.log('Step 3: Creating sub-accounts for real trading...');
 
+    // Create ETH sub-account without balance
     const stockSubAccount = await createSubAccount({
       name: 'ETH Stock Account',
       symbol: 'ETH',
-      balance: '0',
+      balance: '0',  // Backend doesn't accept balance, will fund via deposit log
       trading_id: trading.id,
       info: {
         description: 'Sub-account for ETH stock holdings',
@@ -416,10 +509,11 @@ export async function createRealTrading(request: CreateTradingRequest): Promise<
     });
     console.log('ETH sub-account created:', stockSubAccount.id);
 
+    // Create quote currency sub-account without balance
     const balanceSubAccount = await createSubAccount({
       name: `${quoteCurrency} Balance Account`,
       symbol: quoteCurrency,
-      balance: '0',
+      balance: '0',  // Backend doesn't accept balance, will fund via deposit log
       trading_id: trading.id,
       info: {
         description: `Sub-account for ${quoteCurrency} balance`,
@@ -428,7 +522,51 @@ export async function createRealTrading(request: CreateTradingRequest): Promise<
     });
     console.log(`${quoteCurrency} sub-account created:`, balanceSubAccount.id);
 
-    console.log('Real trading creation completed with sub-accounts.');
+    console.log('Step 4: Creating deposit trading logs to fund sub-accounts...');
+
+    // Do not need to create deposit log for ETH sub-account for now, because the strategy is not using ETH initial balance. 
+    // TODO: The following code might be needed in the future.
+    // // Create deposit log for ETH sub-account if initial_stocks > 0
+    // const initialStocks = request.info?.initial_stocks || 0;
+    // if (initialStocks > 0) {
+    //   const ethDepositRequest = {
+    //     trading_id: trading.id,
+    //     type: 'deposit',
+    //     source: 'manual',
+    //     message: `Initial ETH deposit to account`,
+    //     sub_account_id: stockSubAccount.id,
+    //     event_time: new Date().toISOString(),
+    //     info: {
+    //       account_id: stockSubAccount.id,
+    //       amount: initialStocks,
+    //       currency: 'ETH'
+    //     }
+    //   };
+    //   console.log('🔍 Creating ETH deposit log:', JSON.stringify(ethDepositRequest, null, 2));
+    //   await createTradingLog(ethDepositRequest);
+    //   console.log(`Deposit log created for ETH sub-account: ${initialStocks} ETH`);
+    // }
+
+    // Create deposit log for quote currency sub-account if initial_balance > 0
+    const initialBalance = request.info?.initial_balance || 0;
+    if (initialBalance > 0) {
+      await createTradingLog({
+        trading_id: trading.id,
+        type: 'deposit',
+        source: 'manual',
+        message: `Initial ${quoteCurrency} deposit to account`,
+        sub_account_id: balanceSubAccount.id,
+        event_time: new Date().toISOString(),
+        info: {
+          account_id: balanceSubAccount.id,
+          amount: initialBalance,
+          currency: quoteCurrency
+        }
+      });
+      console.log(`Deposit log created for ${quoteCurrency} sub-account: ${initialBalance} ${quoteCurrency}`);
+    }
+
+    console.log('Real trading creation completed with sub-accounts and deposit logs.');
     return trading;
   } catch (error) {
     console.error('Failed to create real trading:', error);
@@ -778,6 +916,36 @@ export async function getStrategies(): Promise<string[]> {
 // Get available exchanges from tiris-bot API
 export async function getExchanges(): Promise<string[]> {
   return botApiRequest<string[]>('/exchanges');
+}
+
+// Exchange account response interface based on OpenAPI spec
+export interface ExchangeAccountResponse {
+  balance: number;          // Available quote currency balance
+  frozen_balance: number;   // Frozen quote currency balance
+  stocks: number;           // Available base currency balance
+  frozen_stocks: number;    // Frozen base currency balance
+}
+
+// Get exchange account information from tiris-bot API
+export async function getExchangeAccount(
+  exchangeType: string,
+  symbol: string,
+  apiKey: string,
+  apiSecret: string,
+  passphrase?: string
+): Promise<ExchangeAccountResponse> {
+  const params = new URLSearchParams({
+    exchange_type: exchangeType,
+    symbol: symbol,
+    api_key: apiKey,
+    api_secret: apiSecret,
+  });
+
+  if (passphrase) {
+    params.append('passphrase', passphrase);
+  }
+
+  return botApiRequest<ExchangeAccountResponse>(`/exchange_account?${params.toString()}`);
 }
 
 // Get sub-accounts for a trading
