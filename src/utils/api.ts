@@ -428,6 +428,41 @@ function extractExchangeCredentials(binding?: ExchangeBinding | null): { apiKey:
   return { apiKey, apiSecret };
 }
 
+// Fetch exchange balance for a given exchange binding and quote currency
+export async function fetchExchangeBalanceForBinding(
+  exchangeBindingId: string,
+  quoteCurrency: 'USDT' | 'USDC'
+): Promise<ExchangeAccountResponse | null> {
+  try {
+    const exchangeBinding = await getExchangeBindingById(exchangeBindingId);
+    const { apiKey, apiSecret } = extractExchangeCredentials(exchangeBinding);
+
+    if (!apiKey || !apiSecret) {
+      console.warn('No credentials found for exchange binding');
+      return null;
+    }
+
+    // Construct symbol for balance check (e.g., ETH/USDT)
+    const symbol = `ETH/${quoteCurrency}`;
+
+    // Extract passphrase if needed (for exchanges like OKX)
+    const passphrase = exchangeBinding.info?.passphrase || undefined;
+
+    const accountData = await getExchangeAccount(
+      exchangeBinding.exchange,
+      symbol,
+      apiKey,
+      apiSecret,
+      passphrase
+    );
+
+    return accountData;
+  } catch (error) {
+    console.error('Failed to fetch exchange balance:', error);
+    return null;
+  }
+}
+
 export async function createRealTrading(request: CreateTradingRequest): Promise<Trading> {
   console.log('🔍 [REAL DEBUG] Creating real trading with business logic steps...');
   console.log('🔍 [REAL DEBUG] Request received:', request);
@@ -547,9 +582,13 @@ export async function createRealTrading(request: CreateTradingRequest): Promise<
     //   console.log(`Deposit log created for ETH sub-account: ${initialStocks} ETH`);
     // }
 
-    // Create deposit log for quote currency sub-account if initial_balance > 0
+    // Create deposit log for quote currency sub-account
+    // Use initial_funds if provided by user, otherwise use the fetched initial_balance
+    const initialFunds = request.info?.initial_funds;
     const initialBalance = request.info?.initial_balance || 0;
-    if (initialBalance > 0) {
+    const depositAmount = typeof initialFunds === 'number' ? initialFunds : initialBalance;
+
+    if (depositAmount > 0) {
       await createTradingLog({
         trading_id: trading.id,
         type: 'deposit',
@@ -559,11 +598,11 @@ export async function createRealTrading(request: CreateTradingRequest): Promise<
         event_time: new Date().toISOString(),
         info: {
           account_id: balanceSubAccount.id,
-          amount: initialBalance,
+          amount: depositAmount,
           currency: quoteCurrency
         }
       });
-      console.log(`Deposit log created for ${quoteCurrency} sub-account: ${initialBalance} ${quoteCurrency}`);
+      console.log(`Deposit log created for ${quoteCurrency} sub-account: ${depositAmount} ${quoteCurrency}`);
     }
 
     console.log('Real trading creation completed with sub-accounts and deposit logs.');

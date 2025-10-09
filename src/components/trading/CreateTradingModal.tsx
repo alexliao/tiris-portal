@@ -8,6 +8,7 @@ import {
   getPublicExchangeBindings,
   getExchangeBindings,
   getStrategies,
+  fetchExchangeBalanceForBinding,
   type CreateTradingRequest,
   type ExchangeBinding,
   type Trading,
@@ -44,6 +45,9 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
   const [isLoadingBotData, setIsLoadingBotData] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState<string>('');
   const [quoteCurrency, setQuoteCurrency] = useState<'USDT' | 'USDC'>('USDT');
+  const [initialFunds, setInitialFunds] = useState<number>(0);
+  const [maxBalance, setMaxBalance] = useState<number>(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
 
   const generateDefaultName = (type: string): string => {
     const now = new Date();
@@ -83,8 +87,19 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       if (tradingType === 'paper' || tradingType === 'real') {
         fetchBotData();
       }
+
+      // Reset balance and funds when modal opens
+      setMaxBalance(0);
+      setInitialFunds(0);
     }
   }, [isOpen, tradingType]);
+
+  // Fetch exchange balance when exchange binding or quote currency changes for real trading
+  useEffect(() => {
+    if (tradingType === 'real' && formData.exchange_binding_id && isOpen) {
+      fetchExchangeBalance(formData.exchange_binding_id, quoteCurrency);
+    }
+  }, [tradingType, formData.exchange_binding_id, quoteCurrency, isOpen]);
 
   const fetchExchangeBindings = async () => {
     try {
@@ -143,6 +158,31 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
     }
   };
 
+  const fetchExchangeBalance = async (exchangeBindingId: string, quoteCurrency: 'USDT' | 'USDC') => {
+    try {
+      setIsLoadingBalance(true);
+      setError(null);
+
+      const accountData = await fetchExchangeBalanceForBinding(exchangeBindingId, quoteCurrency);
+
+      if (accountData) {
+        const roundedBalance = Math.floor(accountData.balance);
+        setMaxBalance(roundedBalance);
+        setInitialFunds(roundedBalance); // Default to max balance, rounded to integer
+      } else {
+        setMaxBalance(0);
+        setInitialFunds(0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch exchange balance:', err);
+      // Don't show error to user, just reset values
+      setMaxBalance(0);
+      setInitialFunds(0);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -179,12 +219,13 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
         };
       }
 
-      // Add quote currency and strategy to info if this is real trading
+      // Add quote currency, strategy, and initial funds to info if this is real trading
       if (tradingType === 'real') {
         requestData.info = {
           ...requestData.info,
           quote_currency: quoteCurrency,
           strategy_name: selectedStrategy,
+          initial_funds: initialFunds,
         };
       }
 
@@ -377,6 +418,59 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                       </option>
                     ))}
                   </select>
+                )}
+              </div>
+
+              {/* Initial Funds */}
+              <div className="mb-4">
+                <label htmlFor="initial_funds" className="block text-sm font-medium text-gray-700 mb-1">
+                  Initial Funds ({quoteCurrency}) <span className="text-red-500">*</span>
+                </label>
+                {isLoadingBalance ? (
+                  <div className="flex items-center py-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <span className="text-sm text-gray-600">Loading balance...</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center space-x-3 mb-2">
+                      <input
+                        type="number"
+                        id="initial_funds"
+                        value={initialFunds}
+                        onChange={(e) => {
+                          const value = Math.floor(Number(e.target.value));
+                          setInitialFunds(Math.max(0, Math.min(maxBalance, value)));
+                        }}
+                        min="0"
+                        max={maxBalance}
+                        step="1"
+                        className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                      <span className="text-sm text-gray-600">
+                        Max: {maxBalance.toLocaleString()} {quoteCurrency}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="range"
+                        value={initialFunds}
+                        onChange={(e) => setInitialFunds(Math.floor(Number(e.target.value)))}
+                        min="0"
+                        max={maxBalance}
+                        step={Math.max(1, Math.floor(maxBalance * 0.1))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      />
+                      <div className="flex justify-between mt-1">
+                        <span className="text-xs text-gray-500">0%</span>
+                        <span className="text-xs font-medium text-blue-600">
+                          {maxBalance > 0 ? Math.round((initialFunds / maxBalance) * 100) : 0}%
+                        </span>
+                        <span className="text-xs text-gray-500">100%</span>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             </>
