@@ -178,8 +178,10 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 }
 
 export async function getTradings(): Promise<Trading[]> {
-  return apiRequest<{ tradings: Trading[] }>('/tradings')
-    .then(response => response.tradings || []);
+  const response = await apiRequest<{ tradings: Trading[] }>('/tradings');
+  console.log('🔍 [getTradings] Raw response:', response);
+  console.log('🔍 [getTradings] First trading:', response.tradings?.[0]);
+  return response.tradings || [];
 }
 
 export async function getLatestBacktestTrading(): Promise<Trading | null> {
@@ -428,7 +430,8 @@ function extractExchangeCredentials(binding?: ExchangeBinding | null): { apiKey:
   return { apiKey, apiSecret };
 }
 
-// Fetch exchange balance for a given exchange binding and quote currency
+// Fetch available balance for a given exchange binding and quote currency
+// This considers existing real tradings using the same exchange binding
 export async function fetchExchangeBalanceForBinding(
   exchangeBindingId: string,
   quoteCurrency: 'USDT' | 'USDC'
@@ -456,7 +459,68 @@ export async function fetchExchangeBalanceForBinding(
       passphrase
     );
 
-    return accountData;
+    // Calculate available funds by subtracting current balances of all quote currency sub-accounts
+    // from existing real tradings using the same exchange binding
+    let tradings: Trading[] = [];
+    try {
+      tradings = await getTradings();
+      console.log('✅ Successfully fetched tradings:', tradings.length);
+    } catch (tradingsError) {
+      console.error('⚠️ Failed to fetch existing tradings for constraint calculation:', tradingsError);
+      console.warn('⚠️ Proceeding without constraint - this may allow over-allocation!');
+      tradings = [];
+    }
+
+    // Filter for existing real tradings with the same exchange binding
+    const existingRealTradings = tradings.filter(
+      t => t.type === 'real' &&
+      (t.exchange_binding_id === exchangeBindingId || t.exchange_binding?.id === exchangeBindingId)
+    );
+
+    console.log(`Found ${existingRealTradings.length} existing real tradings with same exchange binding`);
+
+    // Fetch sub-accounts for all existing real tradings and sum up quote currency balances
+    let totalAllocatedFunds = 0;
+    for (const trading of existingRealTradings) {
+      try {
+        const subAccounts = await getSubAccountsByTrading(trading.id);
+        console.log(`Trading ${trading.id.substring(0, 8)}: Found ${subAccounts.length} sub-accounts:`,
+          subAccounts.map(sa => ({ symbol: sa.symbol, balance: sa.balance, account_type: sa.info?.account_type }))
+        );
+
+        // Find the quote currency sub-account (matching the requested quoteCurrency)
+        // The balance sub-account is identified by symbol (USDT/USDC) and name containing "Balance"
+        const quoteSubAccount = subAccounts.find(
+          sa => sa.symbol === quoteCurrency && (sa.name.includes('Balance') || sa.info?.account_type === 'balance')
+        );
+
+        if (quoteSubAccount) {
+          // Balance can be either number or string, handle both
+          const balance = typeof quoteSubAccount.balance === 'number'
+            ? quoteSubAccount.balance
+            : (parseFloat(quoteSubAccount.balance) || 0);
+          totalAllocatedFunds += balance;
+          console.log(`✅ Trading ${trading.id.substring(0, 8)}: ${balance} ${quoteCurrency} in sub-account`);
+        } else {
+          console.log(`⚠️ Trading ${trading.id.substring(0, 8)}: No ${quoteCurrency} balance sub-account found`);
+        }
+      } catch (subAccountError) {
+        console.error(`❌ Failed to fetch sub-accounts for trading ${trading.id}:`, subAccountError);
+        // Continue with other tradings even if one fails
+      }
+    }
+
+    console.log('Exchange balance calculation:', {
+      exchangeBalance: accountData.balance,
+      totalAllocatedFunds,
+      availableBalance: accountData.balance - totalAllocatedFunds
+    });
+
+    // Return the available balance (exchange balance - already allocated funds)
+    return {
+      ...accountData,
+      balance: Math.max(0, accountData.balance - totalAllocatedFunds)
+    };
   } catch (error) {
     console.error('Failed to fetch exchange balance:', error);
     return null;

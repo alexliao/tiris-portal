@@ -8,6 +8,14 @@
 ## Create a real trading
 - First, create an new trading of type real under the authenticated user with a unique name to avoid a clash.
 - Second, create two sub accounts, one for stock(hardcoded as ETH for now) and one for balance that user selected from the trading creation form, under the trading created.
+- The initial funds of a real trading is from the exchange account determined by the API key of the exchange binding used for the real trading. If a user created multiple real tradings with the same exchange binding, the total amount allocated to these tradings cannot exceed the amount in the exchange account. The allocation includes both initial funds and any trading profits/losses that remain in the sub-accounts.
+- **Implementation**: The `fetchExchangeBalanceForBinding` function automatically calculates the available balance by:
+  1. Fetching the current exchange account balance
+  2. Finding all existing real tradings that use the same exchange binding
+  3. For each trading, fetching its sub-accounts and summing up the current balance of quote currency (USDT/USDC) sub-accounts
+  4. Subtracting the total allocated funds from the exchange balance
+
+  This ensures that trading profits/losses remain allocated to their respective tradings and cannot be used as initial funds for new tradings. The form enforces this constraint by limiting the input and slider maximum to the available balance. 
 
 ## Start the bot for a trading
 - For usability, only need start/stop function for a trading.

@@ -204,6 +204,18 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       }
     }
 
+    // For real trading, validate minimum initial funds
+    if (tradingType === 'real') {
+      if (maxBalance < 10) {
+        setError(`Insufficient funds. Available balance (${maxBalance} ${quoteCurrency}) is less than the minimum required (10 ${quoteCurrency}).`);
+        return;
+      }
+      if (initialFunds < 10) {
+        setError(`Initial funds must be at least 10 ${quoteCurrency}.`);
+        return;
+      }
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -433,6 +445,13 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                   </div>
                 ) : (
                   <>
+                    {maxBalance === 0 && (
+                      <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <p className="text-xs text-yellow-800">
+                          No available funds. All funds from this exchange binding may already be allocated to other real tradings.
+                        </p>
+                      </div>
+                    )}
                     <div className="flex items-center space-x-3 mb-2">
                       <input
                         type="number"
@@ -449,7 +468,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                         required
                       />
                       <span className="text-sm text-gray-600">
-                        Max: {maxBalance.toLocaleString()} {quoteCurrency}
+                        Available: {maxBalance.toLocaleString()} {quoteCurrency}
                       </span>
                     </div>
                     <div className="relative">
