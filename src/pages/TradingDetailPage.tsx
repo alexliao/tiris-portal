@@ -300,7 +300,7 @@ export const TradingDetailPage: React.FC = () => {
 
       // Handle 404 (bot not found) - treat as bot being offline/deleted
       if ((err instanceof ApiError && err.status === 404) ||
-          (err instanceof Error && err.message.includes('404'))) {
+        (err instanceof Error && err.message.includes('404'))) {
         console.log('Bot not found (404), marking as offline and stopping monitoring');
         setBot(currentBot => {
           if (currentBot) {
@@ -531,6 +531,9 @@ export const TradingDetailPage: React.FC = () => {
         }
 
         // Create BotSpec using strategy from trading info
+        // Generate symbol from stock and balance sub-accounts
+        const symbol = `${stockSubAccount.symbol}/${balanceSubAccount.symbol}`;
+
         const createRequest: BotCreateRequest = {
           spec: {
             trading: {
@@ -551,10 +554,13 @@ export const TradingDetailPage: React.FC = () => {
             exchange: exchangeSpec,
             params: {
               // Use strategy_name from trading info if available, otherwise default
-              strategy_name: trading.info?.strategy_name || "platform_test",
-              symbol: "ETH/USDT",
+              strategy_name: trading.info?.strategy_name,
+              symbol: symbol,
               exchange: exchangeBinding.exchange,
-              initial_balance: 10000
+              // For real trading, pass INITIAL_TRADING_BALANCE
+              ...(isRealTrading && {
+                INITIAL_TRADING_BALANCE: trading.info?.initial_funds
+              })
             }
           }
         };
@@ -669,7 +675,7 @@ export const TradingDetailPage: React.FC = () => {
             <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.accessDenied')}</h1>
             <p className="text-gray-600 mb-4">{t('dashboard.needSignIn')}</p>
-            <Link 
+            <Link
               to="/"
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
@@ -718,7 +724,7 @@ export const TradingDetailPage: React.FC = () => {
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   {t('trading.detail.backToDashboard')}
                 </button>
-                <Link 
+                <Link
                   to="/dashboard"
                   className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
@@ -743,7 +749,7 @@ export const TradingDetailPage: React.FC = () => {
               <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('trading.detail.notFound')}</h1>
               <p className="text-gray-600 mb-4">{t('trading.detail.notFound')}</p>
-              <Link 
+              <Link
                 to="/dashboard"
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
@@ -801,9 +807,8 @@ export const TradingDetailPage: React.FC = () => {
                         {t(`trading.type.${trading.type.toLowerCase()}`) || trading.type}
                       </span>
                       {bot && (
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${
-                          bot.alive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${bot.alive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
                           {t('trading.detail.bot')} {bot.alive ? t('common.online') : t('common.offline')}
                         </span>
                       )}
