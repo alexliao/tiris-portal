@@ -116,9 +116,9 @@ export const ExchangesPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to delete exchange:', err);
       if (err instanceof ApiError) {
-        setError(`Failed to delete exchange: ${err.message}`);
+        setError(t('exchanges.deleteExchangeError', { error: err.message }));
       } else {
-        setError('Failed to delete exchange. Please try again.');
+        setError(t('exchanges.deleteExchangeGenericError'));
       }
       setDeleteConfirmation(prev => ({ ...prev, isDeleting: false }));
     }
@@ -186,15 +186,15 @@ export const ExchangesPage: React.FC = () => {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <p className="text-white/80 text-sm">Total Exchanges</p>
+                <p className="text-white/80 text-sm">{t('exchanges.totalExchanges')}</p>
                 <p className="text-3xl font-bold mt-1">{totalExchanges}</p>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <p className="text-white/80 text-sm">Active Connections</p>
+                <p className="text-white/80 text-sm">{t('exchanges.activeConnections')}</p>
                 <p className="text-3xl font-bold mt-1">{activeExchanges}</p>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <p className="text-white/80 text-sm">Inactive Connections</p>
+                <p className="text-white/80 text-sm">{t('exchanges.inactiveConnections')}</p>
                 <p className="text-3xl font-bold mt-1">{inactiveExchanges}</p>
               </div>
             </div>
@@ -205,7 +205,7 @@ export const ExchangesPage: React.FC = () => {
           {/* Actions Bar */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
-              All Exchange Connections
+              {t('exchanges.allExchangeConnections')}
             </h2>
             <button
               onClick={handleCreateExchange}
@@ -249,7 +249,7 @@ export const ExchangesPage: React.FC = () => {
           {isLoading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading exchange connections...</p>
+              <p className="text-gray-600">{t('exchanges.loadingExchangeConnections')}</p>
             </div>
           ) : exchanges.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-lg shadow">
@@ -430,7 +430,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
         }
       } catch (err) {
         console.error('Failed to fetch exchanges:', err);
-        setError('Failed to load available exchanges');
+        setError(t('exchanges.loadAvailableExchangesError'));
       } finally {
         setLoadingExchanges(false);
       }
@@ -568,7 +568,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
                 disabled={loadingExchanges}
               >
                 {loadingExchanges ? (
-                  <option value="">Loading exchanges...</option>
+                  <option value="">{t('exchanges.loadingExchanges')}</option>
                 ) : availableExchanges.length > 0 ? (
                   availableExchanges.map((exchangeName) => (
                     <option key={exchangeName} value={exchangeName}>
@@ -576,7 +576,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
                     </option>
                   ))
                 ) : (
-                  <option value="">No exchanges available</option>
+                  <option value="">{t('exchanges.noExchangesAvailable')}</option>
                 )}
               </select>
             </div>
@@ -611,7 +611,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
           <div>
             <label htmlFor="api_key" className="block text-sm font-medium text-gray-700 mb-1">
               {t('exchanges.apiKey')} {!exchange && <span className="text-red-500">*</span>}
-              {exchange && <span className="text-gray-500 text-xs ml-1">(leave empty to keep current)</span>}
+              {exchange && <span className="text-gray-500 text-xs ml-1">({t('exchanges.leaveEmptyToKeepCurrent')})</span>}
             </label>
             <input
               type="text"
@@ -628,7 +628,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
           <div>
             <label htmlFor="api_secret" className="block text-sm font-medium text-gray-700 mb-1">
               {t('exchanges.apiSecret')} {!exchange && <span className="text-red-500">*</span>}
-              {exchange && <span className="text-gray-500 text-xs ml-1">(leave empty to keep current)</span>}
+              {exchange && <span className="text-gray-500 text-xs ml-1">({t('exchanges.leaveEmptyToKeepCurrent')})</span>}
             </label>
             <input
               type="password"
@@ -646,7 +646,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
             <label htmlFor="passphrase" className="block text-sm font-medium text-gray-700 mb-1">
               {t('exchanges.passphrase')}
               {!exchange && <span className="text-gray-500 text-xs ml-1">{t('common.optional')}</span>}
-              {exchange && <span className="text-gray-500 text-xs ml-1">(leave empty to keep current)</span>}
+              {exchange && <span className="text-gray-500 text-xs ml-1">({t('exchanges.leaveEmptyToKeepCurrent')})</span>}
             </label>
             <input
               type="password"

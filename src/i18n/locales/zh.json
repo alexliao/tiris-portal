@@ -240,7 +240,18 @@
     "updateFailed": "更新交易所连接失败：{{error}}",
     "loadFailed": "加载交易所失败：{{error}}",
     "deleting": "删除中...",
-    "cannotDeleteInUse": "无法删除此交易所连接。它正在被 {{count}} 个交易使用：{{tradingNames}}。请先删除这些交易。"
+    "cannotDeleteInUse": "无法删除此交易所连接。它正在被 {{count}} 个交易使用：{{tradingNames}}。请先删除这些交易。",
+    "totalExchanges": "总交易所数",
+    "activeConnections": "活跃连接",
+    "inactiveConnections": "非活跃连接",
+    "allExchangeConnections": "所有交易所连接",
+    "loadingExchangeConnections": "正在加载交易所连接...",
+    "deleteExchangeError": "删除交易所失败：{{error}}",
+    "deleteExchangeGenericError": "删除交易所失败。请重试。",
+    "loadAvailableExchangesError": "加载可用交易所失败",
+    "leaveEmptyToKeepCurrent": "留空以保持当前值",
+    "loadingExchanges": "加载交易所中...",
+    "noExchangesAvailable": "没有可用的交易所"
   },
   "trading": {
     "detail": {
@@ -260,7 +271,8 @@
       "noDataAvailable": "无绩效数据可用",
       "stopBot": "停止机器人",
       "startBot": "启动机器人",
-      "bot": "机器人"
+      "bot": "机器人",
+      "copyId": "复制交易ID"
     },
     "status": {
       "active": "活跃",

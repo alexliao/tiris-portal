@@ -241,7 +241,18 @@
     "updateFailed": "Failed to update exchange connection: {{error}}",
     "loadFailed": "Failed to load exchanges: {{error}}",
     "deleting": "Deleting...",
-    "cannotDeleteInUse": "Cannot delete this exchange connection. It is currently being used by {{count}} trading(s): {{tradingNames}}. Please delete the trading(s) first."
+    "cannotDeleteInUse": "Cannot delete this exchange connection. It is currently being used by {{count}} trading(s): {{tradingNames}}. Please delete the trading(s) first.",
+    "totalExchanges": "Total Exchanges",
+    "activeConnections": "Active Connections",
+    "inactiveConnections": "Inactive Connections",
+    "allExchangeConnections": "All Exchange Connections",
+    "loadingExchangeConnections": "Loading exchange connections...",
+    "deleteExchangeError": "Failed to delete exchange: {{error}}",
+    "deleteExchangeGenericError": "Failed to delete exchange. Please try again.",
+    "loadAvailableExchangesError": "Failed to load available exchanges",
+    "leaveEmptyToKeepCurrent": "leave empty to keep current",
+    "loadingExchanges": "Loading exchanges...",
+    "noExchangesAvailable": "No exchanges available"
   },
   "trading": {
     "detail": {
@@ -261,7 +272,8 @@
       "noDataAvailable": "No performance data available",
       "stopBot": "Stop Bot",
       "startBot": "Start Bot",
-      "bot": "Bot"
+      "bot": "Bot",
+      "copyId": "Copy trading ID"
     },
     "status": {
       "active": "Active",

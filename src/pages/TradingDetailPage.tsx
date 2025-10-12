@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading } from '../utils/api';
-import { AlertCircle, Play, Square, Loader2 } from 'lucide-react';
+import { AlertCircle, Play, Square, Loader2, Copy, Check } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
@@ -58,6 +58,7 @@ export const TradingDetailPage: React.FC = () => {
   const [statusCheckInterval, setStatusCheckInterval] = useState<NodeJS.Timeout | null>(null);
   const isCheckingStatus = useRef(false);
   const monitoringBotId = useRef<string | null>(null);
+  const [copiedId, setCopiedId] = useState(false);
 
 
   // Data refresh state management
@@ -646,6 +647,17 @@ export const TradingDetailPage: React.FC = () => {
     return <IconComponent className="w-8 h-8" />;
   };
 
+  const handleCopyTradingId = async () => {
+    if (!trading?.id) return;
+    try {
+      await navigator.clipboard.writeText(trading.id);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 1200);
+    } catch (err) {
+      console.error('Copy failed:', err);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -790,7 +802,16 @@ export const TradingDetailPage: React.FC = () => {
                 <div className="ml-4">
                   <h1 className="text-2xl font-bold text-white">{trading.name}</h1>
                   <div className="flex items-center space-x-4 text-sm text-white/80">
-                    <span>ID: {trading.id.substring(0, 8)}...</span>
+                    <div className="flex items-center gap-2">
+                      <span>ID: {trading.id.substring(0, 8)}...</span>
+                      <button
+                        onClick={handleCopyTradingId}
+                        className="p-1 rounded hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                        title={t('trading.detail.copyId')}
+                      >
+                        {copiedId ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                     {bot && (
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${bot.alive ? 'bg-green-500/30 text-white ring-1 ring-white/30' : 'bg-white/20 text-white/80'
                         }`}>
