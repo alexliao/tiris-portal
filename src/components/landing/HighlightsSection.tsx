@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { THEME_COLORS } from '../../config/theme';
 
 interface HighlightsSectionProps {
   className?: string;
@@ -16,26 +17,27 @@ export const HighlightsSection: React.FC<HighlightsSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   
+  // Map features to trading types with consistent colors
   const features: Feature[] = [
     {
       titleKey: 'features.profitable.title',
       descriptionKey: 'features.profitable.description',
-      bgColor: 'bg-[#8B6914]'
+      bgColor: THEME_COLORS.backtest.primary  // Backtest - Profitable
     },
     {
       titleKey: 'features.secure.title',
       descriptionKey: 'features.secure.description',
-      bgColor: 'bg-[#7A1F3D]'
+      bgColor: THEME_COLORS.exchanges.primary  // Exchanges - Secure
     },
     {
       titleKey: 'features.automatic.title',
       descriptionKey: 'features.automatic.description',
-      bgColor: 'bg-[#2E3A59]'
+      bgColor: THEME_COLORS.paper.primary  // Paper - Automatic
     },
     {
       titleKey: 'features.simple.title',
       descriptionKey: 'features.simple.description',
-      bgColor: 'bg-[#1B4D3E]'
+      bgColor: THEME_COLORS.real.primary  // Real - Simple
     }
   ];
 
@@ -63,7 +65,8 @@ export const HighlightsSection: React.FC<HighlightsSectionProps> = ({
         {features.map((feature, index) => (
           <div
             key={index}
-            className={`${feature.bgColor} p-8 text-center min-h-[300px] flex flex-col justify-start`}
+            style={{ backgroundColor: feature.bgColor }}
+            className="p-8 text-center min-h-[300px] flex flex-col justify-start"
           >
             <h3 className="font-['Bebas_Neue'] font-bold text-2xl text-white mb-6 mt-4">
               {t(feature.titleKey)}

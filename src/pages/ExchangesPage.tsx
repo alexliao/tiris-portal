@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getExchangeBindings, createExchangeBinding, deleteExchangeBinding, updateExchangeBinding, getTradings, getExchanges, type ExchangeBinding, type CreateExchangeBindingRequest, type UpdateExchangeBindingRequest, type Trading, ApiError } from '../utils/api';
-import { Building2, Plus, Trash2, Edit2, AlertCircle, Shield } from 'lucide-react';
+import { Wallet, Plus, Trash2, Edit2, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import { THEME_COLORS } from '../config/theme';
 
 export const ExchangesPage: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [exchanges, setExchanges] = useState<ExchangeBinding[]>([]);
   const [tradings, setTradings] = useState<Trading[]>([]);
@@ -27,6 +29,8 @@ export const ExchangesPage: React.FC = () => {
     exchange: null,
     isDeleting: false,
   });
+
+  const colors = THEME_COLORS.exchanges;
 
   const fetchExchanges = async () => {
     try {
@@ -130,12 +134,17 @@ export const ExchangesPage: React.FC = () => {
     handleModalClose();
   };
 
+  // Calculate statistics
+  const totalExchanges = exchanges.length;
+  const activeExchanges = exchanges.filter(e => e.status === 'active').length;
+  const inactiveExchanges = exchanges.filter(e => e.status !== 'active').length;
+
   if (authLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
-        <Navigation />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -143,148 +152,220 @@ export const ExchangesPage: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
-        <Navigation />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
-            <p className="text-gray-600">Please sign in to manage your exchanges.</p>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.accessDenied')}</h1>
+          <p className="text-gray-600 mb-4">{t('dashboard.needSignIn')}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gray-50">
       <Navigation />
-
-      <main className="flex-1 container mx-auto px-4 pt-28 pb-8 max-w-7xl">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('exchanges.title')}</h1>
-              <p className="text-gray-600">{t('exchanges.description')}</p>
-            </div>
+      <div className="pt-20">
+        {/* Header with Statistics */}
+        <div 
+          style={{ 
+            background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})` 
+          }}
+          className="text-white shadow-lg"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <button
-              onClick={handleCreateExchange}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center gap-2"
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center text-white/80 hover:text-white mb-4 transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              {t('exchanges.addExchange')}
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              {t('common.backToDashboard')}
             </button>
+
+            <div className="flex items-center mb-6">
+              <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+                <Wallet className="w-10 h-10" />
+              </div>
+              <div className="ml-4">
+                <h1 className="text-3xl font-bold">{t('exchanges.title')}</h1>
+                <p className="text-white/90 mt-1">{t('exchanges.pageDescription')}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <p className="text-white/80 text-sm">{t('dashboard.totalTradings')}</p>
+                <p className="text-3xl font-bold mt-1">{totalExchanges}</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <p className="text-white/80 text-sm">{t('dashboard.activeTradings')}</p>
+                <p className="text-3xl font-bold mt-1">{activeExchanges}</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+                <p className="text-white/80 text-sm">{t('dashboard.offlineTradings')}</p>
+                <p className="text-3xl font-bold mt-1">{inactiveExchanges}</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
-            <AlertCircle className="w-5 h-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm text-red-800 mb-2">{error}</p>
-              {referencingTradings.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {referencingTradings.map(trading => (
-                    <div key={trading.id}>
-                      <Link
-                        to={`/trading/${trading.id}`}
-                        className="text-sm text-blue-700 hover:text-blue-900 underline font-medium"
-                      >
-                        → {trading.name}
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Actions Bar */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {t('dashboard.allTradings')}
+            </h2>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={fetchExchanges}
+                disabled={isLoading}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                {t('common.refresh')}
+              </button>
+              <button
+                onClick={handleCreateExchange}
+                style={{ 
+                  background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})` 
+                }}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm text-white hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {t('exchanges.addExchange')}
+              </button>
             </div>
           </div>
-        )}
 
-        {/* Loading State */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : (
-          <>
-            {/* Exchanges List */}
-            {exchanges.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-                <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('exchanges.noExchanges')}</h3>
-                <p className="text-gray-600 mb-6">{t('exchanges.noExchangesDescription')}</p>
-                <button
-                  onClick={handleCreateExchange}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 inline-flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  {t('exchanges.addExchange')}
-                </button>
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 px-6 py-4 bg-red-50 border-l-4 border-red-400 rounded-lg">
+              <div className="flex">
+                <AlertCircle className="w-5 h-5 text-red-400" />
+                <div className="ml-3">
+                  <p className="text-red-800">{error}</p>
+                  {referencingTradings.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {referencingTradings.map(trading => (
+                        <div key={trading.id}>
+                          <Link
+                            to={`/trading/${trading.id}`}
+                            className="text-sm text-blue-700 hover:text-blue-900 underline font-medium"
+                          >
+                            → {trading.name}
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {exchanges.map((exchange) => (
-                  <div
-                    key={exchange.id}
-                    className="bg-white rounded-lg shadow-sm p-6 border border-gray-200"
+            </div>
+          )}
+
+          {/* Loading State */}
+          {isLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">{t('dashboard.loadingTradings')}</p>
+            </div>
+          ) : exchanges.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-lg shadow">
+              <Wallet className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('exchanges.noExchanges')}</h3>
+              <p className="text-gray-600 mb-6">{t('exchanges.noExchangesDescription')}</p>
+              <button
+                onClick={handleCreateExchange}
+                style={{ 
+                  background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})` 
+                }}
+                className="inline-flex items-center px-6 py-3 border border-transparent rounded-md text-sm font-medium text-white hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {t('exchanges.addExchange')}
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {exchanges.map((exchange) => (
+                <div
+                  key={exchange.id}
+                  className="bg-white rounded-lg shadow hover:shadow-xl transition-shadow border border-gray-200 overflow-hidden"
+                >
+                  {/* Card Header */}
+                  <div 
+                    style={{ 
+                      background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})` 
+                    }}
+                    className="p-4"
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <Building2 className="w-6 h-6 text-blue-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{exchange.name}</h3>
-                          <p className="text-sm text-gray-600 capitalize">{exchange.exchange}</p>
-                        </div>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-white truncate">
+                          {exchange.name}
+                        </h3>
+                        <p className="text-white/80 text-sm mt-1 capitalize">
+                          {exchange.exchange}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 ml-2">
                         <button
-                          onClick={() => handleEditExchange(exchange)}
-                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditExchange(exchange);
+                          }}
+                          className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
                           title={t('exchanges.edit')}
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteClick(exchange)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title={t('exchanges.delete')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(exchange);
+                          }}
+                          className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                          title={t('common.delete')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Shield className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-600">
-                          {t('exchanges.status')}: <span className={`font-medium ${exchange.status === 'active' ? 'text-green-600' : 'text-gray-600'}`}>
-                            {exchange.status}
-                          </span>
+                  {/* Card Body */}
+                  <div className="p-4">
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('exchanges.status')}</p>
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          exchange.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {exchange.status}
                         </span>
                       </div>
-                      {exchange.info?.description && (
-                        <p className="text-sm text-gray-600 mt-2">{exchange.info.description}</p>
-                      )}
-                    </div>
 
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <p className="text-xs text-gray-500">
-                        {t('exchanges.created')} {new Date(exchange.created_at).toLocaleDateString()}
-                      </p>
+                      {exchange.info?.description && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">{t('exchanges.connectionDescription')}</p>
+                          <p className="text-sm text-gray-900">{exchange.info.description}</p>
+                        </div>
+                      )}
+
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">{t('dashboard.tableHeaders.created')}</p>
+                        <p className="text-sm text-gray-900">
+                          {new Date(exchange.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </main>
-
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
       <Footer />
 
       {/* Create/Edit Exchange Modal */}
@@ -598,7 +679,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
           {/* Description */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-              {t('exchanges.description')} <span className="text-gray-500 text-xs">{t('common.optional')}</span>
+              {t('exchanges.connectionDescription')} <span className="text-gray-500 text-xs">{t('common.optional')}</span>
             </label>
             <textarea
               id="description"
@@ -606,7 +687,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               rows={2}
-              placeholder={t('exchanges.descriptionPlaceholder')}
+              placeholder={t('exchanges.connectionDescriptionPlaceholder')}
             />
           </div>
 

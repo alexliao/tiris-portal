@@ -158,16 +158,20 @@
     "wechat": "WeChat",
     "userMenu": "User menu",
     "toggleMobileMenu": "Toggle mobile menu",
-    "tabs": "Tabs"
+    "tabs": "Tabs",
+    "backToDashboard": "Back to Trading Center"
   },
   "dashboard": {
     "title": "Trading Center",
     "welcome": "Welcome back, {{name}}",
     "totalTradings": "Total Tradings",
     "activeTradings": "Online Tradings",
+    "offlineTradings": "Offline Tradings",
     "backtests": "Backtests",
     "exchanges": "Exchanges",
+    "manageExchanges": "Manage your exchange connections",
     "yourTradings": "Your Tradings",
+    "allTradings": "All Tradings",
     "loadingTradings": "Loading tradings...",
     "noTradingsFound": "No tradings found",
     "noTradingsDescription": "Your tradings will appear here once you create them.",
@@ -180,6 +184,9 @@
     "needSignIn": "You need to sign in to view your dashboard.",
     "failedToLoad": "Failed to load trading data",
     "failedToLoadWithError": "Failed to load trading data: {{error}}",
+    "paperDescription": "Demo trading with virtual funds",
+    "backtestDescription": "Test strategies on historical data",
+    "realDescription": "Live trading with real funds",
     "tableHeaders": {
       "name": "Name",
       "type": "Type",
@@ -197,7 +204,7 @@
   },
   "exchanges": {
     "title": "Exchange Connections",
-    "description": "Manage your exchange API connections for live trading",
+    "pageDescription": "Manage your exchange API connections for live trading",
     "addExchange": "Add Exchange",
     "editExchange": "Edit Exchange",
     "createExchange": "Create Exchange Connection",
@@ -218,8 +225,8 @@
     "passphrasePlaceholder": "Enter your API passphrase",
     "testnet": "Testnet",
     "testnetDescription": "Use testnet/sandbox environment",
-    "description": "Description",
-    "descriptionPlaceholder": "Optional description for this connection",
+    "connectionDescription": "Description",
+    "connectionDescriptionPlaceholder": "Optional description for this connection",
     "status": "Status",
     "created": "Created",
     "edit": "Edit",
@@ -267,9 +274,9 @@
     },
     "type": {
       "backtest": "Backtest",
-      "paper": "Paper",
-      "live": "Live",
-      "real": "Real"
+      "paper": "Paper Trading",
+      "live": "Live Trading",
+      "real": "Real Trading"
     },
     "create": {
       "title": "Create New {{type}} Trading",
