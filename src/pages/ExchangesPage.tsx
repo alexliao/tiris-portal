@@ -8,6 +8,7 @@ import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { THEME_COLORS } from '../config/theme';
+import { getExchangeTypeName } from '../utils/exchangeNames';
 
 export const ExchangesPage: React.FC = () => {
   const { t } = useTranslation();
@@ -286,8 +287,8 @@ export const ExchangesPage: React.FC = () => {
                         <h3 className="text-lg font-semibold text-white truncate">
                           {exchange.name}
                         </h3>
-                        <p className="text-white/80 text-sm mt-1 capitalize">
-                          {exchange.exchange}
+                        <p className="text-white/80 text-sm mt-1">
+                          {getExchangeTypeName(exchange.exchange)}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 ml-2">
@@ -390,15 +391,8 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
 
   // Helper function to generate default name based on exchange type
   const getDefaultName = (exchangeType: string) => {
-    const exchangeNames: { [key: string]: string } = {
-      binance: 'Binance',
-      okx: 'OKX',
-      bybit: 'Bybit',
-      kraken: 'Kraken',
-      gate: 'Gate.io',
-      coinbase: 'Coinbase',
-    };
-    return `My ${exchangeNames[exchangeType] || exchangeType}`;
+    const exchangeName = getExchangeTypeName(exchangeType);
+    return t('exchanges.defaultName', { exchange: exchangeName });
   };
 
   const [formData, setFormData] = useState({
@@ -572,7 +566,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
                 ) : availableExchanges.length > 0 ? (
                   availableExchanges.map((exchangeName) => (
                     <option key={exchangeName} value={exchangeName}>
-                      {exchangeName.charAt(0).toUpperCase() + exchangeName.slice(1)}
+                      {getExchangeTypeName(exchangeName)}
                     </option>
                   ))
                 ) : (
@@ -585,8 +579,8 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t('exchanges.exchange')}
               </label>
-              <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700 capitalize">
-                {exchange.exchange}
+              <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700">
+                {getExchangeTypeName(exchange.exchange)}
               </div>
             </div>
           )}
@@ -695,7 +689,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
               disabled={isLoading}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? t('common.creating') : exchange ? t('common.create') : t('exchanges.addExchange')}
+              {isLoading ? t('common.creating') : exchange ? t('common.save') : t('common.create')}
             </button>
           </div>
         </form>

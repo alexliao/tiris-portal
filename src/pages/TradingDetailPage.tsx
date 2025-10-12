@@ -879,7 +879,7 @@ export const TradingDetailPage: React.FC = () => {
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.exchangeBinding')}</div>
-                <div className="text-sm text-gray-900">{exchangeBinding ? `${exchangeBinding.name} (${exchangeBinding.exchange})` : 'Loading...'}</div>
+                <div className="text-sm text-gray-900">{exchangeBinding ? exchangeBinding.name : 'Loading...'}</div>
               </div>
               {trading.type === 'real' && (trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) && (
                 <div>

@@ -51,26 +51,20 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
 
   const generateDefaultName = (type: string): string => {
     const now = new Date();
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    const month = monthNames[now.getMonth()];
+    const month = now.getMonth() + 1;
     const day = now.getDate();
-    const time = now.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+
+    const typeName = t(`trading.type.${type}`);
+    const timestamp = t('trading.create.defaultNameTimestamp', {
+      month,
+      day,
+      hours,
+      minutes
     });
 
-    const typeNames = {
-      backtest: 'Backtest',
-      paper: 'Paper',
-      real: 'Live Trading'
-    };
-
-    const typeName = typeNames[type as keyof typeof typeNames] || type;
-
-    return `${typeName} ${month} ${day} ${time}`;
+    return `${typeName} ${timestamp}`;
   };
 
   useEffect(() => {
@@ -207,11 +201,11 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
     // For real trading, validate minimum initial funds
     if (tradingType === 'real') {
       if (maxBalance < 10) {
-        setError(`Insufficient funds. Available balance (${maxBalance} ${quoteCurrency}) is less than the minimum required (10 ${quoteCurrency}).`);
+        setError(t('trading.create.insufficientFunds', { balance: maxBalance, currency: quoteCurrency, minimum: 10 }));
         return;
       }
       if (initialFunds < 10) {
-        setError(`Initial funds must be at least 10 ${quoteCurrency}.`);
+        setError(t('trading.create.minimumFundsRequired', { minimum: 10, currency: quoteCurrency }));
         return;
       }
     }
@@ -332,9 +326,9 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
         {tradingType === 'real' && !isLoadingBindings && exchangeBindings.length === 0 && (
           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <p className="text-sm text-yellow-800">
-              No exchange connections found. Please add an exchange connection first in the{' '}
+              {t('trading.create.noExchangeConnections')}{' '}
               <a href="/exchanges" className="underline font-medium" onClick={(e) => { e.preventDefault(); window.location.href = '/exchanges'; }}>
-                Exchanges page
+                {t('trading.create.exchangesPage')}
               </a>.
             </p>
           </div>
@@ -379,7 +373,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                 <option value="">{t('trading.create.selectExchange')}</option>
                 {exchangeBindings.map((binding) => (
                   <option key={binding.id} value={binding.id}>
-                    {binding.name} ({binding.exchange})
+                    {binding.name}
                   </option>
                 ))}
               </select>
@@ -391,7 +385,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
             <>
               <div className="mb-4">
                 <label htmlFor="quote_currency" className="block text-sm font-medium text-gray-700 mb-1">
-                  Quote Currency <span className="text-red-500">*</span>
+                  {t('trading.create.quoteCurrency')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="quote_currency"
@@ -436,19 +430,19 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
               {/* Initial Funds */}
               <div className="mb-4">
                 <label htmlFor="initial_funds" className="block text-sm font-medium text-gray-700 mb-1">
-                  Initial Funds ({quoteCurrency}) <span className="text-red-500">*</span>
+                  {t('trading.create.initialFunds')} ({quoteCurrency}) <span className="text-red-500">*</span>
                 </label>
                 {isLoadingBalance ? (
                   <div className="flex items-center py-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                    <span className="text-sm text-gray-600">Loading balance...</span>
+                    <span className="text-sm text-gray-600">{t('trading.create.loadingBalance')}</span>
                   </div>
                 ) : (
                   <>
                     {maxBalance === 0 && (
                       <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
                         <p className="text-xs text-yellow-800">
-                          No available funds. All funds from this exchange binding may already be allocated to other real tradings.
+                          {t('trading.create.noAvailableFunds')}
                         </p>
                       </div>
                     )}
@@ -468,7 +462,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                         required
                       />
                       <span className="text-sm text-gray-600">
-                        Available: {maxBalance.toLocaleString()} {quoteCurrency}
+                        {t('trading.create.available')}: {maxBalance.toLocaleString()} {quoteCurrency}
                       </span>
                     </div>
                     <div className="relative">
