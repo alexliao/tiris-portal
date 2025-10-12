@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Globe } from 'lucide-react';
 
 export const LanguageSelector: React.FC = () => {
   const { i18n, t } = useTranslation();
@@ -21,10 +22,11 @@ export const LanguageSelector: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-3 py-2 text-[#080404] hover:bg-gray-100 transition-colors rounded font-['Nunito'] text-sm"
+        className="p-2 text-[#080404] hover:bg-gray-100 transition-colors rounded-md inline-flex items-center justify-center"
         aria-label={t('language.select')}
+        title={currentLanguage.name}
       >
-        {currentLanguage.name}
+        <Globe className="w-5 h-5" />
       </button>
 
       {isOpen && (

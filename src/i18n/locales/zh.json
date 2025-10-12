@@ -210,7 +210,7 @@
     "createExchange": "创建交易所连接",
     "noExchanges": "未连接交易所",
     "noExchangesDescription": "添加您的第一个交易所连接以开始实盘交易",
-    "defaultName": "我的{{exchange}}",
+    "defaultName": "{{exchange}}账户",
     "name": "交易所名称",
     "namePlaceholder": "例如：我的币安账户",
     "nameRequired": "交易所名称是必需的",

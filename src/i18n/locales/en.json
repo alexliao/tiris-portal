@@ -211,7 +211,7 @@
     "createExchange": "Create Exchange Connection",
     "noExchanges": "No exchanges connected",
     "noExchangesDescription": "Add your first exchange connection to start live trading",
-    "defaultName": "My {{exchange}}",
+    "defaultName": "{{exchange}} account",
     "name": "Exchange Name",
     "namePlaceholder": "e.g., My Binance Account",
     "nameRequired": "Exchange name is required",
