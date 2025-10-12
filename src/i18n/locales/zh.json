@@ -15,7 +15,7 @@
   "features": {
     "profitable": {
       "title": "盈利性",
-      "description": "我们的交易策略采用前沿的人工智能技术开发，并经过大量历史数据回测验证，在2024年整年的ETH/USDT交易中获得了140%的回报率。"
+      "description": "我们的交易策略采用前沿的人工智能技术开发，并经过大量历史数据回测验证，在2024年整年的ETH/USDT交易中获得了140%的回报率。而同期ETH价格的涨幅只有40%。"
     },
     "secure": {
       "title": "安全性",
@@ -137,6 +137,8 @@
     "refresh": "刷新",
     "optional": "（可选）",
     "creating": "创建中...",
+    "processing": "处理中...",
+    "continue": "继续",
     "create": "创建",
     "save": "保存",
     "cancel": "取消",
@@ -210,7 +212,7 @@
     "createExchange": "创建交易所连接",
     "noExchanges": "未连接交易所",
     "noExchangesDescription": "添加您的第一个交易所连接以开始实盘交易",
-    "defaultName": "我的{{exchange}}",
+    "defaultName": "{{exchange}}账户",
     "name": "交易所名称",
     "namePlaceholder": "例如：我的币安账户",
     "nameRequired": "交易所名称是必需的",
@@ -259,6 +261,7 @@
     "detail": {
       "title": "交易详情",
       "backToDashboard": "返回交易中心",
+      "backToList": "返回交易列表",
       "overview": "概览",
       "performance": "绩效",
       "settings": "设置",
@@ -268,6 +271,7 @@
       "tradingIdRequired": "需要交易ID",
       "timeframe": "周期",
       "exchangeBinding": "交易所",
+      "exchangeType": "交易所类型",
       "initialFunds": "初始资金",
       "performanceChart": "绩效图表",
       "noDataAvailable": "无绩效数据可用",

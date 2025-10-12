@@ -233,9 +233,13 @@ export const TradingsListPage: React.FC = () => {
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex items-center mb-6">
-              <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors cursor-pointer"
+                title={t('common.backToDashboard')}
+              >
                 <Icon className="w-8 h-8" />
-              </div>
+              </button>
               <div className="ml-4">
                 <h1 className="text-2xl font-bold">{typeInfo.label}</h1>
                 <p className="text-white/90 mt-1">{typeInfo.description}</p>

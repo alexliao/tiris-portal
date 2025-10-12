@@ -15,7 +15,7 @@
   "features": {
     "profitable": {
       "title": "Profitable",
-      "description": "Our trading strategy is built on cutting-edge artificial intelligence techniques and validated through extensive historical backtesting, delivering a 140% return on ETH/USDT trading throughout 2024."
+      "description": "Our trading strategy is built on cutting-edge artificial intelligence techniques and validated through extensive historical backtesting, delivering a 140% return on ETH/USDT trading throughout 2024. During the same period, ETH price only rose 40%."
     },
     "secure": {
       "title": "Secure",
@@ -211,7 +211,7 @@
     "createExchange": "Create Exchange Connection",
     "noExchanges": "No exchanges connected",
     "noExchangesDescription": "Add your first exchange connection to start live trading",
-    "defaultName": "My {{exchange}}",
+    "defaultName": "{{exchange}} account",
     "name": "Exchange Name",
     "namePlaceholder": "e.g., My Binance Account",
     "nameRequired": "Exchange name is required",
@@ -260,6 +260,7 @@
     "detail": {
       "title": "Trading Details",
       "backToDashboard": "Back to Trading Center",
+      "backToList": "Back to trading list",
       "overview": "Overview",
       "performance": "Performance",
       "settings": "Settings",

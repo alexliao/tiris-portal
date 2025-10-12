@@ -796,9 +796,13 @@ export const TradingDetailPage: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+                <Link
+                  to={`/tradings/${trading.type}`}
+                  className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors"
+                  title={t('trading.detail.backToList')}
+                >
                   {getTypeIcon(trading.type)}
-                </div>
+                </Link>
                 <div className="ml-4">
                   <h1 className="text-2xl font-bold text-white">{trading.name}</h1>
                   <div className="flex items-center space-x-4 text-sm text-white/80">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getExchangeBindings, createExchangeBinding, deleteExchangeBinding, updateExchangeBinding, getTradings, getExchanges, type ExchangeBinding, type CreateExchangeBindingRequest, type UpdateExchangeBindingRequest, type Trading, ApiError } from '../utils/api';
 import { Plus, Trash2, Edit2, AlertCircle } from 'lucide-react';
@@ -12,6 +12,7 @@ import { getExchangeTypeName } from '../utils/exchangeNames';
 
 export const ExchangesPage: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [exchanges, setExchanges] = useState<ExchangeBinding[]>([]);
   const [tradings, setTradings] = useState<Trading[]>([]);
@@ -176,9 +177,13 @@ export const ExchangesPage: React.FC = () => {
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex items-center mb-6">
-              <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors cursor-pointer"
+                title={t('common.backToDashboard')}
+              >
                 <Icon className="w-8 h-8" />
-              </div>
+              </button>
               <div className="ml-4">
                 <h1 className="text-2xl font-bold">{t('exchanges.title')}</h1>
                 <p className="text-white/90 mt-1">{t('exchanges.pageDescription')}</p>
