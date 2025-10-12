@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, type Trading, ApiError, getBots, type Bot } from '../utils/api';
-import { TrendingUp, Calendar, Activity, AlertCircle, ChevronRight, Wallet } from 'lucide-react';
+import { getTradings, type Trading, ApiError, getBots, type Bot, getExchangeBindings, type ExchangeBinding } from '../utils/api';
+import { AlertCircle, ChevronRight } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -14,6 +14,7 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [tradings, setTradings] = useState<Trading[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
+  const [exchanges, setExchanges] = useState<ExchangeBinding[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +32,15 @@ export const DashboardPage: React.FC = () => {
       } catch (botErr) {
         console.warn('Failed to fetch bots:', botErr);
         setBots([]);
+      }
+
+      // Try to fetch exchange bindings
+      try {
+        const exchangesData = await getExchangeBindings();
+        setExchanges(exchangesData);
+      } catch (exchangeErr) {
+        console.warn('Failed to fetch exchanges:', exchangeErr);
+        setExchanges([]);
       }
     } catch (err) {
       console.error('Failed to fetch tradings:', err);
@@ -70,25 +80,32 @@ export const DashboardPage: React.FC = () => {
     return { total, active };
   };
 
+  // Calculate exchange statistics
+  const getExchangeStats = () => {
+    const total = exchanges.length;
+    const active = exchanges.filter(e => e.status === 'active').length;
+    return { total, active };
+  };
+
   const tradingTypes = [
     {
       key: 'paper' as const,
       label: t('trading.type.paper') || 'Paper Trading',
-      icon: Calendar,
+      icon: THEME_COLORS.paper.icon,
       colors: THEME_COLORS.paper,
       description: t('dashboard.paperDescription') || 'Simulated trading with virtual funds'
     },
     {
       key: 'backtest' as const,
       label: t('trading.type.backtest') || 'Backtest',
-      icon: Activity,
+      icon: THEME_COLORS.backtest.icon,
       colors: THEME_COLORS.backtest,
       description: t('dashboard.backtestDescription') || 'Test strategies on historical data'
     },
     {
       key: 'real' as const,
       label: t('trading.type.real') || 'Real Trading',
-      icon: TrendingUp,
+      icon: THEME_COLORS.real.icon,
       colors: THEME_COLORS.real,
       description: t('dashboard.realDescription') || 'Live trading with real funds'
     }
@@ -207,23 +224,32 @@ export const DashboardPage: React.FC = () => {
               className="bg-white rounded-lg shadow hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-gray-200"
             >
               {/* Colored Header */}
-              <div 
-                style={{ 
-                  background: `linear-gradient(135deg, ${THEME_COLORS.exchanges.primary}, ${THEME_COLORS.exchanges.hover})` 
+              <div
+                style={{
+                  background: `linear-gradient(135deg, ${THEME_COLORS.exchanges.primary}, ${THEME_COLORS.exchanges.hover})`
                 }}
                 className="p-6 text-white"
               >
                 <div className="flex items-center justify-between mb-3">
-                  <Wallet className="w-10 h-10" />
+                  {React.createElement(THEME_COLORS.exchanges.icon, { className: "w-10 h-10" })}
                   <ChevronRight className="w-5 h-5 opacity-80" />
                 </div>
                 <h3 className="text-xl font-bold mb-1">{t('dashboard.exchanges')}</h3>
-                <p className="text-sm text-white/80">{t('exchanges.pageDescription')}</p>
+                <p className="text-sm text-white/80">{t('dashboard.manageExchanges')}</p>
               </div>
 
-              {/* White Body */}
+              {/* White Body with Stats */}
               <div className="p-6">
-                <p className="text-sm text-gray-600">{t('dashboard.manageExchanges')}</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-3xl font-bold text-gray-900">{getExchangeStats().total}</p>
+                    <p className="text-xs text-gray-500 mt-1">Total Exchanges</p>
+                  </div>
+                  <div className="text-right">
+                    <p style={{ color: THEME_COLORS.exchanges.primary }} className="text-3xl font-bold">{getExchangeStats().active}</p>
+                    <p className="text-xs text-gray-500 mt-1">Active</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

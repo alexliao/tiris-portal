@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getExchangeBindings, createExchangeBinding, deleteExchangeBinding, updateExchangeBinding, getTradings, getExchanges, type ExchangeBinding, type CreateExchangeBindingRequest, type UpdateExchangeBindingRequest, type Trading, ApiError } from '../utils/api';
-import { Wallet, Plus, Trash2, Edit2, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Edit2, AlertCircle } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import ConfirmDialog from '../components/common/ConfirmDialog';
@@ -11,7 +11,6 @@ import { THEME_COLORS } from '../config/theme';
 
 export const ExchangesPage: React.FC = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [exchanges, setExchanges] = useState<ExchangeBinding[]>([]);
   const [tradings, setTradings] = useState<Trading[]>([]);
@@ -31,6 +30,7 @@ export const ExchangesPage: React.FC = () => {
   });
 
   const colors = THEME_COLORS.exchanges;
+  const Icon = THEME_COLORS.exchanges.icon;
 
   const fetchExchanges = async () => {
     try {
@@ -174,35 +174,27 @@ export const ExchangesPage: React.FC = () => {
           className="text-white shadow-lg"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="flex items-center text-white/80 hover:text-white mb-4 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              {t('common.backToDashboard')}
-            </button>
-
             <div className="flex items-center mb-6">
               <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
-                <Wallet className="w-10 h-10" />
+                <Icon className="w-8 h-8" />
               </div>
               <div className="ml-4">
-                <h1 className="text-3xl font-bold">{t('exchanges.title')}</h1>
+                <h1 className="text-2xl font-bold">{t('exchanges.title')}</h1>
                 <p className="text-white/90 mt-1">{t('exchanges.pageDescription')}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <p className="text-white/80 text-sm">{t('dashboard.totalTradings')}</p>
+                <p className="text-white/80 text-sm">Total Exchanges</p>
                 <p className="text-3xl font-bold mt-1">{totalExchanges}</p>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <p className="text-white/80 text-sm">{t('dashboard.activeTradings')}</p>
+                <p className="text-white/80 text-sm">Active Connections</p>
                 <p className="text-3xl font-bold mt-1">{activeExchanges}</p>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <p className="text-white/80 text-sm">{t('dashboard.offlineTradings')}</p>
+                <p className="text-white/80 text-sm">Inactive Connections</p>
                 <p className="text-3xl font-bold mt-1">{inactiveExchanges}</p>
               </div>
             </div>
@@ -213,28 +205,18 @@ export const ExchangesPage: React.FC = () => {
           {/* Actions Bar */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
-              {t('dashboard.allTradings')}
+              All Exchange Connections
             </h2>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={fetchExchanges}
-                disabled={isLoading}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                {t('common.refresh')}
-              </button>
-              <button
-                onClick={handleCreateExchange}
-                style={{ 
-                  background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})` 
-                }}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm text-white hover:opacity-90 transition-opacity"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                {t('exchanges.addExchange')}
-              </button>
-            </div>
+            <button
+              onClick={handleCreateExchange}
+              style={{
+                background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+              }}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm text-white hover:opacity-90 transition-opacity"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {t('exchanges.addExchange')}
+            </button>
           </div>
 
           {/* Error Message */}
@@ -267,11 +249,11 @@ export const ExchangesPage: React.FC = () => {
           {isLoading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">{t('dashboard.loadingTradings')}</p>
+              <p className="text-gray-600">Loading exchange connections...</p>
             </div>
           ) : exchanges.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-lg shadow">
-              <Wallet className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <Icon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">{t('exchanges.noExchanges')}</h3>
               <p className="text-gray-600 mb-6">{t('exchanges.noExchangesDescription')}</p>
               <button

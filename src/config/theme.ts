@@ -1,13 +1,17 @@
 /**
  * Unified Color Theme Configuration
- * 
+ *
  * These colors are used consistently across the entire application
  * to represent the four main elements: Paper, Backtest, Real, and Exchanges
  */
 
+import { NotebookPen, CircleDollarSign, LineChart, Landmark } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
 export const THEME_COLORS = {
   paper: {
     name: 'Paper Trading',
+    icon: NotebookPen,
     primary: '#7A1F3D',      // Burgundy - Secure
     light: '#F7E8ED',        // Very light burgundy
     medium: '#B04A6E',       // Medium burgundy
@@ -16,6 +20,7 @@ export const THEME_COLORS = {
   },
   backtest: {
     name: 'Backtest',
+    icon: LineChart,
     primary: '#8B6914',      // Gold - Profitable
     light: '#FFF8E7',        // Very light gold
     medium: '#C4A04A',       // Medium gold
@@ -24,6 +29,7 @@ export const THEME_COLORS = {
   },
   real: {
     name: 'Real Trading',
+    icon: CircleDollarSign,
     primary: '#1B4D3E',      // Dark Green - Simple
     light: '#E7F2EF',        // Very light green
     medium: '#4A8A75',       // Medium green
@@ -32,6 +38,7 @@ export const THEME_COLORS = {
   },
   exchanges: {
     name: 'Exchanges',
+    icon: Landmark,
     primary: '#2E3A59',      // Dark Blue - Automatic
     light: '#E8EAF0',        // Very light blue
     medium: '#6B7A9E',       // Medium blue
@@ -80,4 +87,12 @@ export const getTradingTheme = (type: string): ThemeType => {
   if (normalizedType === 'backtest') return 'backtest';
   if (normalizedType === 'real' || normalizedType === 'live') return 'real';
   return 'paper'; // default
+};
+
+/**
+ * Get icon component for a trading type
+ */
+export const getTradingIcon = (type: string): LucideIcon => {
+  const theme = getTradingTheme(type);
+  return THEME_COLORS[theme].icon;
 };

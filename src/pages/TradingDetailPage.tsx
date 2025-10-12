@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading } from '../utils/api';
-import { ArrowLeft, Calendar, Activity, TrendingUp, AlertCircle, Play, Square, Loader2 } from 'lucide-react';
+import { AlertCircle, Play, Square, Loader2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
+import { THEME_COLORS, getTradingTheme, getTradingIcon } from '../config/theme';
 
 const extractExchangeCredentials = (binding?: ExchangeBinding | null) => {
   if (!binding) {
@@ -46,7 +47,6 @@ const extractExchangeCredentials = (binding?: ExchangeBinding | null) => {
 
 export const TradingDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { t } = useTranslation();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [trading, setTrading] = useState<Trading | null>(null);
@@ -642,14 +642,8 @@ export const TradingDetailPage: React.FC = () => {
   };
 
   const getTypeIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'backtest':
-        return <Activity className="w-5 h-5" />;
-      case 'live':
-        return <TrendingUp className="w-5 h-5" />;
-      default:
-        return <Calendar className="w-5 h-5" />;
-    }
+    const IconComponent = getTradingIcon(type);
+    return <IconComponent className="w-8 h-8" />;
   };
 
   if (authLoading) {
@@ -716,21 +710,12 @@ export const TradingDetailPage: React.FC = () => {
               <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
               <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.error')}</h1>
               <p className="text-red-600 mb-4">{error}</p>
-              <div className="space-x-4">
-                <button
-                  onClick={() => navigate(-1)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  {t('trading.detail.backToDashboard')}
-                </button>
-                <Link
-                  to="/dashboard"
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  {t('dashboard.title')}
-                </Link>
-              </div>
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                {t('dashboard.title')}
+              </Link>
             </div>
           </div>
         </div>
@@ -781,38 +766,37 @@ export const TradingDetailPage: React.FC = () => {
     );
   }
 
+  // Get theme colors for the trading type
+  const themeType = getTradingTheme(trading.type);
+  const themeColors = THEME_COLORS[themeType];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       <div className="pt-20">
-        {/* Header */}
-        <div className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header with Theme Gradient */}
+        <div
+          style={{
+            background: `linear-gradient(135deg, ${themeColors.primary}, ${themeColors.hover})`
+          }}
+          className="shadow-sm text-white"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => navigate(-1)}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  {t('trading.detail.backToDashboard')}
-                </button>
-                <div className="flex items-center space-x-3">
+              <div className="flex items-center">
+                <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
                   {getTypeIcon(trading.type)}
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-900">{trading.name}</h1>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600">
-                      <span>ID: {trading.id.substring(0, 8)}...</span>
-                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
-                        {t(`trading.type.${trading.type.toLowerCase()}`) || trading.type}
+                </div>
+                <div className="ml-4">
+                  <h1 className="text-2xl font-bold text-white">{trading.name}</h1>
+                  <div className="flex items-center space-x-4 text-sm text-white/80">
+                    <span>ID: {trading.id.substring(0, 8)}...</span>
+                    {bot && (
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${bot.alive ? 'bg-green-500/30 text-white ring-1 ring-white/30' : 'bg-white/20 text-white/80'
+                        }`}>
+                        {t('trading.detail.bot')} {bot.alive ? t('common.online') : t('common.offline')}
                       </span>
-                      {bot && (
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${bot.alive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                          }`}>
-                          {t('trading.detail.bot')} {bot.alive ? t('common.online') : t('common.offline')}
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -820,7 +804,7 @@ export const TradingDetailPage: React.FC = () => {
                 {/* Loading indicator during refresh */}
                 {isRefreshing && (
                   <div className="flex items-center">
-                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
                   </div>
                 )}
 
@@ -843,7 +827,7 @@ export const TradingDetailPage: React.FC = () => {
                     <button
                       onClick={() => handleStartBot()}
                       disabled={botLoading}
-                      className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      className="inline-flex items-center px-3 py-2 bg-white/20 text-white rounded-md hover:bg-white/30 disabled:opacity-50 transition-colors ring-1 ring-white/30"
                     >
                       {botLoading ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />

@@ -3,19 +3,19 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, deleteTrading, type Trading, ApiError, getBots, type Bot } from '../utils/api';
-import { TrendingUp, Calendar, Activity, AlertCircle, RefreshCw, Plus, Trash2, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import CreateTradingModal from '../components/trading/CreateTradingModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import UnderConstruction from '../components/common/UnderConstruction';
-import { THEME_COLORS, getTradingTheme } from '../config/theme';
+import { THEME_COLORS } from '../config/theme';
 
 export const TradingsListPage: React.FC = () => {
   const { t } = useTranslation();
   const { type } = useParams<{ type: string }>();
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [tradings, setTradings] = useState<Trading[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -161,19 +161,19 @@ export const TradingsListPage: React.FC = () => {
     const types = {
       paper: {
         label: t('trading.type.paper') || 'Paper Trading',
-        icon: Calendar,
+        icon: THEME_COLORS.paper.icon,
         colors: THEME_COLORS.paper,
         description: t('dashboard.paperDescription') || 'Simulated trading with virtual funds'
       },
       backtest: {
         label: t('trading.type.backtest') || 'Backtest',
-        icon: Activity,
+        icon: THEME_COLORS.backtest.icon,
         colors: THEME_COLORS.backtest,
         description: t('dashboard.backtestDescription') || 'Test strategies on historical data'
       },
       real: {
         label: t('trading.type.real') || 'Real Trading',
-        icon: TrendingUp,
+        icon: THEME_COLORS.real.icon,
         colors: THEME_COLORS.real,
         description: t('dashboard.realDescription') || 'Live trading with real funds'
       }
@@ -232,20 +232,12 @@ export const TradingsListPage: React.FC = () => {
           className="text-white shadow-lg"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="flex items-center text-white/80 hover:text-white mb-4 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              {t('common.backToDashboard')}
-            </button>
-
             <div className="flex items-center mb-6">
               <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
-                <Icon className="w-10 h-10" />
+                <Icon className="w-8 h-8" />
               </div>
               <div className="ml-4">
-                <h1 className="text-3xl font-bold">{typeInfo.label}</h1>
+                <h1 className="text-2xl font-bold">{typeInfo.label}</h1>
                 <p className="text-white/90 mt-1">{typeInfo.description}</p>
               </div>
             </div>
@@ -273,26 +265,16 @@ export const TradingsListPage: React.FC = () => {
             <h2 className="text-xl font-semibold text-gray-900">
               {t('dashboard.allTradings')}
             </h2>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={fetchTradings}
-                disabled={isLoading}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                {t('common.refresh')}
-              </button>
-              <button
-                onClick={handleCreateTrading}
-                style={{ 
-                  background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})` 
-                }}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm text-white hover:opacity-90 transition-opacity"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                {t('dashboard.createNew', { type: typeInfo.label })}
-              </button>
-            </div>
+            <button
+              onClick={handleCreateTrading}
+              style={{
+                background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+              }}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm text-white hover:opacity-90 transition-opacity"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {t('dashboard.createNew', { type: typeInfo.label })}
+            </button>
           </div>
 
           {error && (

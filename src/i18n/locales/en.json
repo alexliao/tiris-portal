@@ -175,7 +175,7 @@
     "loadingTradings": "Loading tradings...",
     "noTradingsFound": "No tradings found",
     "noTradingsDescription": "Your tradings will appear here once you create them.",
-    "createNew": "Create New {{type}} Trading",
+    "createNew": "Create {{type}}",
     "deleteTradingTitle": "Delete Trading",
     "deleteTradingMessage": "Are you sure you want to delete '{{name}}'? This will permanently remove all associated data including positions, logs, transactions, and sub-accounts. This action cannot be undone.",
     "deleteTradingMessageReal": "Are you sure you want to delete '{{name}}'? This will mark the trading as deleted but preserve all historical data. This action cannot be undone.",
