@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, memo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Brush } from 'recharts';
 import { getEquityCurve, getTradingLogs, ApiError, type Trading } from '../../utils/api';
@@ -104,6 +104,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [showTradingDots, setShowTradingDots] = useState(false);
   const [brushDomain, setBrushDomain] = useState<[number, number] | null>(null);
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('all');
+  const pendingBrushDomainRef = useRef<[number, number] | null>(null);
+  const isDraggingRef = useRef(false);
 
   // Extract trading data fetching logic into reusable function
   const fetchTradingData = useCallback(async (isInitialLoad = false) => {
@@ -176,17 +178,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
   }, [autoRefreshEnabled, fetchTradingData, refreshTrigger]);
 
-  // Effect to restore brush domain after data refresh when auto-refresh is disabled
-  useEffect(() => {
-    if (chartState.data.length > 0 && brushDomain && !autoRefreshEnabled) {
-      // When auto-refresh is disabled and we have brush domain and new data,
-      // ensure the brush domain is maintained
-      setTimeout(() => {
-        setBrushDomain(brushDomain);
-      }, 50);
-    }
-  }, [chartState.data, brushDomain, autoRefreshEnabled]);
-
   // Function to filter data based on selected time range
   const filteredData = useMemo(() => {
     if (selectedTimeRange === 'all' || chartState.data.length === 0) {
@@ -217,28 +208,66 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     return filtered.length > 0 ? filtered : chartState.data;
   }, [chartState.data, selectedTimeRange]);
 
+  // Handle brush drag end - update state with final values
+  const handleBrushMouseUp = useCallback(() => {
+    isDraggingRef.current = false;
+
+    // Apply the pending brush domain when drag ends
+    if (pendingBrushDomainRef.current) {
+      setBrushDomain(pendingBrushDomainRef.current);
+      // Automatically turn off auto-refresh when user manually adjusts brush
+      if (onAutoRefreshToggle && autoRefreshEnabled) {
+        onAutoRefreshToggle(false);
+      }
+    }
+  }, [onAutoRefreshToggle, autoRefreshEnabled]);
+
+  // Effect to restore brush domain after data refresh when auto-refresh is disabled
+  useEffect(() => {
+    if (chartState.data.length > 0 && brushDomain && !autoRefreshEnabled) {
+      // When auto-refresh is disabled and we have brush domain and new data,
+      // ensure the brush domain is maintained
+      setTimeout(() => {
+        setBrushDomain(brushDomain);
+      }, 50);
+    }
+  }, [chartState.data, brushDomain, autoRefreshEnabled]);
+
+  // Effect to handle brush drag end events
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (isDraggingRef.current) {
+        handleBrushMouseUp();
+      }
+    };
+
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [handleBrushMouseUp]);
+
   // Handle time range selection
   const handleTimeRangeChange = (range: TimeRange) => {
     setSelectedTimeRange(range);
     setBrushDomain(null); // Reset brush when changing time range
   };
 
-  // Handle brush change to synchronize both charts
-  const handleBrushChange = (domain: { startIndex?: number; endIndex?: number } | null) => {
+  // Handle brush change - store pending changes and update only on drag end
+  const handleBrushChange = useCallback((domain: { startIndex?: number; endIndex?: number } | null) => {
     if (domain && domain.startIndex !== undefined && domain.endIndex !== undefined) {
       const startTime = filteredData[domain.startIndex]?.timestampNum;
       const endTime = filteredData[domain.endIndex]?.timestampNum;
       if (startTime && endTime) {
-        setBrushDomain([startTime, endTime]);
-        // Automatically turn off auto-refresh when user manually adjusts brush
-        if (onAutoRefreshToggle && autoRefreshEnabled) {
-          onAutoRefreshToggle(false);
-        }
+        // Store the domain in a ref instead of immediately updating state
+        pendingBrushDomainRef.current = [startTime, endTime];
+        isDraggingRef.current = true;
       }
     } else {
-      setBrushDomain(null);
+      pendingBrushDomainRef.current = null;
+      isDraggingRef.current = false;
     }
-  };
+  }, [filteredData]);
 
   // Calculate the domain for both charts
   const chartDomain = useMemo<[number, number] | ['dataMin', 'dataMax']>(() => {
