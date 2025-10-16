@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Brush } from 'recharts';
 import { getEquityCurve, getTradingLogs, ApiError, type Trading } from '../../utils/api';
 import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
-import { useAuth } from '../../hooks/useAuth';
+import CandlestickChart from './CandlestickChart';
 
 type TimeRange = '10m' | '1d' | '1M' | 'all';
 
@@ -89,13 +89,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   className = '',
   showHeader = true,
   showHighlights = true,
-  height = 'h-96',
+  height = 'h-screen',
   refreshTrigger = 0,
   autoRefreshEnabled = true,
   onAutoRefreshToggle
 }) => {
   const { t } = useTranslation();
-  const { isAuthenticated } = useAuth();
   const [chartState, setChartState] = useState<ChartState>({
     data: [],
     metrics: {} as TradingMetrics
@@ -531,15 +530,16 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         </div>
         
         <div
-          className={height}
+          className={`${height} flex flex-col`}
           style={{
-            outline: 'none'
+            outline: 'none',
+            overflow: 'visible'
           }}
           onFocus={(e) => e.preventDefault()}
           tabIndex={-1}
         >
           {/* Main Chart - Performance and Benchmark */}
-          <div style={{ height: '40%', marginBottom: '10px', outline: 'none' }} tabIndex={-1}>
+          <div style={{ flex: '0 0 30%', marginBottom: '10px', outline: 'none' }} tabIndex={-1}>
             <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
               <ComposedChart
                 data={filteredData}
@@ -657,7 +657,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           </div>
 
           {/* Sub-Chart - Position Area */}
-          <div style={{ height: '30%', marginBottom: '10px', outline: 'none' }} tabIndex={-1}>
+          <div style={{ flex: '0 0 20%', marginBottom: '10px', outline: 'none', minHeight: '0' }} tabIndex={-1}>
             <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
               <ComposedChart
                 data={filteredData}
@@ -735,6 +735,32 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 )}
               </ComposedChart>
             </ResponsiveContainer>
+          </div>
+
+          {/* Candlestick Chart */}
+          <div style={{ flex: '1 1 auto', outline: 'none', minHeight: '200px', display: 'flex', flexDirection: 'column' }} tabIndex={-1}>
+            <div className="mb-2">
+              <h4 className="text-sm font-['Nunito'] font-semibold text-gray-700">
+                {t('trading.chart.priceChart')} (ETH/USDT)
+              </h4>
+            </div>
+            <div style={{ flex: '1 1 auto', minHeight: '200px' }}>
+              <CandlestickChart
+                exchange="binance"
+                market="ETH/USDT"
+                startTime={
+                  Array.isArray(chartDomain) && typeof chartDomain[0] === 'number'
+                    ? chartDomain[0]
+                    : filteredData[0]?.timestampNum || Date.now() - 86400000
+                }
+                endTime={
+                  Array.isArray(chartDomain) && typeof chartDomain[1] === 'number'
+                    ? chartDomain[1]
+                    : filteredData[filteredData.length - 1]?.timestampNum || Date.now()
+                }
+                height={200}
+              />
+            </div>
           </div>
         </div>
 

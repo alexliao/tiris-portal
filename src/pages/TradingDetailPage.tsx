@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading } from '../utils/api';
+import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getBot, getSubAccountsByTrading } from '../utils/api';
 import { AlertCircle, Play, Square, Loader2, Copy, Check } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -180,25 +180,8 @@ export const TradingDetailPage: React.FC = () => {
           resolvedBinding.api_secret = embeddedCredentials.apiSecret;
         }
 
-        if (foundTrading.type === 'real') {
-          const bindingId = foundTrading.exchange_binding_id || foundTrading.exchange_binding?.id;
-          try {
-            if (!bindingId) {
-              throw new Error('Missing exchange binding ID for real trading.');
-            }
-
-            const binding = await getExchangeBindingById(bindingId);
-            resolvedBinding = {
-              ...binding,
-              info: binding.info ? { ...binding.info } : resolvedBinding?.info ? { ...resolvedBinding.info } : {}
-            };
-            const bindingCredentials = extractExchangeCredentials(resolvedBinding);
-            resolvedBinding.api_key = bindingCredentials.apiKey ?? resolvedBinding.api_key ?? null;
-            resolvedBinding.api_secret = bindingCredentials.apiSecret ?? resolvedBinding.api_secret ?? null;
-          } catch (realBindingErr) {
-            console.warn('Failed to fetch real trading exchange binding with credentials:', realBindingErr);
-          }
-        } else if (!resolvedBinding) {
+        // Note: At this point, foundTrading can only be 'paper' or 'backtest' based on the earlier check
+        if (!resolvedBinding) {
           const isPaperOrBacktest = foundTrading.type === 'paper' || foundTrading.type === 'backtest';
 
           if (isPaperOrBacktest) {

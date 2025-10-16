@@ -1192,16 +1192,35 @@ export async function getOHLCV(
 
   const endpoint = `/ohlcv?${params.toString()}`;
 
-  try {
-    const data = await apiRequest<OHLCVCandle[]>(endpoint);
-    return data;
-  } catch (error) {
-    // Handle 202 Accepted (warming) response
-    if (error instanceof ApiError && error.status === 202) {
-      console.log('OHLCV data is warming, retry after 2 seconds');
-      // Return empty array for now, client can retry
-      return [];
+  console.log(`getOHLCV API request: ${API_BASE_URL}${endpoint}`);
+
+  const maxRetries = 3;
+  let retryCount = 0;
+
+  while (retryCount < maxRetries) {
+    try {
+      const data = await apiRequest<OHLCVCandle[]>(endpoint);
+      console.log(`✅ getOHLCV response: received ${data.length} candles`);
+      return data;
+    } catch (error) {
+      // Handle 202 Accepted (warming) response - data is being fetched
+      if (error instanceof ApiError && error.status === 202) {
+        retryCount++;
+        if (retryCount < maxRetries) {
+          const retryDelay = 2000; // 2 seconds as per API spec
+          console.log(`⏳ OHLCV data is warming (attempt ${retryCount}/${maxRetries}), retrying after ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        } else {
+          console.warn(`⚠️ OHLCV data warming exceeded max retries (${maxRetries})`);
+          return [];
+        }
+      }
+      // Other errors should be thrown
+      console.error(`❌ getOHLCV error: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
     }
-    throw error;
   }
+
+  return [];
 }
