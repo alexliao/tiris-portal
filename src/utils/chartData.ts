@@ -1,4 +1,4 @@
-import type { Transaction, TradingLog, EquityCurveData } from './api';
+import type { Transaction, TradingLog, EquityCurveData, EquityCurveNewData } from './api';
 
 export interface TradingDataPoint {
   date: string;
@@ -24,6 +24,191 @@ export interface TradingMetrics {
   initialPrice: number;
 }
 
+
+/**
+ * Transform new equity curve API data into chart data format
+ * This is the primary function used with the new API endpoint
+ */
+export function transformNewEquityCurveToChartData(
+  equityCurve: EquityCurveNewData,
+  tradingLogs: TradingLog[] = []
+): { data: TradingDataPoint[]; metrics: TradingMetrics } {
+  // Validate input
+  if (!equityCurve || !equityCurve.data_points || !Array.isArray(equityCurve.data_points)) {
+    console.error('Invalid equity curve data:', equityCurve);
+    return {
+      data: [],
+      metrics: {
+        totalROI: 0,
+        winRate: 0,
+        sharpeRatio: 0,
+        maxDrawdown: 0,
+        totalTrades: 0,
+        initialPrice: 0,
+      }
+    };
+  }
+
+  // Create a map of events by exact timestamp for precise lookup
+  const eventsByTimestamp = new Map<string, TradingDataPoint['event']>();
+  tradingLogs.forEach(log => {
+    if (log.type === 'long' || log.type === 'short') {
+      eventsByTimestamp.set(log.event_time, {
+        type: log.type === 'long' ? 'buy' : 'sell',
+        description: log.message,
+      });
+    }
+  });
+
+  // Transform equity curve data points to chart data
+  const chartData: TradingDataPoint[] = equityCurve.data_points.map((point) => {
+    const date = point.timestamp.split('T')[0];
+
+    // Calculate ROI percentage from equity value
+    // Assuming first data point as initial value
+    const initialEquity = equityCurve.data_points[0]?.equity || point.equity;
+    const roi = initialEquity > 0 ? ((point.equity - initialEquity) / initialEquity) * 100 : 0;
+
+    return {
+      date,
+      timestamp: point.timestamp,
+      timestampNum: new Date(point.timestamp).getTime(),
+      netValue: Math.round(point.equity * 100) / 100,
+      roi: Math.round(roi * 100) / 100,
+      benchmark: undefined, // New API doesn't include benchmark in data points
+      benchmarkPrice: Math.round(point.stock_price * 100) / 100,
+      position: Math.round(point.stock_balance * 10000) / 10000,
+      event: undefined, // Will be assigned later
+    };
+  });
+
+  // Now assign each trading event to its nearest chart data point
+  for (const [eventTime, event] of eventsByTimestamp) {
+    const eventTimestamp = new Date(eventTime).getTime();
+    let closestPoint: TradingDataPoint | undefined;
+    let closestTimeDiff = Infinity;
+    let closestIndex = -1;
+
+    // Find the closest equity curve point to this event
+    chartData.forEach((point, index) => {
+      // Skip points that already have an event assigned
+      if (point.event) return;
+
+      const pointTimestamp = new Date(point.timestamp).getTime();
+      const timeDiff = Math.abs(eventTimestamp - pointTimestamp);
+
+      // Only consider points within reasonable time window (1 minute)
+      if (timeDiff <= 1 * 60 * 1000 && timeDiff < closestTimeDiff) {
+        closestTimeDiff = timeDiff;
+        closestPoint = point;
+        closestIndex = index;
+      }
+    });
+
+    // Assign the event to the closest point if found
+    if (closestPoint && closestIndex >= 0) {
+      chartData[closestIndex].event = event;
+    }
+  }
+
+  // Calculate metrics using the new chart data
+  const metrics = calculateMetricsFromNewData(chartData, tradingLogs, equityCurve.data_points[0]?.equity || 0);
+
+  return { data: chartData, metrics };
+}
+
+function calculateMetricsFromNewData(
+  chartData: TradingDataPoint[],
+  tradingLogs: TradingLog[],
+  initialEquity: number
+): TradingMetrics {
+  if (chartData.length === 0) {
+    return {
+      totalROI: 0,
+      winRate: 0,
+      sharpeRatio: 0,
+      maxDrawdown: 0,
+      totalTrades: 0,
+      initialPrice: 0,
+    };
+  }
+
+  const finalValue = chartData[chartData.length - 1].netValue;
+  const totalROI = initialEquity > 0 ? ((finalValue - initialEquity) / initialEquity) * 100 : 0;
+
+  // Calculate win rate from trading logs
+  const tradeLogs = tradingLogs.filter(log =>
+    log.type === 'long' || log.type === 'short' || log.type === 'stop_loss'
+  );
+  const totalTrades = tradeLogs.length;
+
+  // Calculate win rate by matching long/short trading pairs
+  let winRate = 0;
+  if (totalTrades > 0) {
+    const longTrades = tradingLogs.filter(log => log.type === 'long');
+    const shortTrades = tradingLogs.filter(log => log.type === 'short');
+
+    let completedTrades = 0;
+    let winningTrades = 0;
+
+    // Match long positions with their corresponding short (exit) positions
+    for (const longTrade of longTrades) {
+      const longTime = new Date(longTrade.event_time).getTime();
+      const correspondingShort = shortTrades.find(shortTrade => {
+        const shortTime = new Date(shortTrade.event_time).getTime();
+        return shortTime > longTime;
+      });
+
+      if (correspondingShort && longTrade.info && correspondingShort.info) {
+        const entryPrice = parseFloat(longTrade.info.price?.toString() || '0');
+        const exitPrice = parseFloat(correspondingShort.info.price?.toString() || '0');
+
+        if (entryPrice > 0 && exitPrice > 0) {
+          completedTrades++;
+          if (exitPrice > entryPrice) {
+            winningTrades++;
+          }
+        }
+      }
+    }
+
+    winRate = completedTrades > 0 ? (winningTrades / completedTrades) * 100 : 0;
+  }
+
+  // Calculate max drawdown
+  let peak = initialEquity;
+  let maxDrawdown = 0;
+  chartData.forEach(point => {
+    if (point.netValue > peak) {
+      peak = point.netValue;
+    }
+    const drawdown = ((peak - point.netValue) / peak) * 100;
+    if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+    }
+  });
+
+  // Simplified Sharpe ratio calculation
+  const dailyReturns = chartData.slice(1).map((point, index) => {
+    const prevValue = chartData[index].netValue;
+    return (point.netValue - prevValue) / prevValue;
+  });
+
+  const avgReturn = dailyReturns.length > 0 ? dailyReturns.reduce((sum, r) => sum + r, 0) / dailyReturns.length : 0;
+  const volatility = dailyReturns.length > 0 ? Math.sqrt(
+    dailyReturns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / dailyReturns.length
+  ) : 0;
+  const sharpeRatio = volatility > 0 ? (avgReturn / volatility) * Math.sqrt(252) : 0;
+
+  return {
+    totalROI: Math.round(totalROI * 100) / 100,
+    winRate: Math.round(winRate * 100) / 100,
+    sharpeRatio: Math.round(sharpeRatio * 100) / 100,
+    maxDrawdown: -Math.round(maxDrawdown * 100) / 100,
+    totalTrades,
+    initialPrice: chartData[0]?.benchmarkPrice ?? 0,
+  };
+}
 
 export function transformEquityCurveToChartData(
   equityCurve: EquityCurveData,

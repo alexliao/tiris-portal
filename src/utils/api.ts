@@ -292,22 +292,36 @@ export async function getTradingLogs(tradingId: string, requireAuth: boolean = t
   return allLogs;
 }
 
+export interface EquityCurveNewData {
+  trading_id: string;
+  timeframe: string;
+  start_time: string;
+  end_time: string;
+  data_points: Array<{
+    timestamp: string;
+    equity: number;
+    quote_balance: number;
+    stock_balance: number;
+    stock_price: number;
+  }>;
+}
+
 export async function getEquityCurve(
   tradingId: string,
-  breakdown: boolean = false,
-  benchmarkSymbol?: string,
+  timeframe: string = '1h',
+  recentTimeframes: number = 100,
+  stockSymbol: string = 'BTC',
+  quoteSymbol: string = 'USDT',
   requireAuth: boolean = true
-): Promise<EquityCurveData> {
+): Promise<EquityCurveNewData> {
   const params = new URLSearchParams();
-  if (breakdown) {
-    params.append('breakdown', 'true');
-  }
-  if (benchmarkSymbol) {
-    params.append('benchmark_symbol', benchmarkSymbol);
-  }
+  params.append('timeframe', timeframe);
+  params.append('recent_timeframes', recentTimeframes.toString());
+  params.append('stock_symbol', stockSymbol);
+  params.append('quote_symbol', quoteSymbol);
 
   const endpoint = `/tradings/${tradingId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
-  return apiRequest<EquityCurveData>(endpoint, {}, requireAuth);
+  return apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);
 }
 
 export interface ExchangeBinding {
@@ -1171,6 +1185,7 @@ export interface OHLCVCandle {
  * @param market - Market symbol (e.g., 'BTC/USDT', 'ETH/USDT')
  * @param startTime - Start time in milliseconds since epoch
  * @param endTime - End time in milliseconds since epoch
+ * @param timeframe - Timeframe for candles (e.g., '1m', '1h', '4h', '1d')
  * @param onMiss - Action on missing data: 'warmup' (default) or 'none'
  * @returns Array of OHLCV candles
  */
@@ -1179,12 +1194,13 @@ export async function getOHLCV(
   market: string,
   startTime: number,
   endTime: number,
+  timeframe: string = '1m',
   onMiss: 'warmup' | 'none' = 'warmup'
 ): Promise<OHLCVCandle[]> {
   const params = new URLSearchParams({
     ex: exchange.toLowerCase(),
     market: market,
-    tf: '1m',  // Only 1m timeframe supported in MVP
+    tf: timeframe,
     start: startTime.toString(),
     end: endTime.toString(),
     on_miss: onMiss

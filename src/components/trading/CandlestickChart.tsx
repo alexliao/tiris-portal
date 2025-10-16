@@ -14,6 +14,7 @@ interface CandlestickChartProps {
   market: string;          // Market symbol (e.g., 'ETH/USDT')
   startTime: number;       // Start time in milliseconds
   endTime: number;         // End time in milliseconds
+  timeframe?: string;      // Timeframe for candles (e.g., '1m', '1h', '1d')
   height?: number;         // Chart height in pixels
   className?: string;
 }
@@ -97,6 +98,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   market,
   startTime,
   endTime,
+  timeframe = '1m',
   height = 200,
   className = ''
 }) => {
@@ -224,9 +226,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         // Convert market format from ETH/USDT to ETH_USDT for backend API
         const marketFormatted = market.replace('/', '_');
 
-        console.log(`Fetching OHLCV for ${marketFormatted} from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
+        console.log(`Fetching OHLCV for ${marketFormatted} with timeframe ${timeframe} from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
 
-        let candles = await getOHLCV(exchange, marketFormatted, startTime, endTime);
+        let candles = await getOHLCV(exchange, marketFormatted, startTime, endTime, timeframe);
 
         // Check if we got data
         if (!candles || candles.length === 0) {
@@ -242,7 +244,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           }
         }
 
-        console.log(`Received ${candles.length} candles from API`);
+        console.log(`Received ${candles.length} ${timeframe} candles from API`);
 
         // Transform OHLCV data to lightweight-charts format
         const chartData: CandlestickData<Time>[] = [];
@@ -331,7 +333,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     if (hasInitialized) {
       fetchData();
     }
-  }, [exchange, market, startTime, endTime, hasInitialized]);
+  }, [exchange, market, startTime, endTime, timeframe, hasInitialized]);
 
   if (error) {
     return (

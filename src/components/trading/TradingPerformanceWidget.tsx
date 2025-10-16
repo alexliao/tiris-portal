@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart } from 'recharts';
-import { getEquityCurve, getTradingLogs, ApiError, type Trading } from '../../utils/api';
-import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
+import { getEquityCurve, getTradingLogs, getSubAccountsByTrading, ApiError, type Trading } from '../../utils/api';
+import { transformNewEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 import CandlestickChart from './CandlestickChart';
 
-type TimeRange = '1h' | '1d' | '1M' | '1y' | 'all';
+type Timeframe = '1m' | '1h' | '4h' | '8h' | '1d' | '1w';
 
 interface TradingPerformanceWidgetProps {
   trading: Trading;
@@ -102,7 +102,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTradingDots, setShowTradingDots] = useState(false);
-  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('all');
+  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('1h');
+  const [stockSymbol, setStockSymbol] = useState<string>('ETH');
+  const [quoteSymbol, setQuoteSymbol] = useState<string>('USDT');
+  const [isRefetchingData, setIsRefetchingData] = useState(false);
 
   // Extract trading data fetching logic into reusable function
   const fetchTradingData = useCallback(async (isInitialLoad = false) => {
@@ -111,17 +114,62 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       if (isInitialLoad) {
         setLoading(true);
         setError(null);
+      } else {
+        setIsRefetchingData(true);
       }
 
       // Determine if authentication is required based on trading type
       const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
 
+      // Fetch sub-accounts to determine stock and quote symbols
+      const subAccounts = await getSubAccountsByTrading(trading.id);
+      console.log('Sub-accounts:', subAccounts);
+
+      // Identify stock and balance sub-accounts
+      const stockSubAccount = subAccounts.find(account =>
+        account.info?.account_type === 'stock' ||
+        ['ETH', 'BTC'].includes(account.symbol)
+      );
+      const balanceSubAccount = subAccounts.find(account =>
+        account.info?.account_type === 'balance' ||
+        ['USDT', 'USD', 'USDC'].includes(account.symbol)
+      );
+
+      if (!stockSubAccount || !balanceSubAccount) {
+        throw new Error(`Missing required sub-accounts. Found ${subAccounts.length} sub-accounts, but need both stock and balance accounts.`);
+      }
+
+      const fetchedStockSymbol = stockSubAccount.symbol;
+      const fetchedQuoteSymbol = balanceSubAccount.symbol;
+      console.log(`Using symbols: stock=${fetchedStockSymbol}, quote=${fetchedQuoteSymbol}`);
+
+      // Update state with the symbols
+      setStockSymbol(fetchedStockSymbol);
+      setQuoteSymbol(fetchedQuoteSymbol);
+
       const [equityCurve, tradingLogs] = await Promise.all([
-        getEquityCurve(trading.id, true, 'ETH', requireAuth), // Get equity curve with breakdown data and ETH benchmark
+        // Use new API with timeframe and recent_timeframes parameters
+        getEquityCurve(
+          trading.id,
+          selectedTimeframe,
+          100, // Load 100 recent timeframes
+          fetchedStockSymbol,
+          fetchedQuoteSymbol,
+          requireAuth
+        ),
         getTradingLogs(trading.id, requireAuth)
       ]);
 
-      const { data, metrics: calculatedMetrics } = transformEquityCurveToChartData(equityCurve, tradingLogs);
+      console.log('Equity curve response:', equityCurve);
+      console.log('Trading logs response:', tradingLogs);
+
+      // Validate equity curve data - expect new API format only
+      if (!equityCurve || !equityCurve.data_points || !Array.isArray(equityCurve.data_points)) {
+        console.error('Invalid equity curve data format. Expected data_points array, got:', equityCurve);
+        throw new Error('Invalid equity curve data format received from API. Expected new format with data_points array.');
+      }
+
+      const { data, metrics: calculatedMetrics } = transformNewEquityCurveToChartData(equityCurve, tradingLogs);
 
       setChartState((previous) => {
         const mergedData = mergeTradingDataSets(previous.data, data);
@@ -152,14 +200,24 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       // Only hide loading state if we showed it (initial load)
       if (isInitialLoad) {
         setLoading(false);
+      } else {
+        setIsRefetchingData(false);
       }
     }
-  }, [trading.id]);
+  }, [trading.id, selectedTimeframe]);
 
-  // Initial data loading effect
+  // Initial data loading effect - only run once on mount
   useEffect(() => {
     fetchTradingData(true); // Mark as initial load
-  }, [fetchTradingData]);
+  }, []); // Empty dependency array - only run on mount
+
+  // Timeframe change effect - refetch without showing loading spinner
+  useEffect(() => {
+    // Skip the initial render (handled by the effect above)
+    if (chartState.data.length > 0) {
+      fetchTradingData(false); // Don't show loading spinner
+    }
+  }, [selectedTimeframe]); // Only when timeframe changes
 
   // Refresh trigger effect - refetch data when refreshTrigger changes
   useEffect(() => {
@@ -175,77 +233,21 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
   }, [autoRefreshEnabled, fetchTradingData, refreshTrigger]);
 
-  // Function to filter data based on selected time range
+  // Data is already filtered by the API with the selected timeframe
+  // No need for client-side filtering
   const filteredData = useMemo(() => {
-    let data = chartState.data;
+    return chartState.data;
+  }, [chartState.data]);
 
-    // Apply time range filter if not 'all'
-    if (selectedTimeRange !== 'all' && chartState.data.length > 0) {
-      const now = chartState.data[chartState.data.length - 1]?.timestampNum || Date.now();
-      let cutoffTime: number | undefined;
-
-      switch (selectedTimeRange) {
-        case '1h':
-          cutoffTime = now - (60 * 60 * 1000); // 1 hour
-          break;
-        case '1d':
-          cutoffTime = now - (24 * 60 * 60 * 1000); // 1 day
-          break;
-        case '1M':
-          cutoffTime = now - (30 * 24 * 60 * 60 * 1000); // 1 month (30 days)
-          break;
-        case '1y':
-          cutoffTime = now - (365 * 24 * 60 * 60 * 1000); // 1 year
-          break;
-        default:
-          cutoffTime = undefined;
-          break;
-      }
-
-      if (cutoffTime !== undefined) {
-        const filtered = data.filter(point => point.timestampNum >= cutoffTime);
-        data = filtered.length > 0 ? filtered : data;
-      }
-    }
-
-    return data;
-  }, [chartState.data, selectedTimeRange]);
-
-  // Handle time range selection
-  const handleTimeRangeChange = (range: TimeRange) => {
-    setSelectedTimeRange(range);
+  // Handle timeframe selection
+  const handleTimeframeChange = (timeframe: Timeframe) => {
+    setSelectedTimeframe(timeframe);
   };
 
-  // Calculate the domain for charts based on selected time range
+  // Chart domain always uses full data range since API returns filtered data
   const chartDomain = useMemo<[number, number] | ['dataMin', 'dataMax']>(() => {
-    // If a time range is selected (not 'all'), fix the domain to that time range
-    if (selectedTimeRange !== 'all' && chartState.data.length > 0) {
-      const now = chartState.data[chartState.data.length - 1]?.timestampNum || Date.now();
-      let cutoffTime: number;
-
-      switch (selectedTimeRange) {
-        case '1h':
-          cutoffTime = now - (60 * 60 * 1000); // 1 hour
-          break;
-        case '1d':
-          cutoffTime = now - (24 * 60 * 60 * 1000); // 1 day
-          break;
-        case '1M':
-          cutoffTime = now - (30 * 24 * 60 * 60 * 1000); // 1 month (30 days)
-          break;
-        case '1y':
-          cutoffTime = now - (365 * 24 * 60 * 60 * 1000); // 1 year
-          break;
-        default:
-          return ['dataMin', 'dataMax'];
-      }
-
-      return [cutoffTime, now];
-    }
-
-    // For 'all' time range, use dynamic domain
     return ['dataMin', 'dataMax'];
-  }, [chartState.data, selectedTimeRange]);
+  }, []);
 
 
   const formatCurrency = (value: number) => {
@@ -321,7 +323,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             <div className="flex items-center mt-1">
               <div className="w-3 h-3 bg-blue-400 rounded mr-2"></div>
               <p className="font-['Nunito'] text-sm text-blue-600 font-semibold">
-              {`${t('trading.chart.ethPosition')}: ${data.position.toFixed(4)} ETH`}
+              {`${t('trading.chart.ethPosition')}: ${data.position.toFixed(4)} ${stockSymbol}`}
               </p>
             </div>
           )}
@@ -456,21 +458,28 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   }`}></div>
                   {showTradingDots ? t('trading.chart.hideTradingSignals') : t('trading.chart.showTradingSignals')}
                 </button>
-                {/* Time Range Selector Buttons */}
+                {/* Timeframe Selector Buttons */}
                 <div className="flex items-center gap-1">
-                  {(['1h', '1d', '1M', '1y', 'all'] as TimeRange[]).map((range) => (
+                  {(['1m', '1h', '4h', '8h', '1d', '1w'] as Timeframe[]).map((tf) => (
                     <button
-                      key={range}
-                      onClick={() => handleTimeRangeChange(range)}
+                      key={tf}
+                      onClick={() => handleTimeframeChange(tf)}
+                      disabled={isRefetchingData}
                       className={`px-3 py-1 rounded-md text-sm font-['Nunito'] transition-colors ${
-                        selectedTimeRange === range
+                        selectedTimeframe === tf
                           ? 'bg-green-600 text-white'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
+                      } ${isRefetchingData ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      {t(`trading.chart.timeRange.${range}`)}
+                      {tf}
                     </button>
                   ))}
+                  {isRefetchingData && (
+                    <div className="ml-2 flex items-center text-sm text-gray-500">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-1"></div>
+                      <span className="font-['Nunito']">Loading...</span>
+                    </div>
+                  )}
                 </div>
               </div>
               {onAutoRefreshToggle && (
@@ -707,13 +716,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           <div style={{ flex: '1 1 auto', outline: 'none', minHeight: '200px', display: 'flex', flexDirection: 'column' }} tabIndex={-1}>
             <div className="mb-2">
               <h4 className="text-sm font-['Nunito'] font-semibold text-gray-700">
-                {t('trading.chart.priceChart')} (ETH/USDT)
+                {t('trading.chart.priceChart')} ({stockSymbol}/{quoteSymbol})
               </h4>
             </div>
             <div style={{ flex: '1 1 auto', minHeight: '200px' }}>
               <CandlestickChart
                 exchange="binance"
-                market="ETH/USDT"
+                market={`${stockSymbol}/${quoteSymbol}`}
+                timeframe={selectedTimeframe}
                 startTime={
                   Array.isArray(chartDomain) && typeof chartDomain[0] === 'number'
                     ? chartDomain[0]
