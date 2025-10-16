@@ -370,9 +370,10 @@
       "highlight2": "先进的风险管理通过多元化仓位保持回撤最小化，同时最大化回报潜力。",
       "highlight3": "实时市场分析和即时交易执行确保您不会错过任何盈利机会。",
       "timeRange": "时间范围",
-      "timeRange.10m": "10分钟",
+      "timeRange.1h": "1小时",
       "timeRange.1d": "1天",
       "timeRange.1M": "1个月",
+      "timeRange.1y": "1年",
       "timeRange.all": "全部"
     },
     "events": {

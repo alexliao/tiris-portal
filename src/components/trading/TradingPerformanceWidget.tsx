@@ -5,7 +5,7 @@ import { getEquityCurve, getTradingLogs, ApiError, type Trading } from '../../ut
 import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 import CandlestickChart from './CandlestickChart';
 
-type TimeRange = '10m' | '1d' | '1M' | 'all';
+type TimeRange = '1h' | '1d' | '1M' | '1y' | 'all';
 
 interface TradingPerformanceWidgetProps {
   trading: Trading;
@@ -197,14 +197,17 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     let cutoffTime: number;
 
     switch (selectedTimeRange) {
-      case '10m':
-        cutoffTime = now - (10 * 60 * 1000); // 10 minutes
+      case '1h':
+        cutoffTime = now - (60 * 60 * 1000); // 1 hour
         break;
       case '1d':
         cutoffTime = now - (24 * 60 * 60 * 1000); // 1 day
         break;
       case '1M':
         cutoffTime = now - (30 * 24 * 60 * 60 * 1000); // 1 month (30 days)
+        break;
+      case '1y':
+        cutoffTime = now - (365 * 24 * 60 * 60 * 1000); // 1 year
         break;
       default:
         return chartState.data;
@@ -250,14 +253,17 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       let cutoffTime: number;
 
       switch (selectedTimeRange) {
-        case '10m':
-          cutoffTime = now - (10 * 60 * 1000); // 10 minutes
+        case '1h':
+          cutoffTime = now - (60 * 60 * 1000); // 1 hour
           break;
         case '1d':
           cutoffTime = now - (24 * 60 * 60 * 1000); // 1 day
           break;
         case '1M':
           cutoffTime = now - (30 * 24 * 60 * 60 * 1000); // 1 month (30 days)
+          break;
+        case '1y':
+          cutoffTime = now - (365 * 24 * 60 * 60 * 1000); // 1 year
           break;
         default:
           return ['dataMin', 'dataMax'];
@@ -481,7 +487,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 </button>
                 {/* Time Range Selector Buttons */}
                 <div className="flex items-center gap-1">
-                  {(['10m', '1d', '1M', 'all'] as TimeRange[]).map((range) => (
+                  {(['1h', '1d', '1M', '1y', 'all'] as TimeRange[]).map((range) => (
                     <button
                       key={range}
                       onClick={() => handleTimeRangeChange(range)}

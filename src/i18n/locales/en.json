@@ -369,9 +369,10 @@
       "highlight2": "Advanced risk management keeps drawdowns minimal while maximizing return potential through diversified positions.",
       "highlight3": "Real-time market analysis and instant trade execution ensure you never miss profitable opportunities.",
       "timeRange": "Time Range",
-      "timeRange.10m": "10 Min",
+      "timeRange.1h": "1 Hour",
       "timeRange.1d": "1 Day",
       "timeRange.1M": "1 Month",
+      "timeRange.1y": "1 Year",
       "timeRange.all": "All"
     },
     "events": {
