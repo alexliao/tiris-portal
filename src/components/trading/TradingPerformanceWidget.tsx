@@ -106,6 +106,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('all');
   const pendingBrushDomainRef = useRef<[number, number] | null>(null);
   const isDraggingRef = useRef(false);
+  const brushDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Extract trading data fetching logic into reusable function
   const fetchTradingData = useCallback(async (isInitialLoad = false) => {
@@ -208,20 +209,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     return filtered.length > 0 ? filtered : chartState.data;
   }, [chartState.data, selectedTimeRange]);
 
-  // Handle brush drag end - update state with final values
-  const handleBrushMouseUp = useCallback(() => {
-    isDraggingRef.current = false;
-
-    // Apply the pending brush domain when drag ends
-    if (pendingBrushDomainRef.current) {
-      setBrushDomain(pendingBrushDomainRef.current);
-      // Automatically turn off auto-refresh when user manually adjusts brush
-      if (onAutoRefreshToggle && autoRefreshEnabled) {
-        onAutoRefreshToggle(false);
-      }
-    }
-  }, [onAutoRefreshToggle, autoRefreshEnabled]);
-
   // Effect to restore brush domain after data refresh when auto-refresh is disabled
   useEffect(() => {
     if (chartState.data.length > 0 && brushDomain && !autoRefreshEnabled) {
@@ -233,19 +220,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
   }, [chartState.data, brushDomain, autoRefreshEnabled]);
 
-  // Effect to handle brush drag end events
+  // Cleanup debounce timer on unmount
   useEffect(() => {
-    const handleMouseUp = () => {
-      if (isDraggingRef.current) {
-        handleBrushMouseUp();
+    return () => {
+      if (brushDebounceTimerRef.current) {
+        clearTimeout(brushDebounceTimerRef.current);
       }
     };
-
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [handleBrushMouseUp]);
+  }, []);
 
   // Handle time range selection
   const handleTimeRangeChange = (range: TimeRange) => {
@@ -253,21 +235,51 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     setBrushDomain(null); // Reset brush when changing time range
   };
 
-  // Handle brush change - store pending changes and update only on drag end
+  // Handle brush change with debouncing to avoid constant updates during drag
   const handleBrushChange = useCallback((domain: { startIndex?: number; endIndex?: number } | null) => {
     if (domain && domain.startIndex !== undefined && domain.endIndex !== undefined) {
       const startTime = filteredData[domain.startIndex]?.timestampNum;
       const endTime = filteredData[domain.endIndex]?.timestampNum;
       if (startTime && endTime) {
-        // Store the domain in a ref instead of immediately updating state
+        // Store the domain in a ref
         pendingBrushDomainRef.current = [startTime, endTime];
         isDraggingRef.current = true;
+
+        // Clear existing debounce timer
+        if (brushDebounceTimerRef.current) {
+          clearTimeout(brushDebounceTimerRef.current);
+        }
+
+        // Set new debounce timer - update state after 100ms of no changes
+        brushDebounceTimerRef.current = setTimeout(() => {
+          if (pendingBrushDomainRef.current) {
+            setBrushDomain(pendingBrushDomainRef.current);
+            // Automatically turn off auto-refresh when user manually adjusts brush
+            if (onAutoRefreshToggle && autoRefreshEnabled) {
+              onAutoRefreshToggle(false);
+            }
+          }
+          isDraggingRef.current = false;
+        }, 100);
       }
     } else {
+      // Brush cleared/released
+      if (brushDebounceTimerRef.current) {
+        clearTimeout(brushDebounceTimerRef.current);
+        brushDebounceTimerRef.current = null;
+      }
+
+      // If we have pending changes, apply them
+      if (pendingBrushDomainRef.current) {
+        setBrushDomain(pendingBrushDomainRef.current);
+        if (onAutoRefreshToggle && autoRefreshEnabled) {
+          onAutoRefreshToggle(false);
+        }
+      }
       pendingBrushDomainRef.current = null;
       isDraggingRef.current = false;
     }
-  }, [filteredData]);
+  }, [filteredData, onAutoRefreshToggle, autoRefreshEnabled]);
 
   // Calculate the domain for both charts
   const chartDomain = useMemo<[number, number] | ['dataMin', 'dataMax']>(() => {
