@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, memo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Brush } from 'recharts';
+import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart } from 'recharts';
 import { getEquityCurve, getTradingLogs, ApiError, type Trading } from '../../utils/api';
 import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 import CandlestickChart from './CandlestickChart';
@@ -102,11 +102,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTradingDots, setShowTradingDots] = useState(false);
-  const [brushDomain, setBrushDomain] = useState<[number, number] | null>(null);
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('all');
-  const pendingBrushDomainRef = useRef<[number, number] | null>(null);
-  const isDraggingRef = useRef(false);
-  const brushDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Extract trading data fetching logic into reusable function
   const fetchTradingData = useCallback(async (isInitialLoad = false) => {
@@ -181,113 +177,47 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
   // Function to filter data based on selected time range
   const filteredData = useMemo(() => {
-    if (selectedTimeRange === 'all' || chartState.data.length === 0) {
-      return chartState.data;
-    }
+    let data = chartState.data;
 
-    const now = chartState.data[chartState.data.length - 1]?.timestampNum || Date.now();
-    let cutoffTime: number;
+    // Apply time range filter if not 'all'
+    if (selectedTimeRange !== 'all' && chartState.data.length > 0) {
+      const now = chartState.data[chartState.data.length - 1]?.timestampNum || Date.now();
+      let cutoffTime: number | undefined;
 
-    switch (selectedTimeRange) {
-      case '1h':
-        cutoffTime = now - (60 * 60 * 1000); // 1 hour
-        break;
-      case '1d':
-        cutoffTime = now - (24 * 60 * 60 * 1000); // 1 day
-        break;
-      case '1M':
-        cutoffTime = now - (30 * 24 * 60 * 60 * 1000); // 1 month (30 days)
-        break;
-      case '1y':
-        cutoffTime = now - (365 * 24 * 60 * 60 * 1000); // 1 year
-        break;
-      default:
-        return chartState.data;
-    }
-
-    const filtered = chartState.data.filter(point => point.timestampNum >= cutoffTime);
-    return filtered.length > 0 ? filtered : chartState.data;
-  }, [chartState.data, selectedTimeRange]);
-
-  // Effect to restore brush domain after data refresh when auto-refresh is disabled
-  useEffect(() => {
-    if (chartState.data.length > 0 && brushDomain && !autoRefreshEnabled) {
-      // When auto-refresh is disabled and we have brush domain and new data,
-      // ensure the brush domain is maintained
-      setTimeout(() => {
-        setBrushDomain(brushDomain);
-      }, 50);
-    }
-  }, [chartState.data, brushDomain, autoRefreshEnabled]);
-
-  // Cleanup debounce timer on unmount
-  useEffect(() => {
-    return () => {
-      if (brushDebounceTimerRef.current) {
-        clearTimeout(brushDebounceTimerRef.current);
+      switch (selectedTimeRange) {
+        case '1h':
+          cutoffTime = now - (60 * 60 * 1000); // 1 hour
+          break;
+        case '1d':
+          cutoffTime = now - (24 * 60 * 60 * 1000); // 1 day
+          break;
+        case '1M':
+          cutoffTime = now - (30 * 24 * 60 * 60 * 1000); // 1 month (30 days)
+          break;
+        case '1y':
+          cutoffTime = now - (365 * 24 * 60 * 60 * 1000); // 1 year
+          break;
+        default:
+          cutoffTime = undefined;
+          break;
       }
-    };
-  }, []);
+
+      if (cutoffTime !== undefined) {
+        const filtered = data.filter(point => point.timestampNum >= cutoffTime);
+        data = filtered.length > 0 ? filtered : data;
+      }
+    }
+
+    return data;
+  }, [chartState.data, selectedTimeRange]);
 
   // Handle time range selection
   const handleTimeRangeChange = (range: TimeRange) => {
     setSelectedTimeRange(range);
-    setBrushDomain(null); // Reset brush when changing time range
   };
 
-  // Handle brush change with debouncing to avoid constant updates during drag
-  const handleBrushChange = useCallback((domain: { startIndex?: number; endIndex?: number } | null) => {
-    if (domain && domain.startIndex !== undefined && domain.endIndex !== undefined) {
-      const startTime = filteredData[domain.startIndex]?.timestampNum;
-      const endTime = filteredData[domain.endIndex]?.timestampNum;
-      if (startTime && endTime) {
-        // Store the domain in a ref
-        pendingBrushDomainRef.current = [startTime, endTime];
-        isDraggingRef.current = true;
-
-        // Clear existing debounce timer
-        if (brushDebounceTimerRef.current) {
-          clearTimeout(brushDebounceTimerRef.current);
-        }
-
-        // Set new debounce timer - update state after 100ms of no changes
-        brushDebounceTimerRef.current = setTimeout(() => {
-          if (pendingBrushDomainRef.current) {
-            setBrushDomain(pendingBrushDomainRef.current);
-            // Automatically turn off auto-refresh when user manually adjusts brush
-            if (onAutoRefreshToggle && autoRefreshEnabled) {
-              onAutoRefreshToggle(false);
-            }
-          }
-          isDraggingRef.current = false;
-        }, 100);
-      }
-    } else {
-      // Brush cleared/released
-      if (brushDebounceTimerRef.current) {
-        clearTimeout(brushDebounceTimerRef.current);
-        brushDebounceTimerRef.current = null;
-      }
-
-      // If we have pending changes, apply them
-      if (pendingBrushDomainRef.current) {
-        setBrushDomain(pendingBrushDomainRef.current);
-        if (onAutoRefreshToggle && autoRefreshEnabled) {
-          onAutoRefreshToggle(false);
-        }
-      }
-      pendingBrushDomainRef.current = null;
-      isDraggingRef.current = false;
-    }
-  }, [filteredData, onAutoRefreshToggle, autoRefreshEnabled]);
-
-  // Calculate the domain for both charts
+  // Calculate the domain for charts based on selected time range
   const chartDomain = useMemo<[number, number] | ['dataMin', 'dataMax']>(() => {
-    // If brush is active, use brush domain
-    if (brushDomain) {
-      return brushDomain;
-    }
-
     // If a time range is selected (not 'all'), fix the domain to that time range
     if (selectedTimeRange !== 'all' && chartState.data.length > 0) {
       const now = chartState.data[chartState.data.length - 1]?.timestampNum || Date.now();
@@ -315,7 +245,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
     // For 'all' time range, use dynamic domain
     return ['dataMin', 'dataMax'];
-  }, [brushDomain, chartState.data, selectedTimeRange]);
+  }, [chartState.data, selectedTimeRange]);
 
 
   const formatCurrency = (value: number) => {
@@ -769,17 +699,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                     opacity={0.7}
                   />
                 ))}
-
-                {/* Zoom Brush for the sub-chart - only show when 'all' time range is selected */}
-                {selectedTimeRange === 'all' && (
-                  <Brush
-                    dataKey="timestampNum"
-                    height={30}
-                    stroke="#8884d8"
-                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    onChange={handleBrushChange}
-                  />
-                )}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
