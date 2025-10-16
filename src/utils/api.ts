@@ -134,7 +134,7 @@ export class ApiError extends Error {
   }
 }
 
-async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function apiRequest<T>(endpoint: string, options: RequestInit = {}, requireAuth: boolean = true): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   const token = getAccessToken();
 
@@ -144,13 +144,19 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     console.log('🔍 [HTTP DEBUG] Request body:', options.body);
   }
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  // Only add authorization header if required and token exists
+  if (requireAuth && token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const response = await fetch(url, {
     ...options,
-    headers: {
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
   });
 
   const data: ApiResponse<T> = await response.json();
@@ -182,6 +188,46 @@ export async function getTradings(): Promise<Trading[]> {
   console.log('🔍 [getTradings] Raw response:', response);
   console.log('🔍 [getTradings] First trading:', response.tradings?.[0]);
   return response.tradings || [];
+}
+
+// Get a single trading by ID (supports both authenticated and unauthenticated access)
+// For unauthenticated access, the backend must support public access to paper/backtest tradings
+export async function getTradingById(tradingId: string, requireAuth: boolean = true): Promise<Trading | null> {
+  try {
+    // Make request with or without auth
+    const url = `${API_BASE_URL}/tradings/${tradingId}`;
+    const token = getAccessToken();
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add auth header if required and token exists
+    if (requireAuth && token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      // Handle different error cases
+      if (response.status === 401 && !requireAuth) {
+        // Unauthenticated access not allowed - backend doesn't support it yet
+        console.warn('Unauthenticated access to trading details not supported by backend');
+      }
+      return null;
+    }
+
+    const data: ApiResponse<Trading> = await response.json();
+    if (!data.success) {
+      return null;
+    }
+
+    return data.data;
+  } catch (error) {
+    console.error('Failed to fetch trading by ID:', error);
+    return null;
+  }
 }
 
 export async function getLatestBacktestTrading(): Promise<Trading | null> {
@@ -216,40 +262,41 @@ export async function getLatestBacktestTrading(): Promise<Trading | null> {
   )[0];
 }
 
-export async function getTransactions(tradingId: string): Promise<Transaction[]> {
-  return apiRequest<{ transactions: Transaction[] }>(`/transactions?trading_id=${tradingId}&limit=1000`)
+export async function getTransactions(tradingId: string, requireAuth: boolean = true): Promise<Transaction[]> {
+  return apiRequest<{ transactions: Transaction[] }>(`/transactions?trading_id=${tradingId}&limit=1000`, {}, requireAuth)
     .then(response => response.transactions);
 }
 
-export async function getTradingLogs(tradingId: string): Promise<TradingLog[]> {
+export async function getTradingLogs(tradingId: string, requireAuth: boolean = true): Promise<TradingLog[]> {
   const allLogs: TradingLog[] = [];
   let offset = 0;
   const limit = 1000;
-  
+
   while (true) {
-    const response = await apiRequest<{ trading_logs: TradingLog[] }>(`/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}`);
+    const response = await apiRequest<{ trading_logs: TradingLog[] }>(`/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}`, {}, requireAuth);
     const logs = response.trading_logs;
-    
+
     if (logs.length === 0) {
       break; // No more logs to fetch
     }
-    
+
     allLogs.push(...logs);
-    
+
     if (logs.length < limit) {
       break; // Last page, no more data
     }
-    
+
     offset += limit;
   }
-  
+
   return allLogs;
 }
 
 export async function getEquityCurve(
-  tradingId: string, 
+  tradingId: string,
   breakdown: boolean = false,
-  benchmarkSymbol?: string
+  benchmarkSymbol?: string,
+  requireAuth: boolean = true
 ): Promise<EquityCurveData> {
   const params = new URLSearchParams();
   if (breakdown) {
@@ -258,9 +305,9 @@ export async function getEquityCurve(
   if (benchmarkSymbol) {
     params.append('benchmark_symbol', benchmarkSymbol);
   }
-  
+
   const endpoint = `/tradings/${tradingId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
-  return apiRequest<EquityCurveData>(endpoint);
+  return apiRequest<EquityCurveData>(endpoint, {}, requireAuth);
 }
 
 export interface ExchangeBinding {
@@ -1099,6 +1146,62 @@ export async function deleteTrading(tradingId: string, tradingType: string): Pro
 
   } catch (error) {
     console.error('deleteTrading error:', error);
+    throw error;
+  }
+}
+
+// OHLCV Data API
+
+export interface OHLCVCandle {
+  ex: string;          // Exchange ID
+  market: string;      // Market symbol (e.g., "BTC/USDT")
+  ts: string;          // Timestamp (ISO 8601)
+  o: number;           // Open price
+  h: number;           // High price
+  l: number;           // Low price
+  c: number;           // Close price
+  v: number;           // Volume
+  final: boolean;      // Whether candle is finalized
+  schema_ver: number;  // Schema version
+}
+
+/**
+ * Get OHLCV data for a specific exchange and market
+ * @param exchange - Exchange ID (e.g., 'binance', 'okx')
+ * @param market - Market symbol (e.g., 'BTC/USDT', 'ETH/USDT')
+ * @param startTime - Start time in milliseconds since epoch
+ * @param endTime - End time in milliseconds since epoch
+ * @param onMiss - Action on missing data: 'warmup' (default) or 'none'
+ * @returns Array of OHLCV candles
+ */
+export async function getOHLCV(
+  exchange: string,
+  market: string,
+  startTime: number,
+  endTime: number,
+  onMiss: 'warmup' | 'none' = 'warmup'
+): Promise<OHLCVCandle[]> {
+  const params = new URLSearchParams({
+    ex: exchange.toLowerCase(),
+    market: market,
+    tf: '1m',  // Only 1m timeframe supported in MVP
+    start: startTime.toString(),
+    end: endTime.toString(),
+    on_miss: onMiss
+  });
+
+  const endpoint = `/ohlcv?${params.toString()}`;
+
+  try {
+    const data = await apiRequest<OHLCVCandle[]>(endpoint);
+    return data;
+  } catch (error) {
+    // Handle 202 Accepted (warming) response
+    if (error instanceof ApiError && error.status === 202) {
+      console.log('OHLCV data is warming, retry after 2 seconds');
+      // Return empty array for now, client can retry
+      return [];
+    }
     throw error;
   }
 }

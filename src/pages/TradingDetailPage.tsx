@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading } from '../utils/api';
+import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading } from '../utils/api';
 import { AlertCircle, Play, Square, Loader2, Copy, Check } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -113,12 +113,39 @@ export const TradingDetailPage: React.FC = () => {
         setError(null);
       }
 
-      // Get all tradings and find the one with matching ID
-      const tradings = await getTradings();
-      const foundTrading = tradings.find(t => t.id === id);
+      let foundTrading: Trading | null = null;
+
+      // Try to fetch trading by ID first (works for both authenticated and unauthenticated)
+      if (isAuthenticated) {
+        // For authenticated users, first try to find in their own tradings
+        const tradings = await getTradings();
+        foundTrading = tradings.find(t => t.id === id) || null;
+
+        // If not found in user's own tradings, try to fetch by ID (might be another user's public trading)
+        if (!foundTrading) {
+          foundTrading = await getTradingById(id, true);
+        }
+      } else {
+        // For unauthenticated users, try to fetch the specific trading without auth
+        // This will only work for paper/backtest tradings that allow public access
+        foundTrading = await getTradingById(id, false);
+      }
 
       if (!foundTrading) {
-        setError(t('trading.detail.notFound'));
+        // If trading not found, show appropriate error message
+        if (isAuthenticated) {
+          setError(t('trading.detail.notFound'));
+        } else {
+          // For unauthenticated users, trading might exist but requires authentication
+          setError(t('common.accessDenied'));
+        }
+        return;
+      }
+
+      // Check if access is allowed for this trading type
+      // Real tradings can only be accessed by the owner (already filtered by getTradings above for authenticated users)
+      if (foundTrading.type !== 'paper' && foundTrading.type !== 'backtest') {
+        setError(t('common.accessDenied'));
         return;
       }
 
@@ -234,11 +261,9 @@ export const TradingDetailPage: React.FC = () => {
       }
     };
 
-    if (isAuthenticated && !authLoading && id) {
+    // Load data for both authenticated and unauthenticated users
+    if (!authLoading && id) {
       initialLoad();
-    } else if (!authLoading && !isAuthenticated) {
-      // Not authenticated, stop loading
-      setLoading(false);
     }
   }, [id, isAuthenticated, authLoading]);
 
@@ -672,23 +697,27 @@ export const TradingDetailPage: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated) {
+  // Show a sign-in prompt for unauthenticated users trying to access tradings
+  if (!authLoading && !isAuthenticated && !trading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation />
         <div className="pt-20 flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.accessDenied')}</h1>
-            <p className="text-gray-600 mb-4">{t('dashboard.needSignIn')}</p>
+          <div className="text-center max-w-md px-4">
+            <AlertCircle className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.signInToView')}</h1>
+            <p className="text-gray-600 mb-4">
+              {t('trading.detail.signInMessage')}
+            </p>
             <Link
               to="/"
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
-              {t('common.goToHome')}
+              {t('common.signIn')}
             </Link>
           </div>
         </div>
+        <Footer />
       </div>
     );
   }
@@ -833,36 +862,38 @@ export const TradingDetailPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Bot Controls - Always show start button, show stop when bot exists and is running */}
-                <div className="flex items-center space-x-2">
-                  {bot && bot.record.enabled && bot.alive ? (
-                    <button
-                      onClick={handleStopBot}
-                      disabled={botLoading}
-                      className="inline-flex items-center px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors"
-                    >
-                      {botLoading ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Square className="w-4 h-4 mr-2" />
-                      )}
-                      {t('trading.detail.stopBot')}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleStartBot()}
-                      disabled={botLoading}
-                      className="inline-flex items-center px-3 py-2 bg-white/20 text-white rounded-md hover:bg-white/30 disabled:opacity-50 transition-colors ring-1 ring-white/30"
-                    >
-                      {botLoading ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Play className="w-4 h-4 mr-2" />
-                      )}
-                      {t('trading.detail.startBot')}
-                    </button>
-                  )}
-                </div>
+                {/* Bot Controls - Only show for authenticated users */}
+                {isAuthenticated && (
+                  <div className="flex items-center space-x-2">
+                    {bot && bot.record.enabled && bot.alive ? (
+                      <button
+                        onClick={handleStopBot}
+                        disabled={botLoading}
+                        className="inline-flex items-center px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors"
+                      >
+                        {botLoading ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Square className="w-4 h-4 mr-2" />
+                        )}
+                        {t('trading.detail.stopBot')}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleStartBot()}
+                        disabled={botLoading}
+                        className="inline-flex items-center px-3 py-2 bg-white/20 text-white rounded-md hover:bg-white/30 disabled:opacity-50 transition-colors ring-1 ring-white/30"
+                      >
+                        {botLoading ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Play className="w-4 h-4 mr-2" />
+                        )}
+                        {t('trading.detail.startBot')}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

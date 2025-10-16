@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Brush } from 'recharts';
 import { getEquityCurve, getTradingLogs, ApiError, type Trading } from '../../utils/api';
 import { transformEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
+import { useAuth } from '../../hooks/useAuth';
 
 type TimeRange = '10m' | '1d' | '1M' | 'all';
 
@@ -94,6 +95,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   onAutoRefreshToggle
 }) => {
   const { t } = useTranslation();
+  const { isAuthenticated } = useAuth();
   const [chartState, setChartState] = useState<ChartState>({
     data: [],
     metrics: {} as TradingMetrics
@@ -113,9 +115,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         setError(null);
       }
 
+      // Determine if authentication is required based on trading type
+      const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
+
       const [equityCurve, tradingLogs] = await Promise.all([
-        getEquityCurve(trading.id, true, 'ETH'), // Get equity curve with breakdown data and ETH benchmark
-        getTradingLogs(trading.id)
+        getEquityCurve(trading.id, true, 'ETH', requireAuth), // Get equity curve with breakdown data and ETH benchmark
+        getTradingLogs(trading.id, requireAuth)
       ]);
 
       const { data, metrics: calculatedMetrics } = transformEquityCurveToChartData(equityCurve, tradingLogs);
@@ -534,7 +539,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           tabIndex={-1}
         >
           {/* Main Chart - Performance and Benchmark */}
-          <div style={{ height: '60%', marginBottom: '10px', outline: 'none' }} tabIndex={-1}>
+          <div style={{ height: '40%', marginBottom: '10px', outline: 'none' }} tabIndex={-1}>
             <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
               <ComposedChart
                 data={filteredData}
@@ -652,7 +657,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           </div>
 
           {/* Sub-Chart - Position Area */}
-          <div style={{ height: '40%', outline: 'none' }} tabIndex={-1}>
+          <div style={{ height: '30%', marginBottom: '10px', outline: 'none' }} tabIndex={-1}>
             <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
               <ComposedChart
                 data={filteredData}
