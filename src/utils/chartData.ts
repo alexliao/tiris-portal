@@ -47,11 +47,18 @@ function timeframeToMilliseconds(timeframe: string): number {
 /**
  * Transform new equity curve API data into chart data format
  * This is the primary function used with the new API endpoint
+ *
+ * @param equityCurve - The equity curve data from the API
+ * @param tradingLogs - Trading logs for event matching (optional)
+ * @param timeframe - The timeframe for the data (optional)
+ * @param initialBalance - The initial balance to use for ROI calculation (optional).
+ *                         If not provided, uses the first positive equity value in the data.
  */
 export function transformNewEquityCurveToChartData(
   equityCurve: EquityCurveNewData,
   tradingLogs: TradingLog[] = [],
-  timeframe: string = '1m'
+  timeframe: string = '1m',
+  initialBalance?: number
 ): { data: TradingDataPoint[]; metrics: TradingMetrics } {
   // Validate input
   if (!equityCurve || !equityCurve.data_points || !Array.isArray(equityCurve.data_points)) {
@@ -94,17 +101,24 @@ export function transformNewEquityCurveToChartData(
     };
   }
 
-  // Use the first positive equity value as baseline for ROI calculations
-  const firstPositiveIndex = equityCurve.data_points.findIndex(point => point.equity > 0);
-  const baselineIndex = firstPositiveIndex >= 0 ? firstPositiveIndex : 0;
-  const baselineEquity = equityCurve.data_points[baselineIndex]?.equity ?? 0;
+  // Determine the baseline equity for ROI calculations
+  // Priority: Use provided initialBalance, otherwise use first positive equity value from data
+  let baselineEquity: number;
+  if (initialBalance !== undefined && initialBalance > 0) {
+    baselineEquity = initialBalance;
+  } else {
+    // Fallback: Use the first positive equity value in the data
+    const firstPositiveIndex = equityCurve.data_points.findIndex(point => point.equity > 0);
+    const baselineIndex = firstPositiveIndex >= 0 ? firstPositiveIndex : 0;
+    baselineEquity = equityCurve.data_points[baselineIndex]?.equity ?? 0;
+  }
 
   // Transform equity curve data points to chart data
-  const chartData: TradingDataPoint[] = equityCurve.data_points.map((point, index) => {
+  const chartData: TradingDataPoint[] = equityCurve.data_points.map((point) => {
     const date = point.timestamp.split('T')[0];
 
-    // Calculate ROI percentage from equity value using the first valid chart point as the baseline
-    const roi = baselineEquity > 0 && index >= baselineIndex
+    // Calculate ROI percentage from equity value using the baseline
+    const roi = baselineEquity > 0
       ? ((point.equity - baselineEquity) / baselineEquity) * 100
       : 0;
 

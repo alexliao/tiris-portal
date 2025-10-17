@@ -325,6 +325,40 @@ export async function getEquityCurve(
   return apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);
 }
 
+/**
+ * Get equity curve data with explicit time range (for incremental updates).
+ * This function allows fetching data for a specific time range, useful for
+ * incremental updates during auto-refresh.
+ *
+ * @param tradingId - Trading ID
+ * @param timeframe - Time interval (e.g., '1m', '1h', '1d')
+ * @param startTime - Start time in milliseconds
+ * @param endTime - End time in milliseconds
+ * @param stockSymbol - Stock/asset symbol
+ * @param quoteSymbol - Quote currency symbol
+ * @param requireAuth - Whether authentication is required
+ * @returns Equity curve data for the specified time range
+ */
+export async function getEquityCurveByTimeRange(
+  tradingId: string,
+  timeframe: string,
+  startTime: number,
+  endTime: number,
+  stockSymbol: string = 'BTC',
+  quoteSymbol: string = 'USDT',
+  requireAuth: boolean = true
+): Promise<EquityCurveNewData> {
+  const params = new URLSearchParams();
+  params.append('timeframe', timeframe);
+  params.append('start_time', startTime.toString());
+  params.append('end_time', endTime.toString());
+  params.append('stock_symbol', stockSymbol);
+  params.append('quote_symbol', quoteSymbol);
+
+  const endpoint = `/tradings/${tradingId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
+  return apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);
+}
+
 export interface ExchangeBinding {
   id: string;
   name: string;
