@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, Component, type ErrorInfo, type ReactNode } from 'react';
+import React, { useEffect, useRef, useState, Component, useCallback, type ErrorInfo, type ReactNode } from 'react';
 import {
   createChart,
   CandlestickSeries,
@@ -17,6 +17,12 @@ interface CandlestickChartProps {
   timeframe?: string;      // Timeframe for candles (e.g., '1m', '1h', '1d')
   height?: number;         // Chart height in pixels
   className?: string;
+  ohlcvData?: OHLCVCandle[]; // Optional pre-fetched OHLCV data
+  contentPadding?: {
+    left?: number;
+    right?: number;
+  };
+  onPriceScaleWidthChange?: (width: number) => void;
 }
 
 // Mock data generator for testing - generates realistic-looking candlestick data
@@ -100,7 +106,10 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   endTime,
   timeframe = '1m',
   height = 200,
-  className = ''
+  className = '',
+  ohlcvData,
+  contentPadding,
+  onPriceScaleWidthChange,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -108,6 +117,22 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
+
+  const updatePriceScaleWidth = useCallback(() => {
+    if (!onPriceScaleWidthChange || !chartRef.current) {
+      return;
+    }
+
+    const priceScale = chartRef.current.priceScale('right');
+    if (!priceScale) {
+      return;
+    }
+
+    const width = priceScale.width();
+    if (Number.isFinite(width) && width > 0) {
+      onPriceScaleWidthChange(width);
+    }
+  }, [onPriceScaleWidthChange]);
 
   // Initialize chart
   useEffect(() => {
@@ -177,6 +202,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       chartRef.current = chart;
       candlestickSeriesRef.current = series;
 
+      // Notify parent about initial price scale width after chart is ready
+      requestAnimationFrame(updatePriceScaleWidth);
+
       console.log('✅ Candlestick series created successfully');
 
       // Handle window resize
@@ -185,6 +213,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           chartRef.current.applyOptions({
             width: chartContainerRef.current.clientWidth,
           });
+          updatePriceScaleWidth();
         }
       };
 
@@ -201,7 +230,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       setError(`Failed to initialize chart: ${err instanceof Error ? err.message : String(err)}`);
       setLoading(false);
     }
-  }, [height]);
+  }, [height, hasInitialized, updatePriceScaleWidth]);
 
   // Cleanup chart on unmount
   useEffect(() => {
@@ -212,7 +241,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       }
       candlestickSeriesRef.current = null;
     };
-  }, []);
+  }, [updatePriceScaleWidth]);
 
   // Fetch and update OHLCV data
   useEffect(() => {
@@ -226,9 +255,17 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         // Convert market format from ETH/USDT to ETH_USDT for backend API
         const marketFormatted = market.replace('/', '_');
 
-        console.log(`Fetching OHLCV for ${marketFormatted} with timeframe ${timeframe} from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
+        let candles: OHLCVCandle[];
 
-        let candles = await getOHLCV(exchange, marketFormatted, startTime, endTime, timeframe);
+        // Use provided data if available, otherwise fetch
+        if (ohlcvData && ohlcvData.length > 0) {
+          console.log(`Using provided OHLCV data: ${ohlcvData.length} candles`);
+          candles = ohlcvData;
+        } else {
+          console.log(`Fetching OHLCV for ${marketFormatted} with timeframe ${timeframe} from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
+
+          candles = await getOHLCV(exchange, marketFormatted, startTime, endTime, timeframe);
+        }
 
         // Check if we got data
         if (!candles || candles.length === 0) {
@@ -291,6 +328,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           candlestickSeriesRef.current.setData(chartData);
           console.log('✅ Chart data updated successfully');
 
+          updatePriceScaleWidth();
+
           // Log what's visible in the chart
           if (chartRef.current) {
             const range = chartRef.current.timeScale().getVisibleRange();
@@ -333,7 +372,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     if (hasInitialized) {
       fetchData();
     }
-  }, [exchange, market, startTime, endTime, timeframe, hasInitialized]);
+  }, [exchange, market, startTime, endTime, timeframe, hasInitialized, ohlcvData, updatePriceScaleWidth]);
 
   if (error) {
     return (
@@ -343,8 +382,20 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     );
   }
 
+  const paddingLeft = contentPadding?.left ?? 0;
+  const paddingRight = contentPadding?.right ?? 0;
+
   return (
-    <div className={`relative bg-white rounded-lg border border-gray-200 ${className}`} style={{ height, overflow: 'hidden' }}>
+    <div
+      className={`relative bg-white rounded-lg border border-gray-200 ${className}`}
+      style={{
+        height,
+        overflow: 'hidden',
+        paddingLeft,
+        paddingRight,
+        boxSizing: 'border-box',
+      }}
+    >
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10 rounded-lg">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

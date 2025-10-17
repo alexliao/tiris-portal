@@ -60,14 +60,36 @@ export function transformNewEquityCurveToChartData(
     }
   });
 
+  if (equityCurve.data_points.length === 0) {
+    return {
+      data: [],
+      metrics: {
+        totalROI: 0,
+        winRate: 0,
+        sharpeRatio: 0,
+        maxDrawdown: 0,
+        totalTrades: 0,
+        initialPrice: 0,
+      }
+    };
+  }
+
+  // Use the first positive equity value as baseline for ROI calculations
+  const firstPositiveIndex = equityCurve.data_points.findIndex(point => point.equity > 0);
+  const baselineIndex = firstPositiveIndex >= 0 ? firstPositiveIndex : 0;
+  const baselineEquity = equityCurve.data_points[baselineIndex]?.equity ?? 0;
+
   // Transform equity curve data points to chart data
-  const chartData: TradingDataPoint[] = equityCurve.data_points.map((point) => {
+  const chartData: TradingDataPoint[] = equityCurve.data_points.map((point, index) => {
     const date = point.timestamp.split('T')[0];
 
-    // Calculate ROI percentage from equity value
-    // Assuming first data point as initial value
-    const initialEquity = equityCurve.data_points[0]?.equity || point.equity;
-    const roi = initialEquity > 0 ? ((point.equity - initialEquity) / initialEquity) * 100 : 0;
+    // Calculate ROI percentage from equity value using the first valid chart point as the baseline
+    const roi = baselineEquity > 0 && index >= baselineIndex
+      ? ((point.equity - baselineEquity) / baselineEquity) * 100
+      : 0;
+
+    const benchmarkReturn = point.benchmark_return ?? 0;
+    const benchmarkPercentage = benchmarkReturn * 100;
 
     return {
       date,
@@ -75,8 +97,8 @@ export function transformNewEquityCurveToChartData(
       timestampNum: new Date(point.timestamp).getTime(),
       netValue: Math.round(point.equity * 100) / 100,
       roi: Math.round(roi * 100) / 100,
-      benchmark: undefined, // New API doesn't include benchmark in data points
-      benchmarkPrice: Math.round(point.stock_price * 100) / 100,
+      benchmark: Math.round(benchmarkPercentage * 100) / 100,
+      benchmarkPrice: Math.round((point.stock_price ?? 0) * 100) / 100,
       position: Math.round(point.stock_balance * 10000) / 10000,
       event: undefined, // Will be assigned later
     };
@@ -112,7 +134,7 @@ export function transformNewEquityCurveToChartData(
   }
 
   // Calculate metrics using the new chart data
-  const metrics = calculateMetricsFromNewData(chartData, tradingLogs, equityCurve.data_points[0]?.equity || 0);
+  const metrics = calculateMetricsFromNewData(chartData, tradingLogs, baselineEquity);
 
   return { data: chartData, metrics };
 }

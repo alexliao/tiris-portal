@@ -303,6 +303,7 @@ export interface EquityCurveNewData {
     quote_balance: number;
     stock_balance: number;
     stock_price: number;
+    benchmark_return?: number;
   }>;
 }
 

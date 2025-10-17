@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart } from 'recharts';
+import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Scatter } from 'recharts';
 import { getEquityCurve, getTradingLogs, getSubAccountsByTrading, ApiError, type Trading } from '../../utils/api';
 import { transformNewEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 import CandlestickChart from './CandlestickChart';
 
 type Timeframe = '1m' | '1h' | '4h' | '8h' | '1d' | '1w';
+
+const DEFAULT_LEFT_AXIS_WIDTH = 60;
+const DEFAULT_RIGHT_AXIS_WIDTH = 60;
+const CHART_LEFT_MARGIN = 5;
+const CHART_RIGHT_MARGIN = 0;
 
 interface TradingPerformanceWidgetProps {
   trading: Trading;
@@ -81,6 +86,7 @@ const mergeTradingDataSets = (
 
 type ChartState = {
   data: TradingDataPoint[];
+  benchmarkData: TradingDataPoint[];
   metrics: TradingMetrics;
 };
 
@@ -97,15 +103,32 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const { t } = useTranslation();
   const [chartState, setChartState] = useState<ChartState>({
     data: [],
+    benchmarkData: [],
     metrics: {} as TradingMetrics
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTradingDots, setShowTradingDots] = useState(false);
-  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('1h');
+  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('1m');
   const [stockSymbol, setStockSymbol] = useState<string>('ETH');
   const [quoteSymbol, setQuoteSymbol] = useState<string>('USDT');
   const [isRefetchingData, setIsRefetchingData] = useState(false);
+  const [rightAxisWidth, setRightAxisWidth] = useState(DEFAULT_RIGHT_AXIS_WIDTH);
+
+  const handlePriceScaleWidthChange = useCallback((width: number) => {
+    if (!Number.isFinite(width)) {
+      return;
+    }
+
+    const normalized = Math.max(Math.round(width), 40);
+
+    setRightAxisWidth(prevWidth => {
+      if (Math.abs(prevWidth - normalized) <= 1) {
+        return prevWidth;
+      }
+      return normalized;
+    });
+  }, []);
 
   // Extract trading data fetching logic into reusable function
   const fetchTradingData = useCallback(async (isInitialLoad = false) => {
@@ -171,16 +194,31 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       const { data, metrics: calculatedMetrics } = transformNewEquityCurveToChartData(equityCurve, tradingLogs);
 
+      const benchmarkDataFromApi: TradingDataPoint[] = data.map(point => ({
+        date: point.date,
+        timestamp: point.timestamp,
+        timestampNum: point.timestampNum,
+        netValue: 0,
+        roi: 0,
+        benchmark: point.benchmark ?? 0,
+        benchmarkPrice: point.benchmarkPrice ?? 0,
+      }));
+
+      let benchmarkData: TradingDataPoint[] = benchmarkDataFromApi;
+
+
       setChartState((previous) => {
         const mergedData = mergeTradingDataSets(previous.data, data);
+        const mergedBenchmark = mergeTradingDataSets(previous.benchmarkData, benchmarkData);
         const metricsChanged = !areMetricsEqual(previous.metrics, calculatedMetrics);
 
-        if (!mergedData.changed && !metricsChanged) {
+        if (!mergedData.changed && !mergedBenchmark.changed && !metricsChanged) {
           return previous;
         }
 
         return {
           data: mergedData.changed ? mergedData.value : previous.data,
+          benchmarkData: mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData,
           metrics: metricsChanged ? calculatedMetrics : previous.metrics
         };
       });
@@ -239,6 +277,69 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     return chartState.data;
   }, [chartState.data]);
 
+  const yAxisDomain = useMemo<[number, number] | null>(() => {
+    const roiValues = filteredData
+      .map(point => point.roi)
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+
+    const benchmarkValues = chartState.benchmarkData
+      .map(point => point.benchmark)
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+
+    const values = [...roiValues, ...benchmarkValues];
+    if (values.length === 0) {
+      return null;
+    }
+
+    let minValue = Math.min(...values);
+    let maxValue = Math.max(...values);
+
+    if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) {
+      return null;
+    }
+
+    if (minValue === maxValue) {
+      const offset = Math.abs(minValue) < 1 ? 1 : Math.abs(minValue) * 0.1;
+      return [minValue - offset, maxValue + offset];
+    }
+
+    const padding = Math.max((maxValue - minValue) * 0.1, 0.5);
+    return [minValue - padding, maxValue + padding];
+  }, [filteredData, chartState.benchmarkData]);
+
+  const rightAxisDomain = useMemo<[number, number] | null>(() => {
+    const priceValues = chartState.benchmarkData
+      .map(point => point.benchmarkPrice)
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+
+    if (priceValues.length === 0) {
+      return null;
+    }
+
+    const minValue = Math.min(...priceValues);
+    const maxValue = Math.max(...priceValues);
+
+    if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) {
+      return null;
+    }
+
+    if (minValue === maxValue) {
+      const offset = Math.abs(minValue) < 10 ? 10 : Math.abs(minValue) * 0.05;
+      return [minValue - offset, maxValue + offset];
+    }
+
+    const padding = Math.max((maxValue - minValue) * 0.05, maxValue * 0.01);
+    return [minValue - padding, maxValue + padding];
+  }, [chartState.benchmarkData]);
+
+  const showZeroReferenceLine = useMemo(() => {
+    if (!yAxisDomain) {
+      return true;
+    }
+    const [minValue, maxValue] = yAxisDomain;
+    return minValue <= 0 && maxValue >= 0;
+  }, [yAxisDomain]);
+
   // Handle timeframe selection
   const handleTimeframeChange = (timeframe: Timeframe) => {
     setSelectedTimeframe(timeframe);
@@ -283,9 +384,22 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         return null;
       }
 
-      // Calculate benchmark price (assuming initial ETH price and benchmark return)
-      const benchmarkPrice = data.benchmark !== undefined ?
-        chartState.metrics.initialPrice ? chartState.metrics.initialPrice * (1 + data.benchmark / 100) : null : null;
+      // Find the closest benchmark data point by timestamp
+      let benchmarkReturn: number | undefined;
+      let benchmarkPrice: number | undefined;
+      if (chartState.benchmarkData.length > 0 && data.timestampNum) {
+        // Find the closest benchmark point
+        const closestBenchmark = chartState.benchmarkData.reduce((prev, curr) => {
+          const prevDiff = Math.abs(prev.timestampNum - data.timestampNum);
+          const currDiff = Math.abs(curr.timestampNum - data.timestampNum);
+          return currDiff < prevDiff ? curr : prev;
+        });
+        // Only use if within reasonable time window (e.g., 1 hour = 3600000ms)
+        if (Math.abs(closestBenchmark.timestampNum - data.timestampNum) < 3600000) {
+          benchmarkReturn = closestBenchmark.benchmark;
+          benchmarkPrice = closestBenchmark.benchmarkPrice;
+        }
+      }
 
       return (
         <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
@@ -301,11 +415,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
               {`${t('trading.chart.portfolioReturn')}: ${formatPercentage(data.roi)}`}
             </p>
           </div>
-          {data.benchmark !== undefined && (
+          {benchmarkReturn !== undefined && (
             <div className="flex items-center mt-1">
               <div className="w-3 h-3 bg-amber-500 rounded-full mr-2"></div>
               <p className="font-['Nunito'] text-sm text-amber-600 font-semibold">
-                {`${t('trading.chart.ethBenchmark')}: ${formatPercentage(data.benchmark)}`}
+                {`${t('trading.chart.ethBenchmark')}: ${formatPercentage(benchmarkReturn)}`}
               </p>
             </div>
           )}
@@ -314,9 +428,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
               {`${t('trading.chart.ethPrice')}: ${formatCurrency(benchmarkPrice)}`}
             </p>
           )}
-          {data.benchmark !== undefined && (
+          {benchmarkReturn !== undefined && (
             <p className="font-['Nunito'] text-xs text-gray-500 mt-2 text-center border-t pt-2">
-              {`${t('trading.chart.excessReturn')}: ${formatPercentage(data.roi - data.benchmark)}`}
+              {`${t('trading.chart.excessReturn')}: ${formatPercentage(data.roi - benchmarkReturn)}`}
             </p>
           )}
           {data.position !== undefined && (
@@ -529,7 +643,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
               <ComposedChart
                 data={filteredData}
-                margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                margin={{ top: 5, right: CHART_RIGHT_MARGIN, left: CHART_LEFT_MARGIN, bottom: 5 }}
                 style={{ outline: 'none' }}
                 tabIndex={-1}
               >
@@ -544,12 +658,15 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   tickFormatter={() => ''} // Hide tick labels on main chart
                   interval="preserveStartEnd"
                   minTickGap={30}
+                  padding={{ left: 0, right: CHART_RIGHT_MARGIN }}
                 />
                 <YAxis
                   yAxisId="left"
                   stroke="#666"
                   fontSize={12}
                   tickFormatter={(value) => `${value.toFixed(1)}%`}
+                  domain={yAxisDomain ?? ['auto', 'auto']}
+                  width={DEFAULT_LEFT_AXIS_WIDTH}
                 />
                 <YAxis
                   yAxisId="right"
@@ -557,18 +674,20 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   stroke="#F59E0B"
                   fontSize={12}
                   tickFormatter={(value) => `$${value.toFixed(0)}`}
-                  domain={['dataMin', 'dataMax']}
-                  width={60}
+                  domain={rightAxisDomain ?? ['auto', 'auto']}
+                  width={rightAxisWidth}
                 />
                 <Tooltip content={<CustomTooltip />} />
 
                 {/* Zero Reference Line */}
-                <ReferenceLine
-                  y={0}
-                  stroke="#94A3B8"
-                  strokeDasharray="2 2"
-                  strokeWidth={1}
-                />
+                {showZeroReferenceLine && (
+                  <ReferenceLine
+                    y={0}
+                    stroke="#94A3B8"
+                    strokeDasharray="2 2"
+                    strokeWidth={1}
+                  />
+                )}
 
                 {/* Portfolio Return Area Chart */}
                 <Area
@@ -580,36 +699,22 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   fill="#10B981"
                   fillOpacity={0.1}
                   dot={false}
+                  baseValue="dataMin"
                   activeDot={{ r: 4, fill: '#10B981', stroke: '#ffffff', strokeWidth: 2 }}
                   name={t('trading.chart.portfolioReturn')}
                   isAnimationActive={false}
                 />
 
-                {/* ETH Benchmark Line */}
+                {/* ETH Benchmark Line - using separate dataset */}
                 <Line
                   yAxisId="left"
                   type="linear"
+                  data={chartState.benchmarkData}
                   dataKey="benchmark"
                   stroke="#F59E0B"
                   strokeWidth={2}
                   strokeDasharray="5 5"
-                  dot={(props) => {
-                    const { cx, cy, payload } = props;
-                    if (showTradingDots && payload && payload.event) {
-                      return (
-                        <circle
-                          cx={cx}
-                          cy={cy}
-                          r={6}
-                          fill={payload.event.type === 'buy' ? '#3B82F6' : '#EF4444'}
-                          stroke="white"
-                          strokeWidth={2}
-                          opacity={0.9}
-                        />
-                      );
-                    }
-                    return <></>;
-                  }}
+                  dot={false}
                   activeDot={{ r: 4, fill: '#F59E0B', stroke: '#ffffff', strokeWidth: 2 }}
                   name={t('trading.chart.ethBenchmark')}
                   isAnimationActive={false}
@@ -619,6 +724,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 <Line
                   yAxisId="right"
                   type="linear"
+                  data={chartState.benchmarkData}
                   dataKey="benchmarkPrice"
                   stroke="transparent"
                   strokeWidth={0}
@@ -626,6 +732,55 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   name="ETH Price"
                   isAnimationActive={false}
                 />
+
+                {/* Trading Signal Dots - positioned on benchmark line */}
+                {showTradingDots && (() => {
+                  // Create data points with trading signals positioned on the benchmark line
+                  const signalPoints = filteredData
+                    .filter(point => point.event)
+                    .map(point => {
+                      // Find the closest benchmark data point
+                      const closestBenchmark = chartState.benchmarkData.reduce((prev, curr) => {
+                        const prevDiff = Math.abs(prev.timestampNum - point.timestampNum);
+                        const currDiff = Math.abs(curr.timestampNum - point.timestampNum);
+                        return currDiff < prevDiff ? curr : prev;
+                      });
+
+                      return {
+                        ...point,
+                        // Use benchmark return for Y position instead of ROI
+                        yValue: closestBenchmark?.benchmark ?? point.roi
+                      };
+                    });
+
+                  return (
+                    <Scatter
+                      yAxisId="left"
+                      data={signalPoints}
+                      dataKey="yValue"
+                      fill="#3B82F6"
+                      shape={(props: any) => {
+                        const { cx, cy, payload } = props;
+                        if (!payload || !payload.event) {
+                          return <circle cx={0} cy={0} r={0} opacity={0} />;
+                        }
+                        const color = payload.event.type === 'buy' ? '#3B82F6' : '#EF4444';
+                        return (
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={6}
+                            fill={color}
+                            stroke="white"
+                            strokeWidth={2}
+                            opacity={0.9}
+                          />
+                        );
+                      }}
+                      isAnimationActive={false}
+                    />
+                  );
+                })()}
 
                 {/* Dotted Lines Connecting Signals to Position Area */}
                 {showTradingDots && filteredData.filter(point => point.event).map((point, index) => (
@@ -647,7 +802,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
               <ComposedChart
                 data={filteredData}
-                margin={{ top: 20, right: 5, left: 5, bottom: 50 }}
+                margin={{ top: 20, right: CHART_RIGHT_MARGIN, left: CHART_LEFT_MARGIN, bottom: 50 }}
                 style={{ outline: 'none' }}
                 tabIndex={-1}
               >
@@ -662,6 +817,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   interval="preserveStartEnd"
                   minTickGap={30}
+                  padding={{ left: 0, right: CHART_RIGHT_MARGIN }}
                 />
                 <YAxis
                   yAxisId="left"
@@ -671,7 +827,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   tick={false}
                   axisLine={false}
                   tickLine={false}
-                  width={60}
+                  width={DEFAULT_LEFT_AXIS_WIDTH}
                 />
                 <YAxis
                   yAxisId="position"
@@ -680,6 +836,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   fontSize={12}
                   tickFormatter={(value) => `${value.toFixed(2)} ETH`}
                   domain={[0, 'dataMax']}
+                  width={rightAxisWidth}
                 />
 
                 {/* Position Area Chart */}
@@ -735,6 +892,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                     : filteredData[filteredData.length - 1]?.timestampNum || Date.now()
                 }
                 height={200}
+                contentPadding={{
+                  left: DEFAULT_LEFT_AXIS_WIDTH + CHART_LEFT_MARGIN,
+                  right: CHART_RIGHT_MARGIN,
+                }}
+                onPriceScaleWidthChange={handlePriceScaleWidthChange}
               />
             </div>
           </div>
@@ -756,7 +918,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             </div>
             <div className="flex items-center">
               <div className="w-4 h-0.5 bg-amber-500 mr-2" style={{borderTop: '2px dashed #F59E0B', backgroundColor: 'transparent'}}></div>
-              <span>{t('trading.chart.ethBenchmark')}</span>
+              <span>{t('trading.chart.ethBenchmark')} ({stockSymbol} Buy & Hold)</span>
             </div>
             <div className="flex items-center">
               <div
