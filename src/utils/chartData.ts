@@ -26,12 +26,32 @@ export interface TradingMetrics {
 
 
 /**
+ * Convert timeframe string to milliseconds
+ * Used for calculating appropriate event matching window
+ */
+function timeframeToMilliseconds(timeframe: string): number {
+  const timeframeMap: Record<string, number> = {
+    '1m': 1 * 60 * 1000,
+    '5m': 5 * 60 * 1000,
+    '15m': 15 * 60 * 1000,
+    '30m': 30 * 60 * 1000,
+    '1h': 60 * 60 * 1000,
+    '4h': 4 * 60 * 60 * 1000,
+    '8h': 8 * 60 * 60 * 1000,
+    '1d': 24 * 60 * 60 * 1000,
+    '1w': 7 * 24 * 60 * 60 * 1000,
+  };
+  return timeframeMap[timeframe] || 60 * 1000; // Default to 1 minute
+}
+
+/**
  * Transform new equity curve API data into chart data format
  * This is the primary function used with the new API endpoint
  */
 export function transformNewEquityCurveToChartData(
   equityCurve: EquityCurveNewData,
-  tradingLogs: TradingLog[] = []
+  tradingLogs: TradingLog[] = [],
+  timeframe: string = '1m'
 ): { data: TradingDataPoint[]; metrics: TradingMetrics } {
   // Validate input
   if (!equityCurve || !equityCurve.data_points || !Array.isArray(equityCurve.data_points)) {
@@ -104,6 +124,10 @@ export function transformNewEquityCurveToChartData(
     };
   });
 
+  // Calculate the time window based on the timeframe - use half the interval
+  const timeframeMs = timeframeToMilliseconds(timeframe);
+  const maxTimeWindow = Math.max(timeframeMs / 2, 60 * 1000); // At least 1 minute window
+
   // Now assign each trading event to its nearest chart data point
   for (const [eventTime, event] of eventsByTimestamp) {
     const eventTimestamp = new Date(eventTime).getTime();
@@ -119,8 +143,8 @@ export function transformNewEquityCurveToChartData(
       const pointTimestamp = new Date(point.timestamp).getTime();
       const timeDiff = Math.abs(eventTimestamp - pointTimestamp);
 
-      // Only consider points within reasonable time window (1 minute)
-      if (timeDiff <= 1 * 60 * 1000 && timeDiff < closestTimeDiff) {
+      // Only consider points within reasonable time window (dynamic based on timeframe)
+      if (timeDiff <= maxTimeWindow && timeDiff < closestTimeDiff) {
         closestTimeDiff = timeDiff;
         closestPoint = point;
         closestIndex = index;

@@ -192,7 +192,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         throw new Error('Invalid equity curve data format received from API. Expected new format with data_points array.');
       }
 
-      const { data, metrics: calculatedMetrics } = transformNewEquityCurveToChartData(equityCurve, tradingLogs);
+      const { data, metrics: calculatedMetrics } = transformNewEquityCurveToChartData(equityCurve, tradingLogs, selectedTimeframe);
 
       const benchmarkDataFromApi: TradingDataPoint[] = data.map(point => ({
         date: point.date,
