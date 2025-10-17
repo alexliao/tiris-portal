@@ -876,7 +876,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 {t('trading.chart.priceChart')} ({stockSymbol}/{quoteSymbol})
               </h4>
             </div>
-            <div style={{ flex: '1 1 auto', minHeight: '200px' }}>
+            <div
+              style={{
+                flex: '1 1 auto',
+                minHeight: '200px',
+                marginLeft: DEFAULT_LEFT_AXIS_WIDTH + CHART_LEFT_MARGIN,
+                marginRight: CHART_RIGHT_MARGIN,
+              }}
+            >
               <CandlestickChart
                 exchange="binance"
                 market={`${stockSymbol}/${quoteSymbol}`}
@@ -892,10 +899,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                     : filteredData[filteredData.length - 1]?.timestampNum || Date.now()
                 }
                 height={200}
-                contentPadding={{
-                  left: DEFAULT_LEFT_AXIS_WIDTH + CHART_LEFT_MARGIN,
-                  right: CHART_RIGHT_MARGIN,
-                }}
                 onPriceScaleWidthChange={handlePriceScaleWidthChange}
               />
             </div>

@@ -18,10 +18,6 @@ interface CandlestickChartProps {
   height?: number;         // Chart height in pixels
   className?: string;
   ohlcvData?: OHLCVCandle[]; // Optional pre-fetched OHLCV data
-  contentPadding?: {
-    left?: number;
-    right?: number;
-  };
   onPriceScaleWidthChange?: (width: number) => void;
 }
 
@@ -108,7 +104,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   height = 200,
   className = '',
   ohlcvData,
-  contentPadding,
   onPriceScaleWidthChange,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -382,20 +377,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     );
   }
 
-  const paddingLeft = contentPadding?.left ?? 0;
-  const paddingRight = contentPadding?.right ?? 0;
-
   return (
-    <div
-      className={`relative bg-white rounded-lg border border-gray-200 ${className}`}
-      style={{
-        height,
-        overflow: 'hidden',
-        paddingLeft,
-        paddingRight,
-        boxSizing: 'border-box',
-      }}
-    >
+    <div className={`relative bg-white rounded-lg border border-gray-200 ${className}`} style={{ height, overflow: 'hidden' }}>
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10 rounded-lg">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
