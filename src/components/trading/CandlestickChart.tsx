@@ -12,12 +12,14 @@ import { getOHLCV, type OHLCVCandle } from '../../utils/api';
 interface CandlestickChartProps {
   exchange: string;        // Exchange ID (e.g., 'binance')
   market: string;          // Market symbol (e.g., 'ETH/USDT')
-  startTime: number;       // Start time in milliseconds
-  endTime: number;         // End time in milliseconds
+  startTime?: number;      // Start time in milliseconds (optional, for backward compatibility)
+  endTime?: number;        // End time in milliseconds (optional, for backward compatibility)
   timeframe?: string;      // Timeframe for candles (e.g., '1m', '1h', '1d')
   height?: number;         // Chart height in pixels
   className?: string;
   ohlcvData?: OHLCVCandle[]; // Optional pre-fetched OHLCV data
+  visibleDataStartIndex?: number; // Index in ohlcvData where visible window starts (for panning with loaded data)
+  visibleDataEndIndex?: number;   // Index in ohlcvData where visible window ends
   onPriceScaleWidthChange?: (width: number) => void;
 }
 
@@ -104,6 +106,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   height = 200,
   className = '',
   ohlcvData,
+  visibleDataStartIndex,
+  visibleDataEndIndex,
   onPriceScaleWidthChange,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -252,14 +256,23 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
         let candles: OHLCVCandle[];
 
-        // Use provided data if available, otherwise fetch
-        if (ohlcvData && ohlcvData.length > 0) {
+        // If visible indices are provided, slice from pre-loaded data (panning mode)
+        if (ohlcvData && ohlcvData.length > 0 && visibleDataStartIndex !== undefined && visibleDataEndIndex !== undefined) {
+          console.log(`Slicing OHLCV data from index ${visibleDataStartIndex} to ${visibleDataEndIndex} (total: ${ohlcvData.length} candles)`);
+          candles = ohlcvData.slice(visibleDataStartIndex as number, visibleDataEndIndex as number);
+        }
+        // Use provided data if available (full dataset provided at once)
+        else if (ohlcvData && ohlcvData.length > 0) {
           console.log(`Using provided OHLCV data: ${ohlcvData.length} candles`);
           candles = ohlcvData;
-        } else {
+        }
+        // Fallback to fetching by time range (backward compatibility)
+        else if (startTime && endTime) {
           console.log(`Fetching OHLCV for ${marketFormatted} with timeframe ${timeframe} from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
-
           candles = await getOHLCV(exchange, marketFormatted, startTime, endTime, timeframe);
+        }
+        else {
+          throw new Error('No data source provided: either ohlcvData or startTime/endTime required');
         }
 
         // Check if we got data
@@ -267,10 +280,17 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           console.warn(`No OHLCV data returned from API. Exchange: ${exchange}, Market: ${marketFormatted}, Time range: ${startTime}-${endTime}`);
 
           // For development/testing: generate mock data if API returns empty
-          console.log('Generating mock data for testing purposes...');
-          candles = generateMockOHLCVData(startTime, endTime);
-          if (candles.length === 0) {
-            setError('No candlestick data available for this time range. The backend may not have data yet.');
+          // Only generate mock if we have valid time range
+          if (startTime && endTime) {
+            console.log('Generating mock data for testing purposes...');
+            candles = generateMockOHLCVData(startTime, endTime);
+            if (candles.length === 0) {
+              setError('No candlestick data available for this time range. The backend may not have data yet.');
+              setLoading(false);
+              return;
+            }
+          } else {
+            setError('No candlestick data available. Cannot fetch data without time range.');
             setLoading(false);
             return;
           }
@@ -367,7 +387,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     if (hasInitialized) {
       fetchData();
     }
-  }, [exchange, market, startTime, endTime, timeframe, hasInitialized, ohlcvData, updatePriceScaleWidth]);
+  }, [exchange, market, startTime, endTime, timeframe, hasInitialized, ohlcvData, visibleDataStartIndex, visibleDataEndIndex, updatePriceScaleWidth]);
 
   if (error) {
     return (

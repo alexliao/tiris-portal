@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, memo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Scatter } from 'recharts';
-import { getEquityCurve, getTradingLogs, getSubAccountsByTrading, ApiError, type Trading } from '../../utils/api';
+import { getEquityCurve, getTradingLogs, getSubAccountsByTrading, getOHLCV, ApiError, type Trading } from '../../utils/api';
 import { transformNewEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 import CandlestickChart from './CandlestickChart';
 
@@ -88,7 +88,12 @@ type ChartState = {
   data: TradingDataPoint[];
   benchmarkData: TradingDataPoint[];
   metrics: TradingMetrics;
+  ohlcvData?: any[];
+  fullOHLCVData?: any[]; // Full OHLCV data for the entire time range (for panning without API calls)
 };
+
+const VISIBLE_WINDOW_SIZE = 100; // Number of data points to display at once
+const TOTAL_DATA_TO_LOAD = 500; // Total number of data points to load from backend
 
 const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps> = ({
   trading,
@@ -114,6 +119,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [quoteSymbol, setQuoteSymbol] = useState<string>('USDT');
   const [isRefetchingData, setIsRefetchingData] = useState(false);
   const [rightAxisWidth, setRightAxisWidth] = useState(DEFAULT_RIGHT_AXIS_WIDTH);
+  const [visibleStartIndex, setVisibleStartIndex] = useState(0);
+  const [initialized, setInitialized] = useState(false);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
   const handlePriceScaleWidthChange = useCallback((width: number) => {
     if (!Number.isFinite(width)) {
@@ -129,6 +137,63 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       return normalized;
     });
   }, []);
+
+  const handleChartWheel = useCallback((e: WheelEvent) => {
+    if (!chartContainerRef.current?.contains(e.target as Node)) {
+      return;
+    }
+
+    // Disable wheel scrolling on candlestick chart (TradingView chart)
+    const target = e.target as HTMLElement;
+    if (target?.closest('[data-testid="candlestick-chart-container"]')) {
+      return;
+    }
+
+    // Check for horizontal scrolling (deltaX indicates horizontal scroll)
+    // This is used by trackpads, some mice, and shift+wheel combinations
+    const hasHorizontalScroll = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+    const scrollDelta = hasHorizontalScroll ? e.deltaX : e.deltaY;
+
+    // Only handle scroll events if there's actual movement
+    if (Math.abs(scrollDelta) < 1) {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Scroll increment per wheel event (1 data point)
+    const scrollIncrement = 1;
+
+    // Positive delta = scroll right = move forward in time (increase index)
+    // Negative delta = scroll left = move back in time (decrease index)
+    const direction = scrollDelta > 0 ? 1 : -1;
+    const newIndex = visibleStartIndex + direction * scrollIncrement;
+
+    // Constrain to valid range
+    const maxStartIndex = Math.max(0, chartState.data.length - VISIBLE_WINDOW_SIZE);
+    const constrainedIndex = Math.max(0, Math.min(newIndex, maxStartIndex));
+
+    setVisibleStartIndex(constrainedIndex);
+  }, [visibleStartIndex, chartState.data.length]);
+
+  // Fetch OHLCV data for the entire time range (called once per timeframe change)
+  const fetchFullOHLCVData = useCallback(async (startTime: number, endTime: number, stockSymbol: string, quoteSymbol: string) => {
+    try {
+      console.log(`Fetching full OHLCV data for ${stockSymbol}/${quoteSymbol} from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
+
+      const marketFormatted = `${stockSymbol}_${quoteSymbol}`;
+      const ohlcvCandles = await getOHLCV('binance', marketFormatted, startTime, endTime, selectedTimeframe);
+
+      console.log(`Fetched ${ohlcvCandles.length} OHLCV candles for full range`);
+
+      return ohlcvCandles;
+    } catch (err) {
+      console.error('Failed to fetch full OHLCV data:', err);
+      // Don't throw, just return empty array - chart can still function with time-based fetching as fallback
+      return [];
+    }
+  }, [selectedTimeframe]);
 
   // Extract trading data fetching logic into reusable function
   const fetchTradingData = useCallback(async (isInitialLoad = false) => {
@@ -175,7 +240,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         getEquityCurve(
           trading.id,
           selectedTimeframe,
-          100, // Load 100 recent timeframes
+          TOTAL_DATA_TO_LOAD, // Load 500 recent timeframes for historical scrolling
           fetchedStockSymbol,
           fetchedQuoteSymbol,
           requireAuth
@@ -206,20 +271,32 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       let benchmarkData: TradingDataPoint[] = benchmarkDataFromApi;
 
+      // Fetch OHLCV data for the entire time range
+      // start_time and end_time are ISO strings from the API, convert to milliseconds
+      const startTimeMs = new Date(equityCurve.start_time).getTime();
+      const endTimeMs = new Date(equityCurve.end_time).getTime();
+      const fullTimeRange = {
+        start: startTimeMs,
+        end: endTimeMs,
+      };
+      console.log(`Equity curve time range: ${new Date(fullTimeRange.start).toISOString()} to ${new Date(fullTimeRange.end).toISOString()}`);
+
+      const fullOHLCVData = await fetchFullOHLCVData(fullTimeRange.start, fullTimeRange.end, fetchedStockSymbol, fetchedQuoteSymbol);
 
       setChartState((previous) => {
         const mergedData = mergeTradingDataSets(previous.data, data);
         const mergedBenchmark = mergeTradingDataSets(previous.benchmarkData, benchmarkData);
         const metricsChanged = !areMetricsEqual(previous.metrics, calculatedMetrics);
 
-        if (!mergedData.changed && !mergedBenchmark.changed && !metricsChanged) {
+        if (!mergedData.changed && !mergedBenchmark.changed && !metricsChanged && previous.fullOHLCVData === fullOHLCVData) {
           return previous;
         }
 
         return {
           data: mergedData.changed ? mergedData.value : previous.data,
           benchmarkData: mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData,
-          metrics: metricsChanged ? calculatedMetrics : previous.metrics
+          metrics: metricsChanged ? calculatedMetrics : previous.metrics,
+          fullOHLCVData: fullOHLCVData
         };
       });
     } catch (err) {
@@ -242,7 +319,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         setIsRefetchingData(false);
       }
     }
-  }, [trading.id, selectedTimeframe]);
+  }, [trading.id, selectedTimeframe, fetchFullOHLCVData]);
 
   // Initial data loading effect - only run once on mount
   useEffect(() => {
@@ -253,9 +330,23 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   useEffect(() => {
     // Skip the initial render (handled by the effect above)
     if (chartState.data.length > 0) {
+      setInitialized(false); // Reset initialization flag to show latest 100 again
       fetchTradingData(false); // Don't show loading spinner
     }
   }, [selectedTimeframe]); // Only when timeframe changes
+
+  // Reset visible start index when data changes significantly
+  useEffect(() => {
+    if (!initialized && chartState.data.length > 0) {
+      // On initial load, position to show the latest 100 data points
+      const newStartIndex = Math.max(0, chartState.data.length - VISIBLE_WINDOW_SIZE);
+      setVisibleStartIndex(newStartIndex);
+      setInitialized(true);
+    } else if (chartState.data.length <= VISIBLE_WINDOW_SIZE) {
+      // If all data is less than window size, reset to 0
+      setVisibleStartIndex(0);
+    }
+  }, [chartState.data.length, initialized]);
 
   // Refresh trigger effect - refetch data when refreshTrigger changes
   useEffect(() => {
@@ -271,18 +362,40 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
   }, [autoRefreshEnabled, fetchTradingData, refreshTrigger]);
 
+  // Attach wheel event listener to chart container
+  useEffect(() => {
+    const container = chartContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener('wheel', handleChartWheel as EventListener, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', handleChartWheel as EventListener);
+    };
+  }, [handleChartWheel]);
+
   // Data is already filtered by the API with the selected timeframe
   // No need for client-side filtering
+  const allData = chartState.data;
+
+  // Slice data for visible window
   const filteredData = useMemo(() => {
-    return chartState.data;
-  }, [chartState.data]);
+    const visibleEndIndex = Math.min(visibleStartIndex + VISIBLE_WINDOW_SIZE, allData.length);
+    return allData.slice(visibleStartIndex, visibleEndIndex);
+  }, [allData, visibleStartIndex]);
+
+  // Slice benchmark data for visible window
+  const visibleBenchmarkData = useMemo(() => {
+    const visibleEndIndex = Math.min(visibleStartIndex + VISIBLE_WINDOW_SIZE, chartState.benchmarkData.length);
+    return chartState.benchmarkData.slice(visibleStartIndex, visibleEndIndex);
+  }, [chartState.benchmarkData, visibleStartIndex]);
 
   const yAxisDomain = useMemo<[number, number] | null>(() => {
     const roiValues = filteredData
       .map(point => point.roi)
       .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
 
-    const benchmarkValues = chartState.benchmarkData
+    const benchmarkValues = visibleBenchmarkData
       .map(point => point.benchmark)
       .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
 
@@ -305,10 +418,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
     const padding = Math.max((maxValue - minValue) * 0.1, 0.5);
     return [minValue - padding, maxValue + padding];
-  }, [filteredData, chartState.benchmarkData]);
+  }, [filteredData, visibleBenchmarkData]);
 
   const rightAxisDomain = useMemo<[number, number] | null>(() => {
-    const priceValues = chartState.benchmarkData
+    const priceValues = visibleBenchmarkData
       .map(point => point.benchmarkPrice)
       .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
 
@@ -330,7 +443,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
     const padding = Math.max((maxValue - minValue) * 0.05, maxValue * 0.01);
     return [minValue - padding, maxValue + padding];
-  }, [chartState.benchmarkData]);
+  }, [visibleBenchmarkData]);
 
   const showZeroReferenceLine = useMemo(() => {
     if (!yAxisDomain) {
@@ -384,12 +497,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         return null;
       }
 
-      // Find the closest benchmark data point by timestamp
+      // Find the closest benchmark data point by timestamp from visible data
       let benchmarkReturn: number | undefined;
       let benchmarkPrice: number | undefined;
-      if (chartState.benchmarkData.length > 0 && data.timestampNum) {
+      if (visibleBenchmarkData.length > 0 && data.timestampNum) {
         // Find the closest benchmark point
-        const closestBenchmark = chartState.benchmarkData.reduce((prev, curr) => {
+        const closestBenchmark = visibleBenchmarkData.reduce((prev, curr) => {
           const prevDiff = Math.abs(prev.timestampNum - data.timestampNum);
           const currDiff = Math.abs(curr.timestampNum - data.timestampNum);
           return currDiff < prevDiff ? curr : prev;
@@ -595,6 +708,31 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                     </div>
                   )}
                 </div>
+
+                {/* Pan Controls */}
+                {allData.length > VISIBLE_WINDOW_SIZE && (
+                  <div className="flex items-center gap-2 ml-4">
+                    <button
+                      onClick={() => setVisibleStartIndex(Math.max(0, visibleStartIndex - VISIBLE_WINDOW_SIZE))}
+                      disabled={visibleStartIndex === 0}
+                      className="px-2 py-1 rounded-md text-sm bg-blue-100 text-blue-600 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed font-['Nunito']"
+                      title="Scroll left (earlier data)"
+                    >
+                      ← Prev
+                    </button>
+                    <span className="text-xs text-gray-600 font-['Nunito'] whitespace-nowrap">
+                      {visibleStartIndex + 1} - {Math.min(visibleStartIndex + VISIBLE_WINDOW_SIZE, allData.length)} / {allData.length}
+                    </span>
+                    <button
+                      onClick={() => setVisibleStartIndex(Math.min(allData.length - VISIBLE_WINDOW_SIZE, visibleStartIndex + VISIBLE_WINDOW_SIZE))}
+                      disabled={visibleStartIndex + VISIBLE_WINDOW_SIZE >= allData.length}
+                      className="px-2 py-1 rounded-md text-sm bg-blue-100 text-blue-600 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed font-['Nunito']"
+                      title="Scroll right (later data)"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                )}
               </div>
               {onAutoRefreshToggle && (
                 <div className="flex items-center space-x-2 text-sm font-['Nunito']">
@@ -630,6 +768,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         </div>
         
         <div
+          ref={chartContainerRef}
           className={`${height} flex flex-col`}
           style={{
             outline: 'none',
@@ -709,7 +848,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 <Line
                   yAxisId="left"
                   type="linear"
-                  data={chartState.benchmarkData}
+                  data={visibleBenchmarkData}
                   dataKey="benchmark"
                   stroke="#F59E0B"
                   strokeWidth={2}
@@ -724,7 +863,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 <Line
                   yAxisId="right"
                   type="linear"
-                  data={chartState.benchmarkData}
+                  data={visibleBenchmarkData}
                   dataKey="benchmarkPrice"
                   stroke="transparent"
                   strokeWidth={0}
@@ -739,8 +878,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   const signalPoints = filteredData
                     .filter(point => point.event)
                     .map(point => {
-                      // Find the closest benchmark data point
-                      const closestBenchmark = chartState.benchmarkData.reduce((prev, curr) => {
+                      // Find the closest benchmark data point from visible data
+                      const closestBenchmark = visibleBenchmarkData.reduce((prev, curr) => {
                         const prevDiff = Math.abs(prev.timestampNum - point.timestampNum);
                         const currDiff = Math.abs(curr.timestampNum - point.timestampNum);
                         return currDiff < prevDiff ? curr : prev;
@@ -888,17 +1027,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 exchange="binance"
                 market={`${stockSymbol}/${quoteSymbol}`}
                 timeframe={selectedTimeframe}
-                startTime={
-                  Array.isArray(chartDomain) && typeof chartDomain[0] === 'number'
-                    ? chartDomain[0]
-                    : filteredData[0]?.timestampNum || Date.now() - 86400000
-                }
-                endTime={
-                  Array.isArray(chartDomain) && typeof chartDomain[1] === 'number'
-                    ? chartDomain[1]
-                    : filteredData[filteredData.length - 1]?.timestampNum || Date.now()
-                }
                 height={200}
+                ohlcvData={chartState.fullOHLCVData}
+                visibleDataStartIndex={visibleStartIndex}
+                visibleDataEndIndex={Math.min(visibleStartIndex + VISIBLE_WINDOW_SIZE, chartState.fullOHLCVData?.length || 0)}
                 onPriceScaleWidthChange={handlePriceScaleWidthChange}
               />
             </div>
