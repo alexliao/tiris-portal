@@ -557,7 +557,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 {trading.name} - {t('trading.detail.performanceChart')}
               </h3>
             )}
-            <div className="flex items-center justify-between flex-1 ml-4 flex-wrap gap-3">
+            <div className="flex items-center justify-between flex-1 flex-wrap gap-3">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowTradingDots(!showTradingDots)}
