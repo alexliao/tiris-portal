@@ -479,7 +479,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         timestamp: point.timestamp,
         timestampNum: point.timestampNum,
         netValue: 0,
-        roi: 0,
+        roi: point.roi,
         benchmark: point.benchmark ?? 0,
         benchmarkPrice: point.benchmarkPrice ?? 0,
       }));
@@ -513,6 +513,16 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           mergedData = [...previous.data, ...trulyNewDataPoints];
           console.log(`Deduplicating trading data: removed ${correctedNewData.length - trulyNewDataPoints.length} duplicate data points`);
 
+          // Recalculate ROI for all merged data to ensure consistency with the original initial balance
+          // This prevents discontinuities when equity values change slightly in API responses
+          const initialEquity = previous.data[0]?.netValue ?? initialBalance ?? 0;
+          if (initialEquity > 0) {
+            mergedData = mergedData.map(point => ({
+              ...point,
+              roi: Math.round(((point.netValue - initialEquity) / initialEquity) * 10000) / 100
+            }));
+          }
+
           // Do the same for benchmark data
           const existingBenchmarkMap = new Map<number, TradingDataPoint>();
           previous.benchmarkData.forEach(point => {
@@ -522,6 +532,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           const trulyNewBenchmarkPoints = newBenchmarkData.filter(point => !existingBenchmarkMap.has(point.timestampNum));
           mergedBenchmarkData = [...previous.benchmarkData, ...trulyNewBenchmarkPoints];
           console.log(`Deduplicating benchmark data: removed ${newBenchmarkData.length - trulyNewBenchmarkPoints.length} duplicate benchmark points`);
+
+          // Recalculate ROI for benchmark data as well
+          if (initialEquity > 0) {
+            mergedBenchmarkData = mergedBenchmarkData.map(point => ({
+              ...point,
+              roi: Math.round(((point.netValue - initialEquity) / initialEquity) * 10000) / 100
+            }));
+          }
         } else {
           // First time - no existing data to merge with
           mergedData = correctedNewData;
