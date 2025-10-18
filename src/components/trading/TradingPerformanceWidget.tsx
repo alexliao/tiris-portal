@@ -180,12 +180,19 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       return;
     }
 
-    // Check for horizontal scrolling (deltaX indicates horizontal scroll)
-    // This is used by trackpads, some mice, and shift+wheel combinations
-    const hasHorizontalScroll = Math.abs(e.deltaX) > Math.abs(e.deltaY);
-    const scrollDelta = hasHorizontalScroll ? e.deltaX : e.deltaY;
+    // Only handle horizontal scrolling (left/right mouse wheel)
+    // Disable vertical scrolling (up/down)
+    const hasHorizontalScroll = Math.abs(e.deltaX) > 0;
+    const hasVerticalScroll = Math.abs(e.deltaY) > 0;
 
-    // Only handle scroll events if there's actual movement
+    // If there's vertical scroll without horizontal scroll, ignore it
+    if (hasVerticalScroll && !hasHorizontalScroll) {
+      return;
+    }
+
+    const scrollDelta = e.deltaX;
+
+    // Only handle scroll events if there's actual horizontal movement
     if (Math.abs(scrollDelta) < 1) {
       return;
     }
