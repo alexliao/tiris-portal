@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, Component, useCallback, type ErrorInfo, type ReactNode } from 'react';
+import React, { useEffect, useRef, useState, Component, type ErrorInfo, type ReactNode } from 'react';
 import {
   createChart,
   CandlestickSeries,
@@ -17,11 +17,6 @@ interface CandlestickChartProps {
   timeframe?: string;      // Timeframe for candles (e.g., '1m', '1h', '1d')
   height?: number;         // Chart height in pixels
   className?: string;
-  ohlcvData?: OHLCVCandle[]; // Optional pre-fetched OHLCV data
-  visibleDataStartIndex?: number; // Index in ohlcvData where visible window starts (for panning with loaded data)
-  visibleDataEndIndex?: number;   // Index in ohlcvData where visible window ends
-  onPriceScaleWidthChange?: (width: number) => void;
-  isIncrementalUpdate?: boolean; // If true, append new data instead of replacing
 }
 
 // Mock data generator for testing - generates realistic-looking candlestick data
@@ -106,11 +101,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   timeframe = '1m',
   height = 200,
   className = '',
-  ohlcvData,
-  visibleDataStartIndex,
-  visibleDataEndIndex,
-  onPriceScaleWidthChange,
-  isIncrementalUpdate = false,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -119,21 +109,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
-  const updatePriceScaleWidth = useCallback(() => {
-    if (!onPriceScaleWidthChange || !chartRef.current) {
-      return;
-    }
-
-    const priceScale = chartRef.current.priceScale('right');
-    if (!priceScale) {
-      return;
-    }
-
-    const width = priceScale.width();
-    if (Number.isFinite(width) && width > 0) {
-      onPriceScaleWidthChange(width);
-    }
-  }, [onPriceScaleWidthChange]);
 
   // Initialize chart
   useEffect(() => {
@@ -203,9 +178,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       chartRef.current = chart;
       candlestickSeriesRef.current = series;
 
-      // Notify parent about initial price scale width after chart is ready
-      requestAnimationFrame(updatePriceScaleWidth);
-
       console.log('✅ Candlestick series created successfully');
 
       // Handle window resize
@@ -214,7 +186,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           chartRef.current.applyOptions({
             width: chartContainerRef.current.clientWidth,
           });
-          updatePriceScaleWidth();
         }
       };
 
@@ -231,7 +202,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       setError(`Failed to initialize chart: ${err instanceof Error ? err.message : String(err)}`);
       setLoading(false);
     }
-  }, [height, hasInitialized, updatePriceScaleWidth]);
+  }, [height, hasInitialized]);
 
   // Cleanup chart on unmount
   useEffect(() => {
@@ -242,7 +213,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       }
       candlestickSeriesRef.current = null;
     };
-  }, [updatePriceScaleWidth]);
+  }, []);
 
   // Fetch and update OHLCV data when the data source or parameters change
   // This effect handles data fetching and full updates
@@ -259,19 +230,13 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
         let candles: OHLCVCandle[];
 
-        // Use provided data if available (full dataset provided at once)
-        // Don't slice here - let the separate effect handle UI updates for visible indices
-        if (ohlcvData && ohlcvData.length > 0) {
-          console.log(`Using provided OHLCV data: ${ohlcvData.length} candles`);
-          candles = ohlcvData;
-        }
-        // Fallback to fetching by time range (backward compatibility)
-        else if (startTime && endTime) {
+        // Fetch data by time range
+        if (startTime && endTime) {
           console.log(`Fetching OHLCV for ${marketFormatted} with timeframe ${timeframe} from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
           candles = await getOHLCV(exchange, marketFormatted, startTime, endTime, timeframe);
         }
         else {
-          throw new Error('No data source provided: either ohlcvData or startTime/endTime required');
+          throw new Error('No data source provided: startTime and endTime are required');
         }
 
         // Check if we got data
@@ -335,59 +300,11 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
         // Update chart data
         if (candlestickSeriesRef.current) {
-          if (isIncrementalUpdate && chartData.length > 0) {
-            // For incremental updates, get existing data and combine with new data
-            // Note: lightweight-charts requires candles to be in ascending time order
-            console.log(`📈 Appending ${chartData.length} new candles to chart series (incremental update)`);
-
-            // Get existing data from the series
-            const existingData = candlestickSeriesRef.current.data() || [];
-            console.log(`Existing data count: ${existingData.length}`);
-
-            // Combine existing and new data, then sort
-            const combinedData = [...existingData, ...chartData];
-            combinedData.sort((a, b) => (a.time as number) - (b.time as number));
-
-            // Remove duplicates (same time) - keep new data, discard old
-            const uniqueData: CandlestickData<Time>[] = [];
-            const timeSet = new Set<number>();
-            for (let i = combinedData.length - 1; i >= 0; i--) {
-              const time = combinedData[i].time as number;
-              if (!timeSet.has(time)) {
-                uniqueData.unshift(combinedData[i]);
-                timeSet.add(time);
-              }
-            }
-
-            console.log(`Combined ${existingData.length} existing + ${chartData.length} new = ${uniqueData.length} unique candles`);
-            candlestickSeriesRef.current.setData(uniqueData);
-            console.log('✅ New candles appended successfully');
-
-            // After appending, scroll to show the latest candle
-            if (chartRef.current) {
-              requestAnimationFrame(() => {
-                if (chartRef.current) {
-                  try {
-                    const timeScale = chartRef.current.timeScale();
-                    // Scroll right to show the newly appended candles
-                    timeScale.scrollToPosition(5, false);
-                    console.log('✅ Chart scrolled to show new candles');
-                  } catch (scrollErr) {
-                    console.warn('Failed to scroll chart:', scrollErr);
-                  }
-                }
-              });
-            }
-          } else {
-            // For full updates, replace all data
-            // Make sure data is sorted before setting
-            chartData.sort((a, b) => (a.time as number) - (b.time as number));
-            console.log(`📈 Setting ${chartData.length} candles to chart series`);
-            candlestickSeriesRef.current.setData(chartData);
-            console.log('✅ Chart data updated successfully');
-          }
-
-          updatePriceScaleWidth();
+          // Set all data
+          chartData.sort((a, b) => (a.time as number) - (b.time as number));
+          console.log(`📈 Setting ${chartData.length} candles to chart series`);
+          candlestickSeriesRef.current.setData(chartData);
+          console.log('✅ Chart data updated successfully');
 
           // Log what's visible in the chart
           if (chartRef.current) {
@@ -398,8 +315,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           console.error('❌ candlestickSeriesRef.current is null!');
         }
 
-        // Fit content to visible range AFTER data is set (only for full updates, not incremental)
-        if (chartRef.current && !isIncrementalUpdate) {
+        // Fit content to visible range AFTER data is set
+        if (chartRef.current) {
           // Use requestAnimationFrame twice to ensure rendering happens after data is set
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
@@ -431,66 +348,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     if (hasInitialized) {
       fetchData();
     }
-  }, [exchange, market, startTime, endTime, timeframe, hasInitialized, ohlcvData, updatePriceScaleWidth, isIncrementalUpdate]);
-
-  // Separate effect for updating chart view based on visible indices (panning)
-  // This only updates the UI without re-fetching data
-  useEffect(() => {
-    if (!candlestickSeriesRef.current || !ohlcvData || ohlcvData.length === 0 ||
-        visibleDataStartIndex === undefined || visibleDataEndIndex === undefined) {
-      return;
-    }
-
-    try {
-      // Slice the pre-loaded data based on visible indices
-      const visibleCandles = ohlcvData.slice(visibleDataStartIndex, visibleDataEndIndex);
-      console.log(`📊 Updating visible range: showing ${visibleCandles.length} candles from index ${visibleDataStartIndex} to ${visibleDataEndIndex}`);
-
-      if (visibleCandles.length === 0) {
-        console.warn('No candles in visible range');
-        return;
-      }
-
-      // Transform only the visible candles to chart format
-      const chartData: CandlestickData<Time>[] = [];
-      for (const candle of visibleCandles) {
-        const timeInSeconds = new Date(candle.ts).getTime() / 1000;
-        if (!isFinite(timeInSeconds) || timeInSeconds <= 0) {
-          console.error(`Skipping invalid candle with timestamp: ${candle.ts}`);
-          continue;
-        }
-        chartData.push({
-          time: timeInSeconds as Time,
-          open: candle.o,
-          high: candle.h,
-          low: candle.l,
-          close: candle.c,
-        });
-      }
-
-      if (chartData.length > 0) {
-        chartData.sort((a, b) => (a.time as number) - (b.time as number));
-        candlestickSeriesRef.current.setData(chartData);
-
-        // Fit content to show all visible candles
-        if (chartRef.current) {
-          requestAnimationFrame(() => {
-            if (chartRef.current) {
-              try {
-                const timeScale = chartRef.current.timeScale();
-                timeScale.fitContent();
-                console.log('✅ Chart updated for visible range');
-              } catch (fitErr) {
-                console.warn('Failed to fit content:', fitErr);
-              }
-            }
-          });
-        }
-      }
-    } catch (err) {
-      console.error('Failed to update visible range:', err);
-    }
-  }, [visibleDataStartIndex, visibleDataEndIndex, ohlcvData]);
+  }, [exchange, market, startTime, endTime, timeframe, hasInitialized]);
 
   if (error) {
     return (

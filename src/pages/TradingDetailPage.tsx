@@ -64,8 +64,6 @@ export const TradingDetailPage: React.FC = () => {
   // Data refresh state management
   const [dataRefreshInterval, setDataRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [performanceRefreshTrigger, setPerformanceRefreshTrigger] = useState(0);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const isRefreshing2 = useRef(false);
 
   // Convert timeframe string to seconds
@@ -348,7 +346,7 @@ export const TradingDetailPage: React.FC = () => {
     setIsRefreshing(true);
 
     try {
-      console.log('Refreshing all page data, auto-refresh enabled:', autoRefreshEnabled);
+      console.log('Refreshing all page data');
 
       // Refresh trading data (without showing loading state)
       await fetchTradingData(false);
@@ -358,11 +356,6 @@ export const TradingDetailPage: React.FC = () => {
         await checkBotStatus(bot.record.id);
       }
 
-      // Always trigger performance widget refresh - the widget will decide how to handle it
-      const newTrigger = Date.now();
-      console.log('Setting performance refresh trigger to:', newTrigger);
-      setPerformanceRefreshTrigger(newTrigger);
-
       console.log('Data refresh completed successfully');
     } catch (err) {
       console.error('Failed to refresh data:', err);
@@ -371,7 +364,7 @@ export const TradingDetailPage: React.FC = () => {
       isRefreshing2.current = false;
       setIsRefreshing(false);
     }
-  }, [autoRefreshEnabled, bot?.record.id]);
+  }, [bot?.record.id]);
 
 
   // Start automatic data refresh when page loads and user is authenticated
@@ -885,7 +878,7 @@ export const TradingDetailPage: React.FC = () => {
           {/* Trading Info */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
             <h2 className="text-lg font-medium text-gray-900 mb-4">{t('trading.detail.overview')}</h2>
-            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${trading.type === 'real' && (trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.strategy')}</div>
                 <div className="text-sm text-gray-900">{bot?.record.spec.params?.strategy_name || trading.info?.strategy_name || trading.info?.strategy || 'N/A'}</div>
@@ -898,7 +891,7 @@ export const TradingDetailPage: React.FC = () => {
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.exchangeBinding')}</div>
                 <div className="text-sm text-gray-900">{exchangeBinding ? exchangeBinding.name : 'Loading...'}</div>
               </div>
-              {trading.type === 'real' && (trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) && (
+              {(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) && (
                 <div>
                   <div className="text-sm font-medium text-gray-600">{t('trading.detail.initialFunds')}</div>
                   <div className="text-sm text-gray-900">
@@ -918,9 +911,6 @@ export const TradingDetailPage: React.FC = () => {
             trading={trading}
             showHeader={false}
             showHighlights={false}
-            refreshTrigger={performanceRefreshTrigger}
-            autoRefreshEnabled={autoRefreshEnabled}
-            onAutoRefreshToggle={setAutoRefreshEnabled}
           />
         </div>
       </div>

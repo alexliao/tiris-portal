@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, memo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Scatter } from 'recharts';
-import { getEquityCurve, getEquityCurveByTimeRange, getTradingLogs, getSubAccountsByTrading, getOHLCV, ApiError, type Trading } from '../../utils/api';
+import { getEquityCurve, getTradingLogs, getSubAccountsByTrading, ApiError, type Trading } from '../../utils/api';
 import { transformNewEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
 import CandlestickChart from './CandlestickChart';
 
@@ -18,9 +18,6 @@ interface TradingPerformanceWidgetProps {
   showHeader?: boolean;
   showHighlights?: boolean;
   height?: string;
-  refreshTrigger?: number;
-  autoRefreshEnabled?: boolean;
-  onAutoRefreshToggle?: (enabled: boolean) => void;
 }
 
 const areTradingPointsEqual = (a: TradingDataPoint, b: TradingDataPoint): boolean => {
@@ -88,8 +85,6 @@ type ChartState = {
   data: TradingDataPoint[];
   benchmarkData: TradingDataPoint[];
   metrics: TradingMetrics;
-  ohlcvData?: any[];
-  fullOHLCVData?: any[]; // Full OHLCV data for the entire time range (for panning without API calls)
 };
 
 // Per-timeframe data cache to store loaded data for each timeframe
@@ -98,12 +93,10 @@ type TimeframeDataCache = {
     data: TradingDataPoint[];
     benchmarkData: TradingDataPoint[];
     metrics: TradingMetrics;
-    fullOHLCVData?: any[];
     lastUpdateTimestamp?: number;
   };
 };
 
-const VISIBLE_WINDOW_SIZE = 100; // Number of data points to display at once
 const TOTAL_DATA_TO_LOAD = 500; // Total number of data points to load from backend
 
 const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps> = ({
@@ -111,10 +104,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   className = '',
   showHeader = true,
   showHighlights = true,
-  height = 'h-screen',
-  refreshTrigger = 0,
-  autoRefreshEnabled = true,
-  onAutoRefreshToggle
+  height = 'h-screen'
 }) => {
   const { t } = useTranslation();
   const [chartState, setChartState] = useState<ChartState>({
@@ -129,139 +119,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [stockSymbol, setStockSymbol] = useState<string>('ETH');
   const [quoteSymbol, setQuoteSymbol] = useState<string>('USDT');
   const [isRefetchingData, setIsRefetchingData] = useState(false);
-  const [rightAxisWidth, setRightAxisWidth] = useState(DEFAULT_RIGHT_AXIS_WIDTH);
-  const [visibleStartIndex, setVisibleStartIndex] = useState(0);
   const [initialized, setInitialized] = useState(false);
-  const [lastUpdateTimestamp, setLastUpdateTimestamp] = useState<number | null>(null);
-  const [isIncrementalOHLCVUpdate, setIsIncrementalOHLCVUpdate] = useState(false);
+  const [candlestickTimeRange, setCandlestickTimeRange] = useState<{ startTime: number; endTime: number } | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const userIsPanningRef = useRef(false);
-  const panDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Per-timeframe data cache to store data loaded for each timeframe
   const timeframeDataCacheRef = useRef<TimeframeDataCache>({});
 
-  // Helper function to get timeframe duration in milliseconds
-  const getTimeframeDurationMs = (timeframe: Timeframe): number => {
-    const durationMap: Record<Timeframe, number> = {
-      '1m': 1 * 60 * 1000,
-      '1h': 60 * 60 * 1000,
-      '4h': 4 * 60 * 60 * 1000,
-      '8h': 8 * 60 * 60 * 1000,
-      '1d': 24 * 60 * 60 * 1000,
-      '1w': 7 * 24 * 60 * 60 * 1000,
-    };
-    return durationMap[timeframe];
-  };
-
-  const handlePriceScaleWidthChange = useCallback((width: number) => {
-    if (!Number.isFinite(width)) {
-      return;
-    }
-
-    const normalized = Math.max(Math.round(width), 40);
-
-    setRightAxisWidth(prevWidth => {
-      if (Math.abs(prevWidth - normalized) <= 1) {
-        return prevWidth;
-      }
-      return normalized;
-    });
-  }, []);
-
-  const handleChartWheel = useCallback((e: WheelEvent) => {
-    if (!chartContainerRef.current?.contains(e.target as Node)) {
-      return;
-    }
-
-    // Disable wheel scrolling on candlestick chart (TradingView chart)
-    const target = e.target as HTMLElement;
-    if (target?.closest('[data-testid="candlestick-chart-container"]')) {
-      return;
-    }
-
-    // Only handle horizontal scrolling (left/right mouse wheel)
-    // Disable vertical scrolling (up/down)
-    const hasHorizontalScroll = Math.abs(e.deltaX) > 0;
-    const hasVerticalScroll = Math.abs(e.deltaY) > 0;
-
-    // If there's vertical scroll without horizontal scroll, ignore it
-    if (hasVerticalScroll && !hasHorizontalScroll) {
-      return;
-    }
-
-    const scrollDelta = e.deltaX;
-
-    // Only handle scroll events if there's actual horizontal movement
-    if (Math.abs(scrollDelta) < 1) {
-      return;
-    }
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Mark that user is actively panning
-    userIsPanningRef.current = true;
-
-    // Clear any existing debounce timer
-    if (panDebounceTimeoutRef.current) {
-      clearTimeout(panDebounceTimeoutRef.current);
-    }
-
-    // Set a timer to reset the panning flag after user stops interacting (500ms)
-    panDebounceTimeoutRef.current = setTimeout(() => {
-      userIsPanningRef.current = false;
-    }, 500);
-
-    // Scroll increment per wheel event (1 data point)
-    const scrollIncrement = 1;
-
-    // Positive delta = scroll right = move forward in time (increase index)
-    // Negative delta = scroll left = move back in time (decrease index)
-    const direction = scrollDelta > 0 ? 1 : -1;
-    const newIndex = visibleStartIndex + direction * scrollIncrement;
-
-    // Constrain to valid range
-    const maxStartIndex = Math.max(0, chartState.data.length - VISIBLE_WINDOW_SIZE);
-    const constrainedIndex = Math.max(0, Math.min(newIndex, maxStartIndex));
-
-    setVisibleStartIndex(constrainedIndex);
-  }, [visibleStartIndex, chartState.data.length]);
-
-  // Fetch OHLCV data for the entire time range (called once per timeframe change)
-  const fetchFullOHLCVData = useCallback(async (startTime: number, endTime: number, stockSymbol: string, quoteSymbol: string) => {
-    try {
-      console.log(`Fetching full OHLCV data for ${stockSymbol}/${quoteSymbol} from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
-
-      const marketFormatted = `${stockSymbol}_${quoteSymbol}`;
-      const ohlcvCandles = await getOHLCV('binance', marketFormatted, startTime, endTime, selectedTimeframe);
-
-      console.log(`Fetched ${ohlcvCandles.length} OHLCV candles for full range`);
-
-      return ohlcvCandles;
-    } catch (err) {
-      console.error('Failed to fetch full OHLCV data:', err);
-      // Don't throw, just return empty array - chart can still function with time-based fetching as fallback
-      return [];
-    }
-  }, [selectedTimeframe]);
-
-  // Fetch incremental OHLCV data (new candles since last update)
-  const fetchIncrementalOHLCVData = useCallback(async (startTime: number, endTime: number, stockSymbol: string, quoteSymbol: string) => {
-    try {
-      console.log(`Fetching incremental OHLCV data for ${stockSymbol}/${quoteSymbol} from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
-
-      const marketFormatted = `${stockSymbol}_${quoteSymbol}`;
-      const ohlcvCandles = await getOHLCV('binance', marketFormatted, startTime, endTime, selectedTimeframe);
-
-      console.log(`Fetched ${ohlcvCandles.length} new OHLCV candles for incremental update`);
-
-      return ohlcvCandles;
-    } catch (err) {
-      console.error('Failed to fetch incremental OHLCV data:', err);
-      return [];
-    }
-  }, [selectedTimeframe]);
 
   // Extract trading data fetching logic into reusable function
   const fetchTradingData = useCallback(async (isInitialLoad = false) => {
@@ -348,20 +212,17 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       // start_time and end_time are ISO strings from the API, convert to milliseconds
       const startTimeMs = new Date(equityCurve.start_time).getTime();
       const endTimeMs = new Date(equityCurve.end_time).getTime();
-      const fullTimeRange = {
-        start: startTimeMs,
-        end: endTimeMs,
-      };
-      console.log(`Equity curve time range: ${new Date(fullTimeRange.start).toISOString()} to ${new Date(fullTimeRange.end).toISOString()}`);
+      console.log(`Equity curve time range: ${new Date(startTimeMs).toISOString()} to ${new Date(endTimeMs).toISOString()}`);
 
-      const fullOHLCVData = await fetchFullOHLCVData(fullTimeRange.start, fullTimeRange.end, fetchedStockSymbol, fetchedQuoteSymbol);
+      // Store time range for candlestick chart
+      setCandlestickTimeRange({ startTime: startTimeMs, endTime: endTimeMs });
 
       setChartState((previous) => {
         const mergedData = mergeTradingDataSets(previous.data, data);
         const mergedBenchmark = mergeTradingDataSets(previous.benchmarkData, benchmarkData);
         const metricsChanged = !areMetricsEqual(previous.metrics, calculatedMetrics);
 
-        if (!mergedData.changed && !mergedBenchmark.changed && !metricsChanged && previous.fullOHLCVData === fullOHLCVData) {
+        if (!mergedData.changed && !mergedBenchmark.changed && !metricsChanged) {
           return previous;
         }
 
@@ -371,7 +232,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           data: mergedData.value,
           benchmarkData: mergedBenchmark.value,
           metrics: calculatedMetrics,
-          fullOHLCVData: fullOHLCVData,
           lastUpdateTimestamp: mergedData.value.length > 0 ? mergedData.value[mergedData.value.length - 1].timestampNum : undefined
         };
 
@@ -380,17 +240,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         return {
           data: mergedData.changed ? mergedData.value : previous.data,
           benchmarkData: mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData,
-          metrics: metricsChanged ? calculatedMetrics : previous.metrics,
-          fullOHLCVData: fullOHLCVData
+          metrics: metricsChanged ? calculatedMetrics : previous.metrics
         };
       });
 
-      // Track the timestamp of the last data point for incremental updates
-      if (data.length > 0) {
-        const lastDataPoint = data[data.length - 1];
-        setLastUpdateTimestamp(lastDataPoint.timestampNum);
-        console.log(`Updated last timestamp for incremental refresh: ${new Date(lastDataPoint.timestampNum).toISOString()}`);
-      }
     } catch (err) {
       console.error('Failed to fetch trading data:', err);
       // Only show errors during initial load, silently handle refresh errors
@@ -411,189 +264,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         setIsRefetchingData(false);
       }
     }
-  }, [trading.id, selectedTimeframe, fetchFullOHLCVData]);
+  }, [trading.id, selectedTimeframe]);
 
-  // Incremental fetch for auto-refresh - only loads new data since last update
-  const fetchIncrementalData = useCallback(async () => {
-    // Only do incremental fetch if we have a previous timestamp
-    if (lastUpdateTimestamp === null || chartState.data.length === 0) {
-      console.log('No previous timestamp for incremental fetch, falling back to regular fetch');
-      await fetchTradingData(false);
-      return;
-    }
-
-    try {
-      setIsRefetchingData(true);
-
-      // Determine if authentication is required based on trading type
-      const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
-
-      // Fetch only new trading logs since last update to reduce API load
-      // Pass lastUpdateTimestamp to filter logs server-side
-      const tradingLogs = await getTradingLogs(trading.id, requireAuth, lastUpdateTimestamp ?? undefined);
-
-      // Calculate time range for incremental fetch
-      // Start from last timestamp (not adding timeframe duration - that would make startTime > endTime)
-      // End at current time to fetch any new data since last update
-      const startTimeMs = lastUpdateTimestamp;
-      const endTimeMs = new Date().getTime();
-
-      console.log(`Fetching incremental data from ${new Date(startTimeMs).toISOString()} to ${new Date(endTimeMs).toISOString()}`);
-
-      // Get fresh equity curve data for just the new time range
-      const incrementalEquityCurve = await getEquityCurveByTimeRange(
-        trading.id,
-        selectedTimeframe,
-        startTimeMs,
-        endTimeMs,
-        stockSymbol,
-        quoteSymbol,
-        requireAuth
-      );
-
-      if (!incrementalEquityCurve || !incrementalEquityCurve.data_points) {
-        console.log('No new data points in incremental fetch');
-        setIsRefetchingData(false);
-        return;
-      }
-
-      // Get the initial balance from trading info for ROI calculation
-      const initialBalance = typeof trading.info?.initial_funds === 'number'
-        ? trading.info.initial_funds
-        : (typeof trading.info?.initial_balance === 'number' ? trading.info.initial_balance : undefined);
-
-      // Transform the new data with the correct initial balance
-      // This ensures ROI for incremental data is calculated relative to the true initial balance,
-      // maintaining consistency with the initial data load
-      const { data: correctedNewData, metrics: newMetrics } = transformNewEquityCurveToChartData(
-        incrementalEquityCurve,
-        tradingLogs,
-        selectedTimeframe,
-        initialBalance
-      );
-
-      console.log(`Received ${correctedNewData.length} new data points from incremental fetch`);
-
-      // Create benchmark data for the new points (same as initial load)
-      const newBenchmarkData: TradingDataPoint[] = correctedNewData.map(point => ({
-        date: point.date,
-        timestamp: point.timestamp,
-        timestampNum: point.timestampNum,
-        netValue: 0,
-        roi: point.roi,
-        benchmark: point.benchmark ?? 0,
-        benchmarkPrice: point.benchmarkPrice ?? 0,
-      }));
-
-      // Fetch incremental OHLCV data for candlestick chart
-      const incrementalOHLCVData = await fetchIncrementalOHLCVData(startTimeMs, endTimeMs, stockSymbol, quoteSymbol);
-      console.log(`Received ${incrementalOHLCVData.length} new OHLCV candles from incremental fetch`);
-
-      // Signal that candlestick chart should use append mode for next render
-      setIsIncrementalOHLCVUpdate(true);
-
-      // Append new data to existing data
-      setChartState((previous) => {
-        if (correctedNewData.length === 0) {
-          return previous;
-        }
-
-        // Merge trading data points by timestamp to avoid duplicates
-        let mergedData: TradingDataPoint[];
-        let mergedBenchmarkData: TradingDataPoint[];
-
-        if (previous.data.length > 0) {
-          // Create a map of existing data points by timestamp for quick lookup
-          const existingDataMap = new Map<number, TradingDataPoint>();
-          previous.data.forEach(point => {
-            existingDataMap.set(point.timestampNum, point);
-          });
-
-          // Filter out new data points that already exist (by timestamp)
-          const trulyNewDataPoints = correctedNewData.filter(point => !existingDataMap.has(point.timestampNum));
-          mergedData = [...previous.data, ...trulyNewDataPoints];
-          console.log(`Deduplicating trading data: removed ${correctedNewData.length - trulyNewDataPoints.length} duplicate data points`);
-
-          // Recalculate ROI for all merged data to ensure consistency with the original initial balance
-          // This prevents discontinuities when equity values change slightly in API responses
-          const initialEquity = previous.data[0]?.netValue ?? initialBalance ?? 0;
-          if (initialEquity > 0) {
-            mergedData = mergedData.map(point => ({
-              ...point,
-              roi: Math.round(((point.netValue - initialEquity) / initialEquity) * 10000) / 100
-            }));
-          }
-
-          // Do the same for benchmark data
-          const existingBenchmarkMap = new Map<number, TradingDataPoint>();
-          previous.benchmarkData.forEach(point => {
-            existingBenchmarkMap.set(point.timestampNum, point);
-          });
-
-          const trulyNewBenchmarkPoints = newBenchmarkData.filter(point => !existingBenchmarkMap.has(point.timestampNum));
-          mergedBenchmarkData = [...previous.benchmarkData, ...trulyNewBenchmarkPoints];
-          console.log(`Deduplicating benchmark data: removed ${newBenchmarkData.length - trulyNewBenchmarkPoints.length} duplicate benchmark points`);
-        } else {
-          // First time - no existing data to merge with
-          mergedData = correctedNewData;
-          mergedBenchmarkData = newBenchmarkData;
-        }
-
-        const metricsChanged = !areMetricsEqual(previous.metrics, newMetrics);
-
-        // Update the cache with the new appended data
-        const cacheKey = selectedTimeframe;
-
-        // Append OHLCV candles to existing data, deduplicating by timestamp
-        let mergedOHLCVData: any[];
-        if (previous.fullOHLCVData && previous.fullOHLCVData.length > 0) {
-          // Get the timestamp of the last existing candle
-          const lastExistingCandle = previous.fullOHLCVData[previous.fullOHLCVData.length - 1];
-          const lastExistingTime = new Date(lastExistingCandle.ts).getTime();
-
-          // Filter out incremental candles that have same or earlier timestamp than the last existing candle
-          const trulyNewCandles = incrementalOHLCVData.filter(candle => {
-            const candleTime = new Date(candle.ts).getTime();
-            return candleTime > lastExistingTime;
-          });
-
-          mergedOHLCVData = [...previous.fullOHLCVData, ...trulyNewCandles];
-          console.log(`Deduplicating OHLCV: removed ${incrementalOHLCVData.length - trulyNewCandles.length} duplicate candles`);
-        } else {
-          mergedOHLCVData = incrementalOHLCVData;
-        }
-
-        timeframeDataCacheRef.current[cacheKey] = {
-          data: mergedData,
-          benchmarkData: mergedBenchmarkData,
-          metrics: metricsChanged ? newMetrics : previous.metrics,
-          fullOHLCVData: mergedOHLCVData,
-          lastUpdateTimestamp: mergedData.length > 0 ? mergedData[mergedData.length - 1].timestampNum : undefined
-        };
-
-        console.log(`Updated cache for timeframe ${cacheKey}: now ${mergedData.length} data points, ${mergedBenchmarkData.length} benchmark points, ${mergedOHLCVData.length} OHLCV candles`);
-
-        return {
-          data: mergedData,
-          benchmarkData: mergedBenchmarkData,
-          metrics: metricsChanged ? newMetrics : previous.metrics,
-          fullOHLCVData: mergedOHLCVData
-        };
-      });
-
-      // Update the last timestamp for next incremental fetch
-      if (correctedNewData.length > 0) {
-        const lastNewPoint = correctedNewData[correctedNewData.length - 1];
-        setLastUpdateTimestamp(lastNewPoint.timestampNum);
-        console.log(`Incremental fetch completed. New last timestamp: ${new Date(lastNewPoint.timestampNum).toISOString()}`);
-      }
-    } catch (err) {
-      console.error('Failed to fetch incremental data:', err);
-      // Silently handle errors during incremental updates
-    } finally {
-      setIsRefetchingData(false);
-    }
-  }, [lastUpdateTimestamp, selectedTimeframe, trading.id, trading.type, stockSymbol, quoteSymbol]);
 
   // Initial data loading effect - only run once on mount
   useEffect(() => {
@@ -613,10 +285,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         setChartState({
           data: cachedData.data,
           benchmarkData: cachedData.benchmarkData,
-          metrics: cachedData.metrics,
-          fullOHLCVData: cachedData.fullOHLCVData
+          metrics: cachedData.metrics
         });
-        setLastUpdateTimestamp(cachedData.lastUpdateTimestamp ?? null);
         setInitialized(false); // Reset to show latest 100 points
       } else {
         // No cache for this timeframe, fetch fresh data
@@ -625,106 +295,21 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         fetchTradingData(false); // Don't show loading spinner
       }
     }
-  }, [selectedTimeframe]); // Only when timeframe changes
+  }, [selectedTimeframe]);
 
-  // Reset visible start index when data changes significantly
+  // Reset initialized flag when data changes significantly
   useEffect(() => {
     if (!initialized && chartState.data.length > 0) {
-      // On initial load, position to show the latest 100 data points
-      const newStartIndex = Math.max(0, chartState.data.length - VISIBLE_WINDOW_SIZE);
-      setVisibleStartIndex(newStartIndex);
+      // On initial load or timeframe change, mark as initialized
       setInitialized(true);
-    } else if (chartState.data.length <= VISIBLE_WINDOW_SIZE) {
-      // If all data is less than window size, reset to 0
-      setVisibleStartIndex(0);
     }
   }, [chartState.data.length, initialized]);
 
-  // Auto-scroll to show newly appended data during incremental updates
-  // This keeps the chart showing the latest data points when new data is added
-  useEffect(() => {
-    if (!initialized) return; // Skip during initial load
-    if (userIsPanningRef.current) return; // Skip if user is actively panning
-
-    // After initialization, if data grows beyond current visible window,
-    // adjust the visible start index to keep showing the latest data
-    const maxStartIndex = Math.max(0, chartState.data.length - VISIBLE_WINDOW_SIZE);
-    const visibleEndIndex = visibleStartIndex + VISIBLE_WINDOW_SIZE;
-
-    // If we're viewing the end of the data (last visible point is near the end),
-    // auto-scroll to keep showing the latest newly appended data
-    if (visibleEndIndex >= chartState.data.length - 5) {
-      // User is at the end, so auto-scroll to keep showing latest data
-      console.log(`Auto-scrolling to show new data: from ${visibleStartIndex} to ${maxStartIndex}, total data: ${chartState.data.length}`);
-      setVisibleStartIndex(maxStartIndex);
-    }
-  }, [chartState.data.length, initialized, visibleStartIndex]);
-
-  // Refresh trigger effect - refetch data when refreshTrigger changes or auto-refresh is enabled
-  // Uses incremental fetch to load only new data since last update
-  // Consolidated single effect to avoid duplicate API calls
-  useEffect(() => {
-    if (refreshTrigger > 0 && autoRefreshEnabled) {
-      fetchIncrementalData(); // Use incremental fetch to reduce API load
-    }
-  }, [refreshTrigger, autoRefreshEnabled, fetchIncrementalData]);
-
-  // Attach wheel event listener to chart container
-  useEffect(() => {
-    const container = chartContainerRef.current;
-    if (!container) return;
-
-    container.addEventListener('wheel', handleChartWheel as EventListener, { passive: false });
-
-    return () => {
-      container.removeEventListener('wheel', handleChartWheel as EventListener);
-    };
-  }, [handleChartWheel]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (panDebounceTimeoutRef.current) {
-        clearTimeout(panDebounceTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Reset incremental OHLCV update flag after chart renders and scrolls
-  // Wait for 2 animation frames to ensure chart renders, updates, and scroll completes
-  useEffect(() => {
-    if (isIncrementalOHLCVUpdate) {
-      let frameId1: number;
-      let frameId2: number;
-
-      frameId1 = requestAnimationFrame(() => {
-        frameId2 = requestAnimationFrame(() => {
-          setIsIncrementalOHLCVUpdate(false);
-        });
-      });
-
-      return () => {
-        cancelAnimationFrame(frameId1);
-        cancelAnimationFrame(frameId2);
-      };
-    }
-  }, [isIncrementalOHLCVUpdate]);
 
   // Data is already filtered by the API with the selected timeframe
-  // No need for client-side filtering
-  const allData = chartState.data;
-
-  // Slice data for visible window
-  const filteredData = useMemo(() => {
-    const visibleEndIndex = Math.min(visibleStartIndex + VISIBLE_WINDOW_SIZE, allData.length);
-    return allData.slice(visibleStartIndex, visibleEndIndex);
-  }, [allData, visibleStartIndex]);
-
-  // Slice benchmark data for visible window
-  const visibleBenchmarkData = useMemo(() => {
-    const visibleEndIndex = Math.min(visibleStartIndex + VISIBLE_WINDOW_SIZE, chartState.benchmarkData.length);
-    return chartState.benchmarkData.slice(visibleStartIndex, visibleEndIndex);
-  }, [chartState.benchmarkData, visibleStartIndex]);
+  // Show all data on the equity chart (no panning/slicing)
+  const filteredData = chartState.data;
+  const visibleBenchmarkData = chartState.benchmarkData;
 
   const yAxisDomain = useMemo<[number, number] | null>(() => {
     const roiValues = filteredData
@@ -1058,60 +643,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   )}
                 </div>
 
-                {/* Pan Controls */}
-                {allData.length > VISIBLE_WINDOW_SIZE && (
-                  <div className="flex items-center gap-2 ml-4">
-                    <button
-                      onClick={() => setVisibleStartIndex(Math.max(0, visibleStartIndex - VISIBLE_WINDOW_SIZE))}
-                      disabled={visibleStartIndex === 0}
-                      className="px-2 py-1 rounded-md text-sm bg-blue-100 text-blue-600 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed font-['Nunito']"
-                      title="Scroll left (earlier data)"
-                    >
-                      ← Prev
-                    </button>
-                    <span className="text-xs text-gray-600 font-['Nunito'] whitespace-nowrap">
-                      {visibleStartIndex + 1} - {Math.min(visibleStartIndex + VISIBLE_WINDOW_SIZE, allData.length)} / {allData.length}
-                    </span>
-                    <button
-                      onClick={() => setVisibleStartIndex(Math.min(allData.length - VISIBLE_WINDOW_SIZE, visibleStartIndex + VISIBLE_WINDOW_SIZE))}
-                      disabled={visibleStartIndex + VISIBLE_WINDOW_SIZE >= allData.length}
-                      className="px-2 py-1 rounded-md text-sm bg-blue-100 text-blue-600 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed font-['Nunito']"
-                      title="Scroll right (later data)"
-                    >
-                      Next →
-                    </button>
-                  </div>
-                )}
               </div>
-              {onAutoRefreshToggle && (
-                <div className="flex items-center space-x-2 text-sm font-['Nunito']">
-                  <span className="text-gray-600">{t('common.autoRefresh')}:</span>
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={autoRefreshEnabled}
-                      onChange={(e) => onAutoRefreshToggle(e.target.checked)}
-                      className="sr-only"
-                    />
-                    <div
-                      className={`w-10 h-5 rounded-full transition-colors cursor-pointer flex items-center ${
-                        autoRefreshEnabled ? 'bg-green-500' : 'bg-gray-300'
-                      }`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onAutoRefreshToggle(!autoRefreshEnabled);
-                      }}
-                    >
-                      <div
-                        className={`w-3 h-3 bg-white rounded-full shadow transform transition-transform duration-200 ease-in-out ml-0.5 pointer-events-none ${
-                          autoRefreshEnabled ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -1126,6 +658,32 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           onFocus={(e) => e.preventDefault()}
           tabIndex={-1}
         >
+          {/* Candlestick Chart */}
+          <div style={{ flex: '0 0 35%', outline: 'none', minHeight: '250px', display: 'flex', flexDirection: 'column', marginBottom: '10px' }} tabIndex={-1}>
+            <div className="mb-2">
+              <h4 className="text-sm font-['Nunito'] font-semibold text-gray-700">
+                {t('trading.chart.priceChart')} ({stockSymbol}/{quoteSymbol})
+              </h4>
+            </div>
+            <div
+              style={{
+                flex: '1 1 auto',
+                minHeight: '250px',
+                marginLeft: DEFAULT_LEFT_AXIS_WIDTH + CHART_LEFT_MARGIN,
+                marginRight: CHART_RIGHT_MARGIN,
+              }}
+            >
+              <CandlestickChart
+                exchange="binance"
+                market={`${stockSymbol}/${quoteSymbol}`}
+                timeframe={selectedTimeframe}
+                startTime={candlestickTimeRange?.startTime}
+                endTime={candlestickTimeRange?.endTime}
+                height={250}
+              />
+            </div>
+          </div>
+
           {/* Main Chart - Performance and Benchmark */}
           <div style={{ flex: '0 0 30%', marginBottom: '10px', outline: 'none' }} tabIndex={-1}>
             <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
@@ -1163,7 +721,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   fontSize={12}
                   tickFormatter={(value) => `$${value.toFixed(0)}`}
                   domain={rightAxisDomain ?? ['auto', 'auto']}
-                  width={rightAxisWidth}
+                  width={DEFAULT_RIGHT_AXIS_WIDTH}
                 />
                 <Tooltip content={<CustomTooltip />} />
 
@@ -1324,7 +882,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   fontSize={12}
                   tickFormatter={(value) => `${value.toFixed(2)} ETH`}
                   domain={[0, 'dataMax']}
-                  width={rightAxisWidth}
+                  width={DEFAULT_RIGHT_AXIS_WIDTH}
                 />
 
                 {/* Position Area Chart */}
@@ -1355,35 +913,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 ))}
               </ComposedChart>
             </ResponsiveContainer>
-          </div>
-
-          {/* Candlestick Chart */}
-          <div style={{ flex: '1 1 auto', outline: 'none', minHeight: '200px', display: 'flex', flexDirection: 'column' }} tabIndex={-1}>
-            <div className="mb-2">
-              <h4 className="text-sm font-['Nunito'] font-semibold text-gray-700">
-                {t('trading.chart.priceChart')} ({stockSymbol}/{quoteSymbol})
-              </h4>
-            </div>
-            <div
-              style={{
-                flex: '1 1 auto',
-                minHeight: '200px',
-                marginLeft: DEFAULT_LEFT_AXIS_WIDTH + CHART_LEFT_MARGIN,
-                marginRight: CHART_RIGHT_MARGIN,
-              }}
-            >
-              <CandlestickChart
-                exchange="binance"
-                market={`${stockSymbol}/${quoteSymbol}`}
-                timeframe={selectedTimeframe}
-                height={200}
-                ohlcvData={chartState.fullOHLCVData}
-                visibleDataStartIndex={visibleStartIndex}
-                visibleDataEndIndex={Math.min(visibleStartIndex + VISIBLE_WINDOW_SIZE, chartState.fullOHLCVData?.length || 0)}
-                onPriceScaleWidthChange={handlePriceScaleWidthChange}
-                isIncrementalUpdate={isIncrementalOHLCVUpdate}
-              />
-            </div>
           </div>
         </div>
 
@@ -1465,10 +994,7 @@ const arePropsEqual = (
     prev.className === next.className &&
     prev.showHeader === next.showHeader &&
     prev.showHighlights === next.showHighlights &&
-    prev.height === next.height &&
-    prev.refreshTrigger === next.refreshTrigger &&
-    prev.autoRefreshEnabled === next.autoRefreshEnabled &&
-    prev.onAutoRefreshToggle === next.onAutoRefreshToggle
+    prev.height === next.height
   );
 };
 
