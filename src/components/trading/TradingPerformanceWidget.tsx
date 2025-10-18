@@ -532,14 +532,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           const trulyNewBenchmarkPoints = newBenchmarkData.filter(point => !existingBenchmarkMap.has(point.timestampNum));
           mergedBenchmarkData = [...previous.benchmarkData, ...trulyNewBenchmarkPoints];
           console.log(`Deduplicating benchmark data: removed ${newBenchmarkData.length - trulyNewBenchmarkPoints.length} duplicate benchmark points`);
-
-          // Recalculate ROI for benchmark data as well
-          if (initialEquity > 0) {
-            mergedBenchmarkData = mergedBenchmarkData.map(point => ({
-              ...point,
-              roi: Math.round(((point.netValue - initialEquity) / initialEquity) * 10000) / 100
-            }));
-          }
         } else {
           // First time - no existing data to merge with
           mergedData = correctedNewData;
@@ -743,11 +735,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const yAxisDomain = useMemo<[number, number] | null>(() => {
     const roiValues = filteredData
       .map(point => point.roi)
-      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value !== null);
 
     const benchmarkValues = visibleBenchmarkData
       .map(point => point.benchmark)
-      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value !== null);
 
     const values = [...roiValues, ...benchmarkValues];
     if (values.length === 0) {
@@ -761,12 +753,16 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       return null;
     }
 
+    // If range is very small or zero, add padding
     if (minValue === maxValue) {
       const offset = Math.abs(minValue) < 1 ? 1 : Math.abs(minValue) * 0.1;
       return [minValue - offset, maxValue + offset];
     }
 
-    const padding = Math.max((maxValue - minValue) * 0.1, 0.5);
+    // Calculate dynamic padding: 10% of the visible range on each side
+    const range = maxValue - minValue;
+    const padding = range * 0.1;
+
     return [minValue - padding, maxValue + padding];
   }, [filteredData, visibleBenchmarkData]);
 
