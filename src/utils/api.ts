@@ -267,13 +267,21 @@ export async function getTransactions(tradingId: string, requireAuth: boolean = 
     .then(response => response.transactions);
 }
 
-export async function getTradingLogs(tradingId: string, requireAuth: boolean = true): Promise<TradingLog[]> {
+export async function getTradingLogs(tradingId: string, requireAuth: boolean = true, sinceTimestamp?: number): Promise<TradingLog[]> {
   const allLogs: TradingLog[] = [];
   let offset = 0;
   const limit = 1000;
 
+  // Build query parameters
+  let query = `/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}`;
+  if (sinceTimestamp !== undefined) {
+    // Convert timestamp to ISO string for backend filtering
+    const sinceIso = new Date(sinceTimestamp).toISOString();
+    query = `/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}&since=${sinceIso}`;
+  }
+
   while (true) {
-    const response = await apiRequest<{ trading_logs: TradingLog[] }>(`/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}`, {}, requireAuth);
+    const response = await apiRequest<{ trading_logs: TradingLog[] }>(query, {}, requireAuth);
     const logs = response.trading_logs;
 
     if (logs.length === 0) {
@@ -287,6 +295,10 @@ export async function getTradingLogs(tradingId: string, requireAuth: boolean = t
     }
 
     offset += limit;
+    // Update query with new offset
+    query = sinceTimestamp !== undefined
+      ? `/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}&since=${new Date(sinceTimestamp).toISOString()}`
+      : `/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}`;
   }
 
   return allLogs;

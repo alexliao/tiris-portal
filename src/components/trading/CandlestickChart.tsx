@@ -244,7 +244,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     };
   }, [updatePriceScaleWidth]);
 
-  // Fetch and update OHLCV data
+  // Fetch and update OHLCV data when the data source or parameters change
+  // This effect handles data fetching and full updates
   useEffect(() => {
     const fetchData = async () => {
       if (!candlestickSeriesRef.current || !hasInitialized) return;
@@ -258,13 +259,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
         let candles: OHLCVCandle[];
 
-        // If visible indices are provided, slice from pre-loaded data (panning mode)
-        if (ohlcvData && ohlcvData.length > 0 && visibleDataStartIndex !== undefined && visibleDataEndIndex !== undefined) {
-          console.log(`Slicing OHLCV data from index ${visibleDataStartIndex} to ${visibleDataEndIndex} (total: ${ohlcvData.length} candles)`);
-          candles = ohlcvData.slice(visibleDataStartIndex as number, visibleDataEndIndex as number);
-        }
         // Use provided data if available (full dataset provided at once)
-        else if (ohlcvData && ohlcvData.length > 0) {
+        // Don't slice here - let the separate effect handle UI updates for visible indices
+        if (ohlcvData && ohlcvData.length > 0) {
           console.log(`Using provided OHLCV data: ${ohlcvData.length} candles`);
           candles = ohlcvData;
         }
@@ -434,7 +431,66 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     if (hasInitialized) {
       fetchData();
     }
-  }, [exchange, market, startTime, endTime, timeframe, hasInitialized, ohlcvData, visibleDataStartIndex, visibleDataEndIndex, updatePriceScaleWidth, isIncrementalUpdate]);
+  }, [exchange, market, startTime, endTime, timeframe, hasInitialized, ohlcvData, updatePriceScaleWidth, isIncrementalUpdate]);
+
+  // Separate effect for updating chart view based on visible indices (panning)
+  // This only updates the UI without re-fetching data
+  useEffect(() => {
+    if (!candlestickSeriesRef.current || !ohlcvData || ohlcvData.length === 0 ||
+        visibleDataStartIndex === undefined || visibleDataEndIndex === undefined) {
+      return;
+    }
+
+    try {
+      // Slice the pre-loaded data based on visible indices
+      const visibleCandles = ohlcvData.slice(visibleDataStartIndex, visibleDataEndIndex);
+      console.log(`📊 Updating visible range: showing ${visibleCandles.length} candles from index ${visibleDataStartIndex} to ${visibleDataEndIndex}`);
+
+      if (visibleCandles.length === 0) {
+        console.warn('No candles in visible range');
+        return;
+      }
+
+      // Transform only the visible candles to chart format
+      const chartData: CandlestickData<Time>[] = [];
+      for (const candle of visibleCandles) {
+        const timeInSeconds = new Date(candle.ts).getTime() / 1000;
+        if (!isFinite(timeInSeconds) || timeInSeconds <= 0) {
+          console.error(`Skipping invalid candle with timestamp: ${candle.ts}`);
+          continue;
+        }
+        chartData.push({
+          time: timeInSeconds as Time,
+          open: candle.o,
+          high: candle.h,
+          low: candle.l,
+          close: candle.c,
+        });
+      }
+
+      if (chartData.length > 0) {
+        chartData.sort((a, b) => (a.time as number) - (b.time as number));
+        candlestickSeriesRef.current.setData(chartData);
+
+        // Fit content to show all visible candles
+        if (chartRef.current) {
+          requestAnimationFrame(() => {
+            if (chartRef.current) {
+              try {
+                const timeScale = chartRef.current.timeScale();
+                timeScale.fitContent();
+                console.log('✅ Chart updated for visible range');
+              } catch (fitErr) {
+                console.warn('Failed to fit content:', fitErr);
+              }
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update visible range:', err);
+    }
+  }, [visibleDataStartIndex, visibleDataEndIndex, ohlcvData]);
 
   if (error) {
     return (

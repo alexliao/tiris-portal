@@ -428,8 +428,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       // Determine if authentication is required based on trading type
       const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
 
-      // Fetch trading logs once (these contain all historical trades)
-      const tradingLogs = await getTradingLogs(trading.id, requireAuth);
+      // Fetch only new trading logs since last update to reduce API load
+      // Pass lastUpdateTimestamp to filter logs server-side
+      const tradingLogs = await getTradingLogs(trading.id, requireAuth, lastUpdateTimestamp ?? undefined);
 
       // Calculate time range for incremental fetch
       // Start from last timestamp (not adding timeframe duration - that would make startTime > endTime)
@@ -592,7 +593,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     } finally {
       setIsRefetchingData(false);
     }
-  }, [lastUpdateTimestamp, chartState.data.length, selectedTimeframe, trading.id, trading.type, stockSymbol, quoteSymbol]);
+  }, [lastUpdateTimestamp, selectedTimeframe, trading.id, trading.type, stockSymbol, quoteSymbol]);
 
   // Initial data loading effect - only run once on mount
   useEffect(() => {
@@ -659,21 +660,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
   }, [chartState.data.length, initialized, visibleStartIndex]);
 
-  // Refresh trigger effect - refetch data when refreshTrigger changes
+  // Refresh trigger effect - refetch data when refreshTrigger changes or auto-refresh is enabled
   // Uses incremental fetch to load only new data since last update
+  // Consolidated single effect to avoid duplicate API calls
   useEffect(() => {
     if (refreshTrigger > 0 && autoRefreshEnabled) {
       fetchIncrementalData(); // Use incremental fetch to reduce API load
     }
   }, [refreshTrigger, autoRefreshEnabled, fetchIncrementalData]);
-
-  // Auto-refresh state change effect - refresh immediately when turned back on
-  // Uses incremental fetch to load only new data since last update
-  useEffect(() => {
-    if (autoRefreshEnabled && refreshTrigger > 0) {
-      fetchIncrementalData(); // Use incremental fetch to reduce API load
-    }
-  }, [autoRefreshEnabled, fetchIncrementalData, refreshTrigger]);
 
   // Attach wheel event listener to chart container
   useEffect(() => {

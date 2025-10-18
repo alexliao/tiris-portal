@@ -391,16 +391,15 @@ export const TradingDetailPage: React.FC = () => {
       console.log(`Starting automatic data refresh with ${refreshIntervalMs}ms interval (timeframe: ${timeframe || 'default'})`);
 
       // Create interval for data refresh based on timeframe
+      // Note: We capture the current refreshAllData function instead of including it in dependencies
+      // This prevents the interval from being recreated every time refreshAllData changes
+      const currentRefreshAllData = refreshAllData;
       const interval = setInterval(() => {
         console.log(`${refreshIntervalMs}ms interval triggered, calling refreshAllData`);
-        refreshAllData();
+        currentRefreshAllData();
       }, refreshIntervalMs);
 
       setDataRefreshInterval(interval);
-
-      // Also call it once immediately for testing
-      console.log('Calling refreshAllData immediately for testing');
-      setTimeout(() => refreshAllData(), 1000);
 
       // Cleanup on unmount or when dependencies change
       return () => {
@@ -408,7 +407,7 @@ export const TradingDetailPage: React.FC = () => {
         clearInterval(interval);
       };
     }
-  }, [isAuthenticated, authLoading, refreshAllData, bot?.record.spec.params?.timeframe, trading?.info?.timeframe]);
+  }, [isAuthenticated, authLoading, bot?.record.spec.params?.timeframe, trading?.info?.timeframe]);
 
   // Start periodic status checking when bot is running
   const startBotStatusMonitoring = (botId: string) => {
