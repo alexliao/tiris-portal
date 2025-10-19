@@ -719,7 +719,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
               style={{
                 flex: '1 1 auto',
                 minHeight: '250px',
-                marginLeft: DEFAULT_LEFT_AXIS_WIDTH + CHART_LEFT_MARGIN,
+                marginLeft: CHART_LEFT_MARGIN,
                 marginRight: CHART_RIGHT_MARGIN,
               }}
             >
