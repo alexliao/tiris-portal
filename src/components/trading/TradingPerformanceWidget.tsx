@@ -722,6 +722,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             >
               <CandlestickChart
                 candles={chartState.candlestickData}
+                equityPoints={chartState.data}
+                benchmarkPoints={visibleBenchmarkData}
                 timeframe={selectedTimeframe}
                 height={250}
                 className=""

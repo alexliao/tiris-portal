@@ -2,15 +2,21 @@ import React, { useEffect, useRef, useState, Component, type ErrorInfo, type Rea
 import {
   createChart,
   CandlestickSeries,
+  LineSeries,
   type IChartApi,
   type ISeriesApi,
   type CandlestickData,
-  type Time
+  type Time,
 } from 'lightweight-charts';
-import type { TradingCandlestickPoint } from '../../utils/chartData';
+import type {
+  TradingCandlestickPoint,
+  TradingDataPoint,
+} from '../../utils/chartData';
 
 interface CandlestickChartProps {
   candles: TradingCandlestickPoint[];
+  equityPoints: TradingDataPoint[];
+  benchmarkPoints: TradingDataPoint[];
   timeframe?: string;
   height?: number;
   className?: string;
@@ -55,6 +61,8 @@ class ChartErrorBoundary extends Component<
 
 const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   candles,
+  equityPoints,
+  benchmarkPoints,
   timeframe = '1m',
   height = 200,
   className = '',
@@ -63,6 +71,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const equityLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const benchmarkLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const equityPercentageSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
@@ -111,6 +122,18 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         },
         rightPriceScale: {
           borderColor: '#d1d4dc',
+          scaleMargins: {
+            top: 0.2,
+            bottom: 0.1,
+          },
+        },
+        leftPriceScale: {
+          visible: true,
+          borderColor: '#d1d4dc',
+          scaleMargins: {
+            top: 0.2,
+            bottom: 0.1,
+          },
         },
       });
 
@@ -127,8 +150,44 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         throw new Error('Failed to create candlestick series - returned null or undefined');
       }
 
+      const equitySeries = chart.addSeries(LineSeries, {
+        priceScaleId: 'right',
+        color: '#2563EB',
+        lineWidth: 2,
+        priceFormat: {
+          type: 'custom',
+          minMove: 0.01,
+          formatter: (value: number) => `$${value.toFixed(2)}`,
+        },
+      });
+
+      const benchmarkSeries = chart.addSeries(LineSeries, {
+        priceScaleId: 'right',
+        color: '#F59E0B',
+        lineWidth: 2,
+        priceFormat: {
+          type: 'custom',
+          minMove: 0.01,
+          formatter: (value: number) => `$${value.toFixed(2)}`,
+        },
+      });
+
+      const equityPercentageSeries = chart.addSeries(LineSeries, {
+        priceScaleId: 'left',
+        color: 'rgba(37, 99, 235, 0)',
+        lineWidth: 1,
+        priceFormat: {
+          type: 'custom',
+          minMove: 0.1,
+          formatter: (value: number) => `${value.toFixed(1)}%`,
+        },
+      });
+
       chartRef.current = chart;
       candlestickSeriesRef.current = series;
+      equityLineSeriesRef.current = equitySeries;
+      benchmarkLineSeriesRef.current = benchmarkSeries;
+      equityPercentageSeriesRef.current = equityPercentageSeries;
 
       console.log('✅ Candlestick series created successfully');
 
@@ -159,6 +218,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         chartRef.current = null;
       }
       candlestickSeriesRef.current = null;
+      equityLineSeriesRef.current = null;
+      benchmarkLineSeriesRef.current = null;
+      equityPercentageSeriesRef.current = null;
     };
   }, []);
 
@@ -174,7 +236,12 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     if (!candles || candles.length === 0) {
       candlestickSeriesRef.current.setData([]);
-      setError('No candlestick data available for this timeframe.');
+      equityLineSeriesRef.current?.setData([]);
+      benchmarkLineSeriesRef.current?.setData([]);
+      equityPercentageSeriesRef.current?.setData([]);
+      if (!loading) {
+        setError('No candlestick data available for this timeframe.');
+      }
       return;
     }
 
@@ -211,6 +278,92 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     setError(null);
     candlestickSeriesRef.current.setData(chartData);
 
+    const baselinePrice = benchmarkPoints.find(point => {
+      const price = point.benchmarkPrice;
+      return typeof price === 'number' && Number.isFinite(price);
+    })?.benchmarkPrice;
+
+    const equityData = equityPoints
+      .map((point) => {
+        const timeInSeconds = point.timestampNum / 1000;
+        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+          return null;
+        }
+
+        if (point.roi === undefined || point.roi === null || baselinePrice === undefined) {
+          return null;
+        }
+
+        return {
+          time: timeInSeconds as Time,
+          value: baselinePrice * (1 + point.roi / 100),
+        };
+      })
+      .filter((item): item is { time: Time; value: number } => item !== null);
+
+    if (equityLineSeriesRef.current) {
+      if (equityData.length > 0) {
+        equityData.sort((a, b) => (a.time as number) - (b.time as number));
+        equityLineSeriesRef.current.setData(equityData);
+      } else {
+        equityLineSeriesRef.current.setData([]);
+      }
+    }
+
+    const equityPercentageData = equityPoints
+      .map((point) => {
+        const timeInSeconds = point.timestampNum / 1000;
+        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+          return null;
+        }
+
+        if (point.roi === undefined || point.roi === null) {
+          return null;
+        }
+
+        return {
+          time: timeInSeconds as Time,
+          value: point.roi,
+        };
+      })
+      .filter((item): item is { time: Time; value: number } => item !== null);
+
+    if (equityPercentageSeriesRef.current) {
+      if (equityPercentageData.length > 0) {
+        equityPercentageData.sort((a, b) => (a.time as number) - (b.time as number));
+        equityPercentageSeriesRef.current.setData(equityPercentageData);
+      } else {
+        equityPercentageSeriesRef.current.setData([]);
+      }
+    }
+
+    const benchmarkData = benchmarkPoints
+      .map((point) => {
+        const timeInSeconds = point.timestampNum / 1000;
+        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+          return null;
+        }
+
+        if (point.benchmarkPrice === undefined || point.benchmarkPrice === null) {
+          return null;
+        }
+
+        return {
+          time: timeInSeconds as Time,
+          value: point.benchmarkPrice,
+        };
+      })
+      .filter((item): item is { time: Time; value: number } => item !== null);
+
+    if (benchmarkLineSeriesRef.current) {
+      if (benchmarkData.length > 0) {
+        benchmarkData.sort((a, b) => (a.time as number) - (b.time as number));
+        benchmarkLineSeriesRef.current.setData(benchmarkData);
+      } else {
+        benchmarkLineSeriesRef.current.setData([]);
+      }
+    }
+
     if (chartRef.current) {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -227,7 +380,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         });
       });
     }
-  }, [candles, loading, hasInitialized, timeframe]);
+  }, [candles, equityPoints, benchmarkPoints, loading, hasInitialized, timeframe]);
 
   if (error) {
     return (
