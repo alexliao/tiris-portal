@@ -141,8 +141,9 @@ export const TradingDetailPage: React.FC = () => {
       }
 
       // Check if access is allowed for this trading type
-      // Real tradings can only be accessed by the owner (already filtered by getTradings above for authenticated users)
-      if (foundTrading.type !== 'paper' && foundTrading.type !== 'backtest') {
+      // For unauthenticated users, only paper/backtest tradings are allowed
+      // For authenticated users, trust the backend filtering (real tradings are already restricted by getTradings())
+      if (!isAuthenticated && foundTrading.type !== 'paper' && foundTrading.type !== 'backtest') {
         setError(t('common.accessDenied'));
         return;
       }
