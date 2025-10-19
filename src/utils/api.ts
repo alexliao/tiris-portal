@@ -336,13 +336,17 @@ export async function getEquityCurve(
   recentTimeframes: number = 100,
   stockSymbol: string = 'BTC',
   quoteSymbol: string = 'USDT',
-  requireAuth: boolean = true
+  requireAuth: boolean = true,
+  exchange?: string
 ): Promise<EquityCurveNewData> {
   const params = new URLSearchParams();
   params.append('timeframe', timeframe);
   params.append('recent_timeframes', recentTimeframes.toString());
   params.append('stock_symbol', stockSymbol);
   params.append('quote_symbol', quoteSymbol);
+  if (exchange) {
+    params.append('exchange', exchange.toLowerCase());
+  }
 
   const endpoint = `/tradings/${tradingId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
   return apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);
@@ -369,7 +373,8 @@ export async function getEquityCurveByTimeRange(
   endTime: number,
   stockSymbol: string = 'BTC',
   quoteSymbol: string = 'USDT',
-  requireAuth: boolean = true
+  requireAuth: boolean = true,
+  exchange?: string
 ): Promise<EquityCurveNewData> {
   const params = new URLSearchParams();
   params.append('timeframe', timeframe);
@@ -377,6 +382,9 @@ export async function getEquityCurveByTimeRange(
   params.append('end_time', endTime.toString());
   params.append('stock_symbol', stockSymbol);
   params.append('quote_symbol', quoteSymbol);
+  if (exchange) {
+    params.append('exchange', exchange.toLowerCase());
+  }
 
   const endpoint = `/tradings/${tradingId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
   return apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);

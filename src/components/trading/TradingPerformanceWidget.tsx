@@ -207,6 +207,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       setStockSymbol(fetchedStockSymbol);
       setQuoteSymbol(fetchedQuoteSymbol);
 
+      const exchangeId = trading.exchange_binding?.exchange;
+
       const [equityCurve, tradingLogs] = await Promise.all([
         // Use new API with timeframe and recent_timeframes parameters
         getEquityCurve(
@@ -215,7 +217,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           TOTAL_DATA_TO_LOAD, // Load 500 recent timeframes for historical scrolling
           fetchedStockSymbol,
           fetchedQuoteSymbol,
-          requireAuth
+          requireAuth,
+          exchangeId
         ),
         getTradingLogs(trading.id, requireAuth)
       ]);
