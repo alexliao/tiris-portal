@@ -304,6 +304,16 @@ export async function getTradingLogs(tradingId: string, requireAuth: boolean = t
   return allLogs;
 }
 
+export interface EquityCurveOhlcv {
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
+  final?: boolean;
+  coverage?: number;
+}
+
 export interface EquityCurveNewData {
   trading_id: string;
   timeframe: string;
@@ -316,6 +326,7 @@ export interface EquityCurveNewData {
     stock_balance: number;
     stock_price: number;
     benchmark_return?: number;
+    ohlcv?: EquityCurveOhlcv;
   }>;
 }
 

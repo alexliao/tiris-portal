@@ -1,4 +1,10 @@
-import type { Transaction, TradingLog, EquityCurveData, EquityCurveNewData } from './api';
+import type {
+  Transaction,
+  TradingLog,
+  EquityCurveData,
+  EquityCurveNewData,
+  EquityCurveOhlcv,
+} from './api';
 
 export interface TradingDataPoint {
   date: string;
@@ -13,6 +19,18 @@ export interface TradingDataPoint {
     type: 'buy' | 'sell';
     description: string;
   };
+}
+
+export interface TradingCandlestickPoint {
+  timestamp: string;
+  timestampNum: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
+  final?: boolean;
+  coverage?: number;
 }
 
 export interface TradingMetrics {
@@ -59,7 +77,7 @@ export function transformNewEquityCurveToChartData(
   tradingLogs: TradingLog[] = [],
   timeframe: string = '1m',
   initialBalance?: number
-): { data: TradingDataPoint[]; metrics: TradingMetrics } {
+): { data: TradingDataPoint[]; metrics: TradingMetrics; candlestickData: TradingCandlestickPoint[] } {
   // Validate input
   if (!equityCurve || !equityCurve.data_points || !Array.isArray(equityCurve.data_points)) {
     console.error('Invalid equity curve data:', equityCurve);
@@ -72,7 +90,8 @@ export function transformNewEquityCurveToChartData(
         maxDrawdown: 0,
         totalTrades: 0,
         initialPrice: 0,
-      }
+      },
+      candlestickData: [],
     };
   }
 
@@ -97,7 +116,8 @@ export function transformNewEquityCurveToChartData(
         maxDrawdown: 0,
         totalTrades: 0,
         initialPrice: 0,
-      }
+      },
+      candlestickData: [],
     };
   }
 
@@ -114,6 +134,8 @@ export function transformNewEquityCurveToChartData(
   }
 
   // Transform equity curve data points to chart data
+  const candlestickData: TradingCandlestickPoint[] = [];
+
   const chartData: TradingDataPoint[] = equityCurve.data_points.map((point) => {
     const date = point.timestamp.split('T')[0];
 
@@ -125,7 +147,7 @@ export function transformNewEquityCurveToChartData(
     const benchmarkReturn = point.benchmark_return ?? 0;
     const benchmarkPercentage = benchmarkReturn * 100;
 
-    return {
+    const transformedPoint: TradingDataPoint = {
       date,
       timestamp: point.timestamp,
       timestampNum: new Date(point.timestamp).getTime(),
@@ -136,6 +158,13 @@ export function transformNewEquityCurveToChartData(
       position: Math.round(point.stock_balance * 10000) / 10000,
       event: undefined, // Will be assigned later
     };
+
+    const candle = normalizeOhlcv(point.timestamp, point.ohlcv, point.stock_price);
+    if (candle) {
+      candlestickData.push(candle);
+    }
+
+    return transformedPoint;
   });
 
   // Calculate the time window based on the timeframe - use half the interval
@@ -174,7 +203,46 @@ export function transformNewEquityCurveToChartData(
   // Calculate metrics using the new chart data
   const metrics = calculateMetricsFromNewData(chartData, tradingLogs, baselineEquity);
 
-  return { data: chartData, metrics };
+  return { data: chartData, metrics, candlestickData };
+}
+
+function normalizeOhlcv(
+  timestamp: string,
+  ohlcv: EquityCurveOhlcv | undefined,
+  fallbackPrice: number | undefined
+): TradingCandlestickPoint | null {
+  const timestampNum = new Date(timestamp).getTime();
+  if (!Number.isFinite(timestampNum)) {
+    return null;
+  }
+
+  if (ohlcv) {
+    return {
+      timestamp,
+      timestampNum,
+      open: ohlcv.open,
+      high: ohlcv.high,
+      low: ohlcv.low,
+      close: ohlcv.close,
+      volume: ohlcv.volume,
+      final: ohlcv.final,
+      coverage: ohlcv.coverage,
+    };
+  }
+
+  if (typeof fallbackPrice === 'number' && Number.isFinite(fallbackPrice)) {
+    const price = Math.round(fallbackPrice * 100) / 100;
+    return {
+      timestamp,
+      timestampNum,
+      open: price,
+      high: price,
+      low: price,
+      close: price,
+    };
+  }
+
+  return null;
 }
 
 function calculateMetricsFromNewData(

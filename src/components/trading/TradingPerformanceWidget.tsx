@@ -2,7 +2,12 @@ import React, { useState, useEffect, useMemo, memo, useCallback, useRef } from '
 import { useTranslation } from 'react-i18next';
 import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Scatter } from 'recharts';
 import { getEquityCurve, getTradingLogs, getSubAccountsByTrading, ApiError, type Trading } from '../../utils/api';
-import { transformNewEquityCurveToChartData, type TradingDataPoint, type TradingMetrics } from '../../utils/chartData';
+import {
+  transformNewEquityCurveToChartData,
+  type TradingDataPoint,
+  type TradingMetrics,
+  type TradingCandlestickPoint,
+} from '../../utils/chartData';
 import CandlestickChart from './CandlestickChart';
 
 type Timeframe = '1m' | '1h' | '4h' | '8h' | '1d' | '1w';
@@ -81,10 +86,44 @@ const mergeTradingDataSets = (
   return { value: merged, changed: true };
 };
 
+const areCandlestickPointsEqual = (
+  a: TradingCandlestickPoint,
+  b: TradingCandlestickPoint,
+): boolean => {
+  return (
+    a.timestampNum === b.timestampNum &&
+    a.open === b.open &&
+    a.high === b.high &&
+    a.low === b.low &&
+    a.close === b.close &&
+    (a.volume ?? null) === (b.volume ?? null) &&
+    (a.final ?? null) === (b.final ?? null) &&
+    (a.coverage ?? null) === (b.coverage ?? null)
+  );
+};
+
+const haveCandlestickDataChanged = (
+  prev: TradingCandlestickPoint[],
+  next: TradingCandlestickPoint[],
+): boolean => {
+  if (prev.length !== next.length) {
+    return true;
+  }
+
+  for (let index = 0; index < prev.length; index++) {
+    if (!areCandlestickPointsEqual(prev[index], next[index])) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 type ChartState = {
   data: TradingDataPoint[];
   benchmarkData: TradingDataPoint[];
   metrics: TradingMetrics;
+  candlestickData: TradingCandlestickPoint[];
 };
 
 // Per-timeframe data cache to store loaded data for each timeframe
@@ -94,6 +133,7 @@ type TimeframeDataCache = {
     benchmarkData: TradingDataPoint[];
     metrics: TradingMetrics;
     lastUpdateTimestamp?: number;
+    candlestickData: TradingCandlestickPoint[];
   };
 };
 
@@ -110,7 +150,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [chartState, setChartState] = useState<ChartState>({
     data: [],
     benchmarkData: [],
-    metrics: {} as TradingMetrics
+    metrics: {} as TradingMetrics,
+    candlestickData: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +161,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [quoteSymbol, setQuoteSymbol] = useState<string>('USDT');
   const [isRefetchingData, setIsRefetchingData] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const [candlestickTimeRange, setCandlestickTimeRange] = useState<{ startTime: number; endTime: number } | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   // Per-timeframe data cache to store data loaded for each timeframe
@@ -194,7 +234,16 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         ? trading.info.initial_funds
         : (typeof trading.info?.initial_balance === 'number' ? trading.info.initial_balance : undefined);
 
-      const { data, metrics: calculatedMetrics } = transformNewEquityCurveToChartData(equityCurve, tradingLogs, selectedTimeframe, initialBalance);
+      const {
+        data,
+        metrics: calculatedMetrics,
+        candlestickData,
+      } = transformNewEquityCurveToChartData(
+        equityCurve,
+        tradingLogs,
+        selectedTimeframe,
+        initialBalance
+      );
 
       const benchmarkDataFromApi: TradingDataPoint[] = data.map(point => ({
         date: point.date,
@@ -206,23 +255,15 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         benchmarkPrice: point.benchmarkPrice ?? 0,
       }));
 
-      let benchmarkData: TradingDataPoint[] = benchmarkDataFromApi;
-
-      // Fetch OHLCV data for the entire time range
-      // start_time and end_time are ISO strings from the API, convert to milliseconds
-      const startTimeMs = new Date(equityCurve.start_time).getTime();
-      const endTimeMs = new Date(equityCurve.end_time).getTime();
-      console.log(`Equity curve time range: ${new Date(startTimeMs).toISOString()} to ${new Date(endTimeMs).toISOString()}`);
-
-      // Store time range for candlestick chart
-      setCandlestickTimeRange({ startTime: startTimeMs, endTime: endTimeMs });
+      const benchmarkData: TradingDataPoint[] = benchmarkDataFromApi;
 
       setChartState((previous) => {
         const mergedData = mergeTradingDataSets(previous.data, data);
         const mergedBenchmark = mergeTradingDataSets(previous.benchmarkData, benchmarkData);
         const metricsChanged = !areMetricsEqual(previous.metrics, calculatedMetrics);
+        const candlestickChanged = haveCandlestickDataChanged(previous.candlestickData, candlestickData);
 
-        if (!mergedData.changed && !mergedBenchmark.changed && !metricsChanged) {
+        if (!mergedData.changed && !mergedBenchmark.changed && !metricsChanged && !candlestickChanged) {
           return previous;
         }
 
@@ -232,7 +273,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           data: mergedData.value,
           benchmarkData: mergedBenchmark.value,
           metrics: calculatedMetrics,
-          lastUpdateTimestamp: mergedData.value.length > 0 ? mergedData.value[mergedData.value.length - 1].timestampNum : undefined
+          candlestickData,
+          lastUpdateTimestamp:
+            mergedData.value.length > 0
+              ? mergedData.value[mergedData.value.length - 1].timestampNum
+              : undefined,
         };
 
         console.log(`Cached data for timeframe ${cacheKey}: ${mergedData.value.length} data points`);
@@ -240,7 +285,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         return {
           data: mergedData.changed ? mergedData.value : previous.data,
           benchmarkData: mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData,
-          metrics: metricsChanged ? calculatedMetrics : previous.metrics
+          metrics: metricsChanged ? calculatedMetrics : previous.metrics,
+          candlestickData: candlestickChanged ? candlestickData : previous.candlestickData,
         };
       });
 
@@ -285,7 +331,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         setChartState({
           data: cachedData.data,
           benchmarkData: cachedData.benchmarkData,
-          metrics: cachedData.metrics
+          metrics: cachedData.metrics,
+          candlestickData: cachedData.candlestickData,
         });
         setInitialized(false); // Reset to show latest 100 points
       } else {
@@ -325,8 +372,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       return null;
     }
 
-    let minValue = Math.min(...values);
-    let maxValue = Math.max(...values);
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
 
     if (!Number.isFinite(minValue) || !Number.isFinite(maxValue)) {
       return null;
@@ -674,12 +721,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
               }}
             >
               <CandlestickChart
-                exchange="binance"
-                market={`${stockSymbol}/${quoteSymbol}`}
+                candles={chartState.candlestickData}
                 timeframe={selectedTimeframe}
-                startTime={candlestickTimeRange?.startTime}
-                endTime={candlestickTimeRange?.endTime}
                 height={250}
+                className=""
+                loading={loading || isRefetchingData}
               />
             </div>
           </div>
