@@ -11,6 +11,7 @@ import {
   type CandlestickData,
   type Time,
   type BusinessDay,
+  type TickMarkType,
 } from 'lightweight-charts';
 import type {
   TradingCandlestickPoint,
@@ -121,16 +122,75 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         console.warn('Chart container width is 0, chart may not render properly');
       }
 
-      const formatTime = (timestamp: number) => {
+      const resolvedLocale = typeof Intl !== 'undefined'
+        ? Intl.DateTimeFormat().resolvedOptions()
+        : undefined;
+
+      const pad2 = (value: number) => value.toString().padStart(2, '0');
+
+      const localTimeFormatter = typeof Intl !== 'undefined'
+        ? new Intl.DateTimeFormat(resolvedLocale?.locale, {
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+            timeZone: resolvedLocale?.timeZone,
+          })
+        : undefined;
+
+      const localDateFormatter = typeof Intl !== 'undefined'
+        ? new Intl.DateTimeFormat(resolvedLocale?.locale, {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric',
+            timeZone: resolvedLocale?.timeZone,
+          })
+        : undefined;
+
+      const fallbackDateTimeFormat = (date: Date) => `${pad2(date.getMonth() + 1)}/${pad2(date.getDate())} ${pad2(
+        date.getHours()
+      )}:${pad2(date.getMinutes())}`;
+
+      const fallbackDateFormat = (year: number, month: number, day: number) =>
+        `${pad2(month)}/${pad2(day)}/${year.toString()}`;
+
+      const formatDateTime = (date: Date) => {
+        if (localTimeFormatter) {
+          return localTimeFormatter.format(date);
+        }
+        return fallbackDateTimeFormat(date);
+      };
+
+      const isBusinessDayTime = (time: Time): time is BusinessDay => {
+        return typeof time === 'object' && time !== null && 'year' in time && 'month' in time && 'day' in time;
+      };
+
+      const formatTimestampSeconds = (timestamp: number) => {
         const date = new Date(timestamp * 1000);
-        return date.toLocaleString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: undefined,
-          hour12: false,
-        });
+        if (Number.isNaN(date.getTime())) {
+          return '';
+        }
+        return formatDateTime(date);
+      };
+
+      const formatBusinessDay = (time: BusinessDay) => {
+        if (localDateFormatter) {
+          return localDateFormatter.format(new Date(Date.UTC(time.year, time.month - 1, time.day, 12, 0, 0)));
+        }
+        return fallbackDateFormat(time.year, time.month, time.day);
+      };
+
+      const formatTimeValue = (time: Time) => {
+        if (typeof time === 'number') {
+          return formatTimestampSeconds(time);
+        }
+
+        if (isBusinessDayTime(time)) {
+          return formatBusinessDay(time);
+        }
+
+        return '';
       };
 
       const chart = createChart(chartContainerRef.current, {
@@ -149,7 +209,11 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           secondsVisible: false,
           borderColor: '#d1d4dc',
           barSpacing: 12,
-          tickMarkFormatter: (time: number) => formatTime(time),
+          tickMarkFormatter: (time: Time, _tickMarkType: TickMarkType, _locale: string) => formatTimeValue(time),
+        },
+        localization: {
+          locale: resolvedLocale?.locale,
+          timeFormatter: (time: Time) => formatTimeValue(time),
         },
         rightPriceScale: {
           borderColor: '#d1d4dc',
@@ -264,26 +328,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       tooltipRef.current = toolTip;
       chartContainerRef.current?.appendChild(toolTip);
 
-      const isBusinessDay = (time: Time): time is BusinessDay => {
-        return typeof time === 'object' && time !== null && 'year' in time && 'month' in time && 'day' in time;
-      };
-
-      const formatCrosshairTime = (time: Time) => {
-        if (typeof time === 'number') {
-          return formatTime(time);
-        }
-
-        if (isBusinessDay(time)) {
-          const date = new Date(Date.UTC(time.year, time.month - 1, time.day));
-          return date.toLocaleDateString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric',
-          });
-        }
-
-        return '';
-      };
+      const formatCrosshairTime = (time: Time) => formatTimeValue(time);
 
       const extractOhlc = (data: unknown) => {
         if (
