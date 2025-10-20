@@ -1232,7 +1232,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 equityPoints={chartState.data}
                 benchmarkPoints={visibleBenchmarkData}
                 timeframe={selectedTimeframe}
-                height={250}
+                height={400}
                 className=""
                 loading={loading || isRefetchingData}
                 initialBalance={initialBalance}
@@ -1399,77 +1399,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             </ResponsiveContainer>
           </div>
 
-          {/* Sub-Chart - Position Area */}
-          <div style={{ flex: '0 0 20%', marginBottom: '10px', outline: 'none', minHeight: '0' }} tabIndex={-1}>
-            <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
-              <ComposedChart
-                data={filteredData}
-                margin={{ top: 20, right: CHART_RIGHT_MARGIN, left: CHART_LEFT_MARGIN, bottom: 50 }}
-                style={{ outline: 'none' }}
-                tabIndex={-1}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis
-                  dataKey="timestampNum"
-                  type="number"
-                  scale="time"
-                  domain={chartDomain}
-                  stroke="#666"
-                  fontSize={12}
-                  tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  interval="preserveStartEnd"
-                  minTickGap={30}
-                  padding={{ left: 0, right: CHART_RIGHT_MARGIN }}
-                />
-                <YAxis
-                  yAxisId="left"
-                  stroke="transparent"
-                  fontSize={12}
-                  tickFormatter={() => ''}
-                  tick={false}
-                  axisLine={false}
-                  tickLine={false}
-                  width={DEFAULT_LEFT_AXIS_WIDTH}
-                />
-                <YAxis
-                  yAxisId="position"
-                  orientation="right"
-                  stroke="#60A5FA"
-                  fontSize={12}
-                  tickFormatter={(value) => `${value.toFixed(2)} ETH`}
-                  domain={[0, 'dataMax']}
-                  width={DEFAULT_RIGHT_AXIS_WIDTH}
-                />
-
-                {/* Position Area Chart */}
-                <Area
-                  yAxisId="position"
-                  type="linear"
-                  dataKey="position"
-                  stroke="#60A5FA"
-                  strokeWidth={2}
-                  fill="#60A5FA"
-                  fillOpacity={0.3}
-                  dot={false}
-                  activeDot={{ r: 4, fill: '#60A5FA', stroke: '#ffffff', strokeWidth: 2 }}
-                  name="ETH Position"
-                  isAnimationActive={false}
-                />
-
-                {/* Trading Signal Dots on Position Chart */}
-                {showTradingDots && filteredData.filter(point => point.event).map((point, index) => (
-                  <ReferenceLine
-                    key={`position-signal-line-${index}`}
-                    x={point.timestampNum}
-                    stroke="#94A3B8"
-                    strokeDasharray="3 3"
-                    strokeWidth={1}
-                    opacity={0.7}
-                  />
-                ))}
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
         </div>
 
         {/* Chart Legend */}
