@@ -6,18 +6,23 @@ The performance chart provides a comprehensive visualization of trading performa
 
 ## Architecture
 
-The performance chart consists of three stacked sub-charts:
+The performance chart consists of three stacked sub-charts/series:
 
 ### 1. Return Chart
 Displays portfolio performance with multiple layers:
 - **Equity Curve (Green Area)**: Portfolio return percentage (ROI %) over time
 - **Benchmark Curve (Amber Dashed Line)**: Market benchmark return for comparison
-- **Trading Signals (Buy/Sell Dots)**: Visual markers for executed trades on the chart
+- **Trading Signals (long/short/stop_loss/debit/withdraw)**: Visual markers for executed trades on the chart
+  - **Long/Buy**: Blue upward arrow marker aligned with the benchmark curve
+  - **Short/Sell**: Red downward arrow marker aligned with the curve
+  - **Stop-Loss**: Orange downward arrow marker highlighting risk exits
+  - **Deposit**: Green circle marker indicating capital inflow
+  - **Withdraw**: Purple square marker indicating capital outflow
 
 ### 2. Position Chart
-Occupies approximately one-third of the Return Chart height and shows:
+Occupies approximately one-fourth of the Return Chart height and shows:
 - **Position Holdings**: Quantity of the traded asset held at each timestamp
-- Uses area chart visualization for clear visibility of position changes
+- Uses area chart visualization (Blue color) for clear visibility of position changes
 
 ### 3. Candlestick Chart (Market Chart)
 Displays OHLCV (Open, High, Low, Close, Volume) price data:
@@ -38,10 +43,8 @@ All three charts are fully synchronized:
 Users can select from the following timeframes via UI buttons:
 - 1 minute (1m)
 - 1 hour (1h)
-- 4 hours (4h)
 - 8 hours (8h)
 - 1 day (1d)
-- 1 week (1w)
 
 When a timeframe is selected:
 1. All charts switch to the new timeframe
@@ -59,12 +62,7 @@ The system implements an optimized data loading strategy to balance performance 
 
 ### Data Sources
 
-| Chart Component | API Endpoint | Purpose |
-|---|---|---|
-| Equity Curve | `GET /tradings/{id}/equity-curve` | Returns portfolio ROI % and benchmark return data |
-| Position Chart | `GET /tradings/{id}/equity-curve` | Returns position holdings (quantity of asset held) |
-| Market Chart | `GET /ohlcv` | Returns OHLCV candlestick data for the underlying asset |
-| Trading Signals | `GET /trading-logs/tradings/{id}` | Returns list of buy/sell trade events with timestamps |
+All sub-charts use data from the backend API endpoint GET /tradings/{id}/equity-curve
 
 ### Trading Signal Matching
 Trading signals are matched to equity curve data points using dynamic time windows based on the selected timeframe:
@@ -94,15 +92,13 @@ To minimize API load and improve performance during auto-refresh:
 - **Incremental API Calls**: Uses `start_time`/`end_time` parameters instead of `recent_timeframes`
 - **New Data Only**: Fetches only data points after the last recorded timestamp
 - **Append to Existing**: New data is appended to the pre-loaded dataset rather than replacing all 500 points
-- **Fallback Behavior**: If no previous timestamp exists (e.g., after timeframe change), falls back to loading 500 points
 
 ### Implementation Details
-- Last update timestamp is tracked from the most recent data point's timestamp
+- Last update timestamp is tracked from the most recent complete/final data point's timestamp
 - Start time for incremental fetch = (last timestamp + timeframe duration)
 - End time = current time
 - Each new data point received extends the dataset incrementally
 - Metrics are recalculated from the complete dataset to ensure accuracy
-- Trading logs are fetched once per refresh to match signals to new data points
 
 ## User Interactions
 
@@ -155,11 +151,10 @@ To minimize API load and improve performance during auto-refresh:
 ### Key Components
 - **TradingPerformanceWidget**: Main orchestration component managing data fetching and chart rendering
 - **CandlestickChart**: Lightweight-charts library integration for OHLCV visualization
-- **Return Chart & Position Chart**: Recharts library for composable chart layers
 
 ### Data Transformation
 - Equity curve data is transformed to ROI percentages
-- Trading logs are matched to chart data points for signal placement
+- Trading logs are matched to benchmark data points for signal placement
 - OHLCV data is pre-sliced for visible window display
 
 ### State Management
@@ -168,9 +163,4 @@ To minimize API load and improve performance during auto-refresh:
 - Manages pre-loaded data for each timeframe
 - Handles auto-refresh toggle state
 - **Incremental Update Tracking**: Stores timestamp of last loaded data point for intelligent incremental fetches
-
-### API Layer Enhancements
-- **getEquityCurve()**: Original function for loading 500 recent data points (used for initial load and timeframe changes)
-- **getEquityCurveByTimeRange()**: New function supporting explicit start_time/end_time parameters (used for incremental refreshes)
-
  

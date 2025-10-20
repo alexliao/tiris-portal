@@ -1,10 +1,13 @@
 import React, { useEffect, useRef, useState, Component, type ErrorInfo, type ReactNode } from 'react';
 import {
   createChart,
+  createSeriesMarkers,
   CandlestickSeries,
   LineSeries,
   AreaSeries,
   HistogramSeries,
+  type SeriesMarkerBar,
+  type ISeriesMarkersPluginApi,
   type IChartApi,
   type ISeriesApi,
   type IPriceScaleApi,
@@ -28,6 +31,8 @@ interface CandlestickChartProps {
   loading?: boolean;
   initialBalance?: number;
   baselinePrice?: number;
+  tradingSignalsVisible?: boolean;
+  onTradingSignalsToggle?: (nextVisible: boolean) => void;
 }
 
 // Error boundary to catch chart errors
@@ -76,12 +81,16 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   loading = false,
   initialBalance,
   baselinePrice,
+  tradingSignalsVisible,
+  onTradingSignalsToggle,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const equityAreaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
   const benchmarkLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const benchmarkMarkersSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const benchmarkMarkersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const equityPercentageSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const positionSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
@@ -100,21 +109,83 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     position: true,
   });
   const seriesVisibilityStateRef = useRef(seriesVisibility);
+  const [localSignalsVisible, setLocalSignalsVisible] = useState(
+    tradingSignalsVisible ?? true
+  );
+
+  type TradingEventType = NonNullable<TradingDataPoint['event']>['type'];
+
+  const signalMarkerStyles: Record<TradingEventType, { color: string; shape: 'arrowUp' | 'arrowDown' | 'circle' | 'square'; position: 'aboveBar' | 'belowBar' | 'inBar'; }> = {
+    buy: {
+      color: '#3B82F6',
+      shape: 'arrowUp',
+      position: 'inBar',
+    },
+    sell: {
+      color: '#EF4444',
+      shape: 'arrowDown',
+      position: 'inBar',
+    },
+    stop_loss: {
+      color: '#F97316',
+      shape: 'arrowDown',
+      position: 'inBar',
+    },
+    deposit: {
+      color: '#10B981',
+      shape: 'circle',
+      position: 'inBar',
+    },
+    withdraw: {
+      color: '#8B5CF6',
+      shape: 'square',
+      position: 'inBar',
+    },
+  };
 
   heightRef.current = height;
 
-  const legendItems: Array<{ key: keyof typeof seriesVisibility; label: string; color: string }> = [
+  useEffect(() => {
+    if (typeof tradingSignalsVisible === 'boolean') {
+      setLocalSignalsVisible(tradingSignalsVisible);
+    }
+  }, [tradingSignalsVisible]);
+
+  const signalsVisible =
+    typeof tradingSignalsVisible === 'boolean'
+      ? tradingSignalsVisible
+      : localSignalsVisible;
+
+  type LegendKey = 'price' | 'equity' | 'benchmark' | 'position' | 'signals';
+
+  const legendItems: Array<{ key: LegendKey; label: string; color: string }> = [
     { key: 'price', label: 'Price', color: '#4B5563' },
     { key: 'equity', label: 'Equity Return', color: '#10B981' },
     { key: 'benchmark', label: 'Benchmark Return', color: '#F59E0B' },
     { key: 'position', label: 'Position', color: '#6366F1' },
+    { key: 'signals', label: 'Trading Signals', color: '#3B82F6' },
   ];
 
-  const toggleSeriesVisibility = (key: keyof typeof seriesVisibility) => {
+  const toggleSeriesVisibility = (key: LegendKey) => {
+    if (key === 'signals') {
+      handleToggleSignals();
+      return;
+    }
+
     setSeriesVisibility((prev) => ({
       ...prev,
       [key]: !prev[key],
     }));
+  };
+
+  const handleToggleSignals = () => {
+    const next = !signalsVisible;
+    if (onTradingSignalsToggle) {
+      onTradingSignalsToggle(next);
+    }
+    if (typeof tradingSignalsVisible !== 'boolean') {
+      setLocalSignalsVisible(next);
+    }
   };
 
   const applyScaleVisibility = (visibility = seriesVisibilityStateRef.current) => {
@@ -316,6 +387,19 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         },
       });
 
+      const benchmarkMarkerSeries = chart.addSeries(LineSeries, {
+        priceScaleId: 'right',
+        color: 'rgba(0, 0, 0, 0)',
+        lineWidth: 1,
+        visible: true,
+        lastValueVisible: false,
+        priceLineVisible: false,
+        crosshairMarkerVisible: false,
+      });
+
+      benchmarkMarkersSeriesRef.current = benchmarkMarkerSeries;
+      benchmarkMarkersPluginRef.current = createSeriesMarkers(benchmarkMarkerSeries, []);
+
       const equityPercentageSeries = chart.addSeries(LineSeries, {
         priceScaleId: 'left',
         color: 'rgba(37, 99, 235, 0)',
@@ -376,6 +460,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       candlestickSeriesRef.current = series;
       equityAreaSeriesRef.current = equitySeries;
       benchmarkLineSeriesRef.current = benchmarkSeries;
+      if (!benchmarkMarkersSeriesRef.current) {
+        benchmarkMarkersSeriesRef.current = benchmarkMarkerSeries;
+      }
       equityPercentageSeriesRef.current = equityPercentageSeries;
       volumeSeriesRef.current = volumeSeries;
       positionSeriesRef.current = positionSeries;
@@ -585,6 +672,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           chartContainerRef.current.removeChild(tooltipRef.current);
         }
         tooltipRef.current = null;
+        benchmarkMarkersPluginRef.current?.detach();
+        benchmarkMarkersPluginRef.current = null;
       };
     } catch (err) {
       console.error('Failed to initialize candlestick chart:', err);
@@ -610,6 +699,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       candlestickSeriesRef.current = null;
       equityAreaSeriesRef.current = null;
       benchmarkLineSeriesRef.current = null;
+      benchmarkMarkersSeriesRef.current = null;
+      benchmarkMarkersPluginRef.current = null;
       equityPercentageSeriesRef.current = null;
       volumeSeriesRef.current = null;
       positionSeriesRef.current = null;
@@ -633,6 +724,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       candlestickSeriesRef.current.setData([]);
       equityAreaSeriesRef.current?.setData([]);
       benchmarkLineSeriesRef.current?.setData([]);
+      benchmarkMarkersSeriesRef.current?.setData([]);
       equityPercentageSeriesRef.current?.setData([]);
       volumeSeriesRef.current?.setData([]);
       positionSeriesRef.current?.setData([]);
@@ -817,13 +909,54 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       })
       .filter((item): item is { time: Time; value: number } => item !== null);
 
+    const benchmarkMarkers: SeriesMarkerBar<Time>[] = benchmarkPoints
+      .filter((point) => point.event)
+      .map((point) => {
+        const timeInSeconds = point.timestampNum / 1000;
+        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+          return null;
+        }
+
+        const event = point.event!;
+        const markerStyle = signalMarkerStyles[event.type] ?? signalMarkerStyles.sell;
+
+        const marker: SeriesMarkerBar<Time> = {
+          time: timeInSeconds as Time,
+          position: markerStyle.position,
+          color: markerStyle.color,
+          shape: markerStyle.shape,
+        };
+
+        return marker;
+      })
+      .filter((marker): marker is SeriesMarkerBar<Time> => marker !== null)
+      .sort((a, b) => (a.time as number) - (b.time as number));
+
+    let sortedBenchmarkData: { time: Time; value: number }[] | undefined;
+    if (benchmarkData.length > 0) {
+      sortedBenchmarkData = [...benchmarkData].sort((a, b) => (a.time as number) - (b.time as number));
+    }
+
     if (benchmarkLineSeriesRef.current) {
-      if (benchmarkData.length > 0) {
-        benchmarkData.sort((a, b) => (a.time as number) - (b.time as number));
-        benchmarkLineSeriesRef.current.setData(benchmarkData);
+      if (sortedBenchmarkData && sortedBenchmarkData.length > 0) {
+        benchmarkLineSeriesRef.current.setData(sortedBenchmarkData);
       } else {
         benchmarkLineSeriesRef.current.setData([]);
       }
+    }
+
+    if (benchmarkMarkersSeriesRef.current) {
+      if (sortedBenchmarkData && sortedBenchmarkData.length > 0) {
+        benchmarkMarkersSeriesRef.current.setData(sortedBenchmarkData);
+      } else {
+        benchmarkMarkersSeriesRef.current.setData([]);
+      }
+    }
+
+    if (benchmarkMarkersPluginRef.current) {
+      benchmarkMarkersPluginRef.current.setMarkers(
+        signalsVisible ? benchmarkMarkers : []
+      );
     }
 
     if (chartRef.current) {
@@ -842,7 +975,16 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         });
       });
     }
-  }, [candles, equityPoints, benchmarkPoints, loading, hasInitialized, timeframe, baselinePrice]);
+  }, [
+    candles,
+    equityPoints,
+    benchmarkPoints,
+    loading,
+    hasInitialized,
+    timeframe,
+    baselinePrice,
+    signalsVisible,
+  ]);
 
   useEffect(() => {
     if (!hasInitialized) {
@@ -873,7 +1015,10 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       )}
       <div className="absolute top-2 left-2 z-20 flex flex-wrap gap-2">
         {legendItems.map((item) => {
-          const isActive = seriesVisibility[item.key];
+          const isActive =
+            item.key === 'signals'
+              ? signalsVisible
+              : seriesVisibility[item.key as Exclude<LegendKey, 'signals'>];
           return (
             <button
               key={item.key}

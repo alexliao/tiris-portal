@@ -122,6 +122,31 @@ const mergeTradingDataSets = (
   return { value: merged, changed: true };
 };
 
+type TradingEventType = NonNullable<TradingDataPoint['event']>['type'];
+
+const tradingSignalVisuals: Record<TradingEventType, { color: string; shape: 'arrowUp' | 'arrowDown' | 'circle' | 'square' }> = {
+  buy: {
+    color: '#3B82F6',
+    shape: 'arrowUp',
+  },
+  sell: {
+    color: '#EF4444',
+    shape: 'arrowDown',
+  },
+  stop_loss: {
+    color: '#F97316',
+    shape: 'arrowDown',
+  },
+  deposit: {
+    color: '#10B981',
+    shape: 'circle',
+  },
+  withdraw: {
+    color: '#8B5CF6',
+    shape: 'square',
+  },
+};
+
 const areCandlestickPointsEqual = (
   a: TradingCandlestickPoint,
   b: TradingCandlestickPoint,
@@ -416,6 +441,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         roi: 0,
         benchmark: point.benchmark ?? 0,
         benchmarkPrice: point.benchmarkPrice ?? 0,
+        event: point.event,
       }));
 
       const benchmarkData: TradingDataPoint[] = benchmarkDataFromApi;
@@ -644,6 +670,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         roi: 0,
         benchmark: point.benchmark ?? 0,
         benchmarkPrice: point.benchmarkPrice ?? 0,
+        event: point.event,
       }));
 
       setChartState((previous) => {
@@ -1156,6 +1183,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 loading={loading || isRefetchingData}
                 initialBalance={initialBalance}
                 baselinePrice={chartState.baselinePrice}
+                tradingSignalsVisible={showTradingDots}
+                onTradingSignalsToggle={(next) => setShowTradingDots(next)}
               />
             </div>
           </div>
@@ -1280,22 +1309,71 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                       yAxisId="left"
                       data={signalPoints}
                       dataKey="yValue"
-                      fill="#3B82F6"
+                      fill="transparent"
                       shape={(props: any) => {
                         const { cx, cy, payload } = props;
-                        if (!payload || !payload.event) {
+                        if (
+                          typeof cx !== 'number' ||
+                          typeof cy !== 'number' ||
+                          !payload ||
+                          !payload.event
+                        ) {
                           return <circle cx={0} cy={0} r={0} opacity={0} />;
                         }
-                        const color = payload.event.type === 'buy' ? '#3B82F6' : '#EF4444';
+
+                        const eventType: TradingEventType = payload.event.type;
+                        const visual = tradingSignalVisuals[eventType] ?? tradingSignalVisuals.sell;
+                        const size = 7;
+                        const commonProps = {
+                          stroke: '#FFFFFF',
+                          strokeWidth: 2,
+                          opacity: 0.95,
+                        } as const;
+
+                        if (visual.shape === 'circle') {
+                          return (
+                            <circle
+                              cx={cx}
+                              cy={cy}
+                              r={6}
+                              fill={visual.color}
+                              {...commonProps}
+                            />
+                          );
+                        }
+
+                        if (visual.shape === 'square') {
+                          const half = 6;
+                          return (
+                            <rect
+                              x={cx - half}
+                              y={cy - half}
+                              width={half * 2}
+                              height={half * 2}
+                              rx={2}
+                              fill={visual.color}
+                              {...commonProps}
+                            />
+                          );
+                        }
+
+                        if (visual.shape === 'arrowUp') {
+                          const path = `M ${cx} ${cy - size} L ${cx - size} ${cy + size * 0.6} L ${cx + size} ${cy + size * 0.6} Z`;
+                          return <path d={path} fill={visual.color} {...commonProps} />;
+                        }
+
+                        if (visual.shape === 'arrowDown') {
+                          const path = `M ${cx} ${cy + size} L ${cx - size} ${cy - size * 0.6} L ${cx + size} ${cy - size * 0.6} Z`;
+                          return <path d={path} fill={visual.color} {...commonProps} />;
+                        }
+
                         return (
                           <circle
                             cx={cx}
                             cy={cy}
                             r={6}
-                            fill={color}
-                            stroke="white"
-                            strokeWidth={2}
-                            opacity={0.9}
+                            fill={visual.color}
+                            {...commonProps}
                           />
                         );
                       }}

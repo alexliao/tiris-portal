@@ -16,10 +16,12 @@ export interface TradingDataPoint {
   benchmarkPrice?: number; // ETH price calculated from benchmark return
   position?: number; // ETH position balance (quantity of ETH held)
   event?: {
-    type: 'buy' | 'sell';
+    type: 'buy' | 'sell' | 'stop_loss' | 'deposit' | 'withdraw';
     description: string;
   };
 }
+
+type TradingEventType = NonNullable<TradingDataPoint['event']>['type'];
 
 export interface TradingCandlestickPoint {
   timestamp: string;
@@ -100,13 +102,24 @@ export function transformNewEquityCurveToChartData(
 
   // Create a map of events by exact timestamp for precise lookup
   const eventsByTimestamp = new Map<string, TradingDataPoint['event']>();
+  const logTypeToEventType: Record<string, TradingEventType> = {
+    long: 'buy',
+    short: 'sell',
+    stop_loss: 'stop_loss',
+    deposit: 'deposit',
+    withdraw: 'withdraw',
+  };
+
   tradingLogs.forEach(log => {
-    if (log.type === 'long' || log.type === 'short') {
-      eventsByTimestamp.set(log.event_time, {
-        type: log.type === 'long' ? 'buy' : 'sell',
-        description: log.message,
-      });
+    const mappedType = logTypeToEventType[log.type as keyof typeof logTypeToEventType];
+    if (!mappedType) {
+      return;
     }
+
+    eventsByTimestamp.set(log.event_time, {
+      type: mappedType,
+      description: log.message,
+    });
   });
 
   if (equityCurve.data_points.length === 0) {
