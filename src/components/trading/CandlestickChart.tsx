@@ -23,6 +23,7 @@ interface CandlestickChartProps {
   height?: number;
   className?: string;
   loading?: boolean;
+  initialBalance?: number;
 }
 
 // Error boundary to catch chart errors
@@ -69,6 +70,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   height = 200,
   className = '',
   loading = false,
+  initialBalance,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -78,6 +80,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const equityPercentageSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const heightRef = useRef(height);
+  const benchmarkBaselineRef = useRef<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [seriesVisibility, setSeriesVisibility] = useState({
@@ -313,11 +316,19 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         const roiValue = equityPercentageSeriesRef.current
           ? extractSingleValue(param.seriesData.get(equityPercentageSeriesRef.current))
           : undefined;
+        let benchmarkPercent: number | undefined;
+
+        if (benchmarkValue !== undefined) {
+          const baselinePrice = benchmarkBaselineRef.current;
+          if (baselinePrice !== undefined && Number.isFinite(baselinePrice) && baselinePrice > 0) {
+            benchmarkPercent = ((benchmarkValue - baselinePrice) / baselinePrice) * 100;
+          }
+        }
 
         const hasAnyData = Boolean(
           (currentVisibility.price && candlestickData) ||
           (currentVisibility.equity && (equityValue !== undefined || roiValue !== undefined)) ||
-          (currentVisibility.benchmark && benchmarkValue !== undefined)
+          (currentVisibility.benchmark && benchmarkPercent !== undefined)
         );
 
         if (!hasAnyData) {
@@ -341,16 +352,22 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         }
 
         if (currentVisibility.equity) {
-          if (equityValue !== undefined) {
-            tooltipLines.push(`<div>Equity: $${equityValue.toFixed(2)}</div>`);
-          }
           if (roiValue !== undefined) {
             tooltipLines.push(`<div>ROI: ${roiValue.toFixed(2)}%</div>`);
+
+            if (
+              initialBalance !== undefined &&
+              Number.isFinite(initialBalance) &&
+              initialBalance > 0
+            ) {
+              const portfolioValue = initialBalance * (1 + roiValue / 100);
+              tooltipLines.push(`<div>Portfolio: $${portfolioValue.toFixed(2)}</div>`);
+            }
           }
         }
 
-        if (currentVisibility.benchmark && benchmarkValue !== undefined) {
-          tooltipLines.push(`<div>Benchmark: $${benchmarkValue.toFixed(2)}</div>`);
+        if (currentVisibility.benchmark && benchmarkPercent !== undefined) {
+          tooltipLines.push(`<div>Benchmark: ${benchmarkPercent.toFixed(2)}%</div>`);
         }
 
         tooltipEl.innerHTML = tooltipLines.join('');
@@ -405,7 +422,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       console.error('Failed to initialize candlestick chart:', err);
       setError(`Failed to initialize chart: ${err instanceof Error ? err.message : String(err)}`);
     }
-  }, []);
+  }, [initialBalance]);
 
   useEffect(() => {
     if (!chartRef.current) {
@@ -487,6 +504,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       const price = point.benchmarkPrice;
       return typeof price === 'number' && Number.isFinite(price);
     })?.benchmarkPrice;
+    benchmarkBaselineRef.current = baselinePrice;
 
     const equityData = equityPoints
       .map((point) => {

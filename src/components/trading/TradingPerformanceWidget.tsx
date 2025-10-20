@@ -1235,6 +1235,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 height={250}
                 className=""
                 loading={loading || isRefetchingData}
+                initialBalance={initialBalance}
               />
             </div>
           </div>
