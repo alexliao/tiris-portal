@@ -4,6 +4,7 @@ import {
   CandlestickSeries,
   LineSeries,
   AreaSeries,
+  HistogramSeries,
   type IChartApi,
   type ISeriesApi,
   type IPriceScaleApi,
@@ -79,7 +80,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const equityAreaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
   const benchmarkLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const equityPercentageSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const rightPriceScaleRef = useRef<IPriceScaleApi | null>(null);
+  const volumePriceScaleRef = useRef<IPriceScaleApi | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const heightRef = useRef(height);
   const benchmarkBaselineRef = useRef<number | undefined>(undefined);
@@ -217,11 +220,30 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         },
       });
 
+      const volumeSeries = chart.addSeries(HistogramSeries, {
+        priceScaleId: 'volume',
+        priceFormat: {
+          type: 'volume',
+        },
+        base: 0,
+        color: 'rgba(148, 163, 184, 0.4)',
+      });
+
+      volumePriceScaleRef.current = volumeSeries.priceScale();
+      volumePriceScaleRef.current.applyOptions({
+        scaleMargins: {
+          top: 0.8,
+          bottom: 0,
+        },
+        visible: seriesVisibilityStateRef.current.price,
+      });
+
       chartRef.current = chart;
       candlestickSeriesRef.current = series;
       equityAreaSeriesRef.current = equitySeries;
       benchmarkLineSeriesRef.current = benchmarkSeries;
       equityPercentageSeriesRef.current = equityPercentageSeries;
+      volumeSeriesRef.current = volumeSeries;
 
       console.log('✅ Candlestick series created successfully');
 
@@ -316,6 +338,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         const equityValue = equityAreaSeriesRef.current
           ? extractSingleValue(param.seriesData.get(equityAreaSeriesRef.current))
           : undefined;
+        const volumeValue = volumeSeriesRef.current
+          ? extractSingleValue(param.seriesData.get(volumeSeriesRef.current))
+          : undefined;
         const benchmarkValue = benchmarkLineSeriesRef.current
           ? extractSingleValue(param.seriesData.get(benchmarkLineSeriesRef.current))
           : undefined;
@@ -332,7 +357,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         }
 
         const hasAnyData = Boolean(
-          (currentVisibility.price && candlestickData) ||
+          (currentVisibility.price && (candlestickData || volumeValue !== undefined)) ||
           (currentVisibility.equity && (equityValue !== undefined || roiValue !== undefined)) ||
           (currentVisibility.benchmark && benchmarkPercent !== undefined)
         );
@@ -355,6 +380,13 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           tooltipLines.push(
             `<div>L: ${candlestickData.low.toFixed(2)} C: ${candlestickData.close.toFixed(2)}</div>`
           );
+        }
+
+        if (currentVisibility.price && volumeValue !== undefined) {
+          const formattedVolume = Number(volumeValue).toLocaleString(undefined, {
+            maximumFractionDigits: 0,
+          });
+          tooltipLines.push(`<div>Volume: ${formattedVolume}</div>`);
         }
 
         if (currentVisibility.equity) {
@@ -449,7 +481,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       equityAreaSeriesRef.current = null;
       benchmarkLineSeriesRef.current = null;
       equityPercentageSeriesRef.current = null;
+      volumeSeriesRef.current = null;
       rightPriceScaleRef.current = null;
+      volumePriceScaleRef.current = null;
     };
   }, []);
 
@@ -468,6 +502,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       equityAreaSeriesRef.current?.setData([]);
       benchmarkLineSeriesRef.current?.setData([]);
       equityPercentageSeriesRef.current?.setData([]);
+      volumeSeriesRef.current?.setData([]);
       if (!loading) {
         setError('No candlestick data available for this timeframe.');
       }
@@ -506,6 +541,39 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     setError(null);
     candlestickSeriesRef.current.setData(chartData);
+
+    const volumeData = candles
+      .map((candle) => {
+        const timeInSeconds = candle.timestampNum / 1000;
+        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+          return null;
+        }
+
+        if (typeof candle.volume !== 'number') {
+          return null;
+        }
+
+        const color = candle.close >= candle.open ? 'rgba(16, 185, 129, 0.6)' : 'rgba(239, 68, 68, 0.6)';
+
+        return {
+          time: timeInSeconds as Time,
+          value: candle.volume,
+          color,
+        };
+      })
+      .filter((item): item is { time: Time; value: number; color: string } => item !== null);
+
+    if (volumeData.length > 0) {
+      volumeData.sort((a, b) => (a.time as number) - (b.time as number));
+    }
+
+    if (volumeSeriesRef.current) {
+      if (volumeData.length > 0) {
+        volumeSeriesRef.current.setData(volumeData);
+      } else {
+        volumeSeriesRef.current.setData([]);
+      }
+    }
 
     const baselinePrice = benchmarkPoints.find(point => {
       const price = point.benchmarkPrice;
@@ -622,6 +690,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     equityAreaSeriesRef.current?.applyOptions({ visible: seriesVisibility.equity });
     benchmarkLineSeriesRef.current?.applyOptions({ visible: seriesVisibility.benchmark });
     rightPriceScaleRef.current?.applyOptions({ visible: seriesVisibility.price });
+    volumeSeriesRef.current?.applyOptions({ visible: seriesVisibility.price });
+    volumePriceScaleRef.current?.applyOptions({ visible: seriesVisibility.price });
   }, [hasInitialized, seriesVisibility]);
 
   if (error) {
