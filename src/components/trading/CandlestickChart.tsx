@@ -6,6 +6,7 @@ import {
   AreaSeries,
   type IChartApi,
   type ISeriesApi,
+  type IPriceScaleApi,
   type CandlestickData,
   type Time,
   type BusinessDay,
@@ -78,6 +79,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const equityAreaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
   const benchmarkLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const equityPercentageSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const rightPriceScaleRef = useRef<IPriceScaleApi | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const heightRef = useRef(height);
   const benchmarkBaselineRef = useRef<number | undefined>(undefined);
@@ -163,7 +165,11 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         },
       });
 
+      rightPriceScaleRef.current = chart.priceScale('right');
+      rightPriceScaleRef.current.applyOptions({ visible: seriesVisibilityStateRef.current.price });
+
       const series = chart.addSeries(CandlestickSeries, {
+        priceScaleId: 'right',
         upColor: '#10B981',
         downColor: '#EF4444',
         borderUpColor: '#10B981',
@@ -443,6 +449,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       equityAreaSeriesRef.current = null;
       benchmarkLineSeriesRef.current = null;
       equityPercentageSeriesRef.current = null;
+      rightPriceScaleRef.current = null;
     };
   }, []);
 
@@ -614,6 +621,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     candlestickSeriesRef.current?.applyOptions({ visible: seriesVisibility.price });
     equityAreaSeriesRef.current?.applyOptions({ visible: seriesVisibility.equity });
     benchmarkLineSeriesRef.current?.applyOptions({ visible: seriesVisibility.benchmark });
+    rightPriceScaleRef.current?.applyOptions({ visible: seriesVisibility.price });
   }, [hasInitialized, seriesVisibility]);
 
   if (error) {
