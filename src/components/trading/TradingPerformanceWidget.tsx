@@ -333,6 +333,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [quoteSymbol, setQuoteSymbol] = useState<string>('USDT');
   const [isRefetchingData, setIsRefetchingData] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [seriesVisibility, setSeriesVisibility] = useState({
+    price: false,
+    equity: true,
+    benchmark: true,
+    position: true,
+  });
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   // Per-timeframe data cache to store data loaded for each timeframe
@@ -1104,46 +1110,70 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 {trading.name} - {t('trading.detail.performanceChart')}
               </h3>
             )}
-            <div className="flex items-center justify-between flex-1 flex-wrap gap-3">
-              <div className="flex items-center gap-2">
+            {/* Legend Buttons - Left Aligned */}
+            <div className="flex items-center gap-1 flex-wrap">
+              {[
+                { key: 'price' as const, label: 'Price', color: '#4B5563' },
+                { key: 'equity' as const, label: 'Equity', color: '#10B981' },
+                { key: 'benchmark' as const, label: 'Benchmark', color: '#F59E0B' },
+                { key: 'position' as const, label: 'Position', color: '#6366F1' },
+              ].map((item) => (
                 <button
-                  onClick={() => setShowTradingDots(!showTradingDots)}
-                  className={`flex items-center px-3 py-1.5 rounded-md text-sm font-['Nunito'] transition-colors ${
-                    showTradingDots
-                      ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  key={item.key}
+                  onClick={() => setSeriesVisibility(prev => ({
+                    ...prev,
+                    [item.key]: !prev[item.key],
+                  }))}
+                  className={`flex items-center gap-1 rounded-md border px-3 py-1 text-xs font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    seriesVisibility[item.key]
+                      ? 'bg-white border-gray-300 text-gray-700 focus:ring-blue-200'
+                      : 'bg-gray-100 border-gray-200 text-gray-400 focus:ring-blue-100'
                   }`}
                 >
-                  <div className={`w-2 h-2 rounded-full mr-2 ${
-                    showTradingDots ? 'bg-blue-600' : 'bg-gray-400'
-                  }`}></div>
-                  {showTradingDots ? t('trading.chart.hideTradingSignals') : t('trading.chart.showTradingSignals')}
+                  <span
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ backgroundColor: seriesVisibility[item.key] ? item.color : '#D1D5DB' }}
+                  />
+                  {item.label}
                 </button>
-                {/* Timeframe Selector Buttons */}
-                <div className="flex items-center gap-1">
-                  {(['1m', '1h', '4h', '8h', '1d', '1w'] as Timeframe[]).map((tf) => (
-                    <button
-                      key={tf}
-                      onClick={() => handleTimeframeChange(tf)}
-                      disabled={isRefetchingData}
-                      className={`px-3 py-1 rounded-md text-sm font-['Nunito'] transition-colors ${
-                        selectedTimeframe === tf
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      } ${isRefetchingData ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {tf}
-                    </button>
-                  ))}
-                  {isRefetchingData && (
-                    <div className="ml-2 flex items-center text-sm text-gray-500">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-1"></div>
-                      <span className="font-['Nunito']">Loading...</span>
-                    </div>
-                  )}
+              ))}
+              <button
+                onClick={() => setShowTradingDots(!showTradingDots)}
+                className={`flex items-center gap-1 rounded-md border px-3 py-1 text-xs font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  showTradingDots
+                    ? 'bg-white border-gray-300 text-gray-700 focus:ring-blue-200'
+                    : 'bg-gray-100 border-gray-200 text-gray-400 focus:ring-blue-100'
+                }`}
+              >
+                <span
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ backgroundColor: showTradingDots ? '#3B82F6' : '#D1D5DB' }}
+                />
+                Signals
+              </button>
+            </div>
+            {/* Timeframe Selector Buttons - Right Aligned */}
+            <div className="flex items-center gap-1 flex-wrap">
+              {(['1m', '1h', '4h', '8h', '1d', '1w'] as Timeframe[]).map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => handleTimeframeChange(tf)}
+                  disabled={isRefetchingData}
+                  className={`px-3 py-1 rounded-md text-sm font-['Nunito'] transition-colors ${
+                    selectedTimeframe === tf
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  } ${isRefetchingData ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {tf}
+                </button>
+              ))}
+              {isRefetchingData && (
+                <div className="ml-2 flex items-center text-sm text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-1"></div>
+                  <span className="font-['Nunito']">Loading...</span>
                 </div>
-
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -1160,11 +1190,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         >
           {/* Candlestick Chart */}
           <div style={{ flex: '0 0 35%', outline: 'none', minHeight: '250px', display: 'flex', flexDirection: 'column', marginBottom: '10px' }} tabIndex={-1}>
-            <div className="mb-2">
-              <h4 className="text-sm font-['Nunito'] font-semibold text-gray-700">
-                {t('trading.chart.priceChart')} ({stockSymbol}/{quoteSymbol})
-              </h4>
-            </div>
             <div
               style={{
                 flex: '1 1 auto',
@@ -1185,6 +1210,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 baselinePrice={chartState.baselinePrice}
                 tradingSignalsVisible={showTradingDots}
                 onTradingSignalsToggle={(next) => setShowTradingDots(next)}
+                seriesVisibility={seriesVisibility}
+                onSeriesVisibilityChange={(next) => setSeriesVisibility(next)}
               />
             </div>
           </div>

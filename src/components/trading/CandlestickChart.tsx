@@ -33,6 +33,8 @@ interface CandlestickChartProps {
   baselinePrice?: number;
   tradingSignalsVisible?: boolean;
   onTradingSignalsToggle?: (nextVisible: boolean) => void;
+  seriesVisibility?: { price: boolean; equity: boolean; benchmark: boolean; position: boolean };
+  onSeriesVisibilityChange?: (visibility: { price: boolean; equity: boolean; benchmark: boolean; position: boolean }) => void;
 }
 
 // Error boundary to catch chart errors
@@ -83,6 +85,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   baselinePrice,
   tradingSignalsVisible,
   onTradingSignalsToggle,
+  seriesVisibility: externalSeriesVisibility,
+  onSeriesVisibilityChange,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -102,12 +106,15 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const benchmarkBaselineRef = useRef<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [seriesVisibility, setSeriesVisibility] = useState({
+  const [internalSeriesVisibility, setInternalSeriesVisibility] = useState({
     price: false,
     equity: true,
     benchmark: true,
     position: true,
   });
+
+  // Use external visibility if provided, otherwise use internal state
+  const seriesVisibility = externalSeriesVisibility || internalSeriesVisibility;
   const seriesVisibilityStateRef = useRef(seriesVisibility);
   const [localSignalsVisible, setLocalSignalsVisible] = useState(
     tradingSignalsVisible ?? true
@@ -156,37 +163,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       ? tradingSignalsVisible
       : localSignalsVisible;
 
-  type LegendKey = 'price' | 'equity' | 'benchmark' | 'position' | 'signals';
-
-  const legendItems: Array<{ key: LegendKey; label: string; color: string }> = [
-    { key: 'price', label: 'Price', color: '#4B5563' },
-    { key: 'equity', label: 'Equity Return', color: '#10B981' },
-    { key: 'benchmark', label: 'Benchmark Return', color: '#F59E0B' },
-    { key: 'position', label: 'Position', color: '#6366F1' },
-    { key: 'signals', label: 'Trading Signals', color: '#3B82F6' },
-  ];
-
-  const toggleSeriesVisibility = (key: LegendKey) => {
-    if (key === 'signals') {
-      handleToggleSignals();
-      return;
-    }
-
-    setSeriesVisibility((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  const handleToggleSignals = () => {
-    const next = !signalsVisible;
-    if (onTradingSignalsToggle) {
-      onTradingSignalsToggle(next);
-    }
-    if (typeof tradingSignalsVisible !== 'boolean') {
-      setLocalSignalsVisible(next);
-    }
-  };
 
   const applyScaleVisibility = (visibility = seriesVisibilityStateRef.current) => {
     const priceVisible = visibility.price;
@@ -998,6 +974,18 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     applyScaleVisibility(seriesVisibility);
   }, [hasInitialized, seriesVisibility]);
 
+  // Update internal state when external visibility changes (if from parent)
+  useEffect(() => {
+    if (externalSeriesVisibility && !internalSeriesVisibility) {
+      return;
+    }
+    if (externalSeriesVisibility && internalSeriesVisibility) {
+      if (JSON.stringify(externalSeriesVisibility) === JSON.stringify(internalSeriesVisibility)) {
+        return;
+      }
+    }
+  }, [externalSeriesVisibility, internalSeriesVisibility]);
+
   if (error) {
     return (
       <div className={`flex items-center justify-center bg-white rounded-lg border ${className}`} style={{ height }}>
@@ -1013,32 +1001,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       )}
-      <div className="absolute top-2 left-2 z-20 flex flex-wrap gap-2">
-        {legendItems.map((item) => {
-          const isActive =
-            item.key === 'signals'
-              ? signalsVisible
-              : seriesVisibility[item.key as Exclude<LegendKey, 'signals'>];
-          return (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => toggleSeriesVisibility(item.key)}
-              className={`flex items-center gap-2 rounded-md border px-3 py-1 text-xs font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                isActive
-                  ? 'bg-white border-gray-300 text-gray-700 focus:ring-blue-200'
-                  : 'bg-gray-100 border-gray-200 text-gray-400 focus:ring-blue-100'
-              }`}
-            >
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: isActive ? item.color : '#D1D5DB' }}
-              />
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
       <div
         ref={chartContainerRef}
         style={{ width: '100%', height: '100%', position: 'relative' }}
