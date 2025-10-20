@@ -1053,14 +1053,29 @@ export async function deleteBot(botId: string): Promise<void> {
 }
 
 // Complete paper trading creation according to business logic
+const PAPER_TRADING_DEFAULT_INITIAL_FUNDS = 10000;
+
 export async function createPaperTrading(request: CreateTradingRequest): Promise<Trading> {
   console.log('🔍 [PAPER DEBUG] Creating paper trading with business logic steps...');
   console.log('🔍 [PAPER DEBUG] Request received:', request);
 
   try {
+    const configuredInitialFunds = Number(request.info?.initial_funds);
+    const initialFunds = Number.isFinite(configuredInitialFunds) && configuredInitialFunds > 0
+      ? configuredInitialFunds
+      : PAPER_TRADING_DEFAULT_INITIAL_FUNDS;
+
+    const preparedRequest: CreateTradingRequest = {
+      ...request,
+      info: {
+        ...request.info,
+        initial_funds: initialFunds,
+      },
+    };
+
     // Step 1: Create the trading
     console.log('Step 1: Creating trading...');
-    const trading = await createTrading(request);
+    const trading = await createTrading(preparedRequest);
     console.log('🔍 [PAPER DEBUG] Trading created, checking info field:', trading.info);
     console.log('Trading created:', trading.id);
 
@@ -1103,7 +1118,7 @@ export async function createPaperTrading(request: CreateTradingRequest): Promise
       event_time: new Date().toISOString(),
       info: {
         account_id: usdtSubAccount.id,
-        amount: 10000.00,
+        amount: initialFunds,
         currency: 'USDT'
       }
     });
@@ -1116,6 +1131,11 @@ export async function createPaperTrading(request: CreateTradingRequest): Promise
       eth_account_id: ethSubAccount.id,
       usdt_account_id: usdtSubAccount.id
     });
+
+    trading.info = {
+      ...trading.info,
+      initial_funds: initialFunds,
+    };
 
     return trading;
 

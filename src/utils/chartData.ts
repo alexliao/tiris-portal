@@ -123,15 +123,11 @@ export function transformNewEquityCurveToChartData(
 
   // Determine the baseline equity for ROI calculations
   // Priority: Use provided initialBalance, otherwise use first positive equity value from data
-  let baselineEquity: number;
-  if (initialBalance !== undefined && initialBalance > 0) {
-    baselineEquity = initialBalance;
-  } else {
-    // Fallback: Use the first positive equity value in the data
-    const firstPositiveIndex = equityCurve.data_points.findIndex(point => point.equity > 0);
-    const baselineIndex = firstPositiveIndex >= 0 ? firstPositiveIndex : 0;
-    baselineEquity = equityCurve.data_points[baselineIndex]?.equity ?? 0;
+  if (initialBalance === undefined || !Number.isFinite(initialBalance) || initialBalance <= 0) {
+    throw new Error('Initial balance is required and must be greater than zero for ROI calculations.');
   }
+
+  const baselineEquity = initialBalance;
 
   // Transform equity curve data points to chart data
   const candlestickData: TradingCandlestickPoint[] = [];
@@ -140,9 +136,7 @@ export function transformNewEquityCurveToChartData(
     const date = point.timestamp.split('T')[0];
 
     // Calculate ROI percentage from equity value using the baseline
-    const roi = baselineEquity > 0
-      ? ((point.equity - baselineEquity) / baselineEquity) * 100
-      : 0;
+    const roi = ((point.equity - baselineEquity) / baselineEquity) * 100;
 
     const benchmarkReturn = point.benchmark_return ?? 0;
     const benchmarkPercentage = benchmarkReturn * 100;

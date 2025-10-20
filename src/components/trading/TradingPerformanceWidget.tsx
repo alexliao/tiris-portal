@@ -1,7 +1,17 @@
 import React, { useState, useEffect, useMemo, memo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Scatter } from 'recharts';
-import { getEquityCurve, getTradingLogs, getSubAccountsByTrading, ApiError, type Trading } from '../../utils/api';
+import {
+  getEquityCurve,
+  getTradingLogs,
+  getSubAccountsByTrading,
+  getEquityCurveByTimeRange,
+  getTransactions,
+  ApiError,
+  type Trading,
+  type TradingLog,
+  type EquityCurveNewData,
+} from '../../utils/api';
 import {
   transformNewEquityCurveToChartData,
   type TradingDataPoint,
@@ -11,6 +21,19 @@ import {
 import CandlestickChart from './CandlestickChart';
 
 type Timeframe = '1m' | '1h' | '4h' | '8h' | '1d' | '1w';
+
+const timeframeToMilliseconds = (timeframe: Timeframe): number => {
+  const timeframeMap: Record<Timeframe, number> = {
+    '1m': 60 * 1000,
+    '1h': 60 * 60 * 1000,
+    '4h': 4 * 60 * 60 * 1000,
+    '8h': 8 * 60 * 60 * 1000,
+    '1d': 24 * 60 * 60 * 1000,
+    '1w': 7 * 24 * 60 * 60 * 1000,
+  };
+
+  return timeframeMap[timeframe] ?? 60 * 1000;
+};
 
 const DEFAULT_LEFT_AXIS_WIDTH = 60;
 const DEFAULT_RIGHT_AXIS_WIDTH = 60;
@@ -52,6 +75,20 @@ const areMetricsEqual = (prev: TradingMetrics, next: TradingMetrics): boolean =>
     prev.maxDrawdown === next.maxDrawdown &&
     prev.totalTrades === next.totalTrades &&
     prev.initialPrice === next.initialPrice
+  );
+};
+
+const mergeTradingLogs = (existing: TradingLog[], incoming: TradingLog[]): TradingLog[] => {
+  if (incoming.length === 0) {
+    return existing;
+  }
+
+  const logMap = new Map<string, TradingLog>();
+  existing.forEach(log => logMap.set(log.id, log));
+  incoming.forEach(log => logMap.set(log.id, log));
+
+  return Array.from(logMap.values()).sort(
+    (a, b) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime()
   );
 };
 
@@ -134,7 +171,114 @@ type TimeframeDataCache = {
     metrics: TradingMetrics;
     lastUpdateTimestamp?: number;
     candlestickData: TradingCandlestickPoint[];
+    equityCurve: EquityCurveNewData;
   };
+};
+
+const hasValidEquityPoint = (point: EquityCurveNewData['data_points'][number]): boolean => {
+  const equityValid = typeof point.equity === 'number' && Number.isFinite(point.equity) && point.equity > 0;
+  const stockPriceValid = typeof point.stock_price === 'number' && Number.isFinite(point.stock_price) && point.stock_price > 0;
+  const stockBalanceValid = typeof point.stock_balance === 'number' && Number.isFinite(point.stock_balance);
+  const quoteBalanceValid = typeof point.quote_balance === 'number' && Number.isFinite(point.quote_balance);
+
+  return equityValid || stockPriceValid || stockBalanceValid || quoteBalanceValid;
+};
+
+const isIncomingPointPreferred = (
+  existing: EquityCurveNewData['data_points'][number] | undefined,
+  incoming: EquityCurveNewData['data_points'][number]
+): boolean => {
+  if (!existing) {
+    return true;
+  }
+
+  const existingValid = hasValidEquityPoint(existing);
+  const incomingValid = hasValidEquityPoint(incoming);
+
+  if (incomingValid && !existingValid) {
+    return true;
+  }
+
+  if (!incomingValid && existingValid) {
+    return false;
+  }
+
+  const existingCoverage = existing.ohlcv?.coverage ?? 0;
+  const incomingCoverage = incoming.ohlcv?.coverage ?? 0;
+  if (incomingCoverage !== existingCoverage) {
+    return incomingCoverage > existingCoverage;
+  }
+
+  const existingFinal = existing.ohlcv?.final ?? false;
+  const incomingFinal = incoming.ohlcv?.final ?? false;
+  if (incomingFinal !== existingFinal) {
+    return incomingFinal;
+  }
+
+  return true;
+};
+
+const normalizeEquityCurve = (curve: EquityCurveNewData): EquityCurveNewData => {
+  if (!curve?.data_points || curve.data_points.length === 0) {
+    return curve;
+  }
+
+  const pointsMap = new Map<number, (typeof curve.data_points)[number]>();
+
+  curve.data_points.forEach(point => {
+    const timestampNum = new Date(point.timestamp).getTime();
+    if (Number.isFinite(timestampNum)) {
+      const existing = pointsMap.get(timestampNum);
+      if (isIncomingPointPreferred(existing, point)) {
+        pointsMap.set(timestampNum, point);
+      }
+    }
+  });
+
+  const orderedPoints = Array.from(pointsMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([, point]) => point);
+
+  if (orderedPoints.length === 0) {
+    return curve;
+  }
+
+  return {
+    ...curve,
+    start_time: orderedPoints[0].timestamp,
+    end_time: orderedPoints[orderedPoints.length - 1].timestamp,
+    data_points: orderedPoints,
+  };
+};
+
+const normalizeCandlesticks = (candles: TradingCandlestickPoint[]): TradingCandlestickPoint[] => {
+  if (!candles || candles.length === 0) {
+    return candles;
+  }
+
+  const candleMap = new Map<number, TradingCandlestickPoint>();
+
+  candles.forEach(candle => {
+    if (Number.isFinite(candle.timestampNum)) {
+      const existing = candleMap.get(candle.timestampNum);
+      if (!existing || (candle.final && !existing.final)) {
+        candleMap.set(candle.timestampNum, candle);
+      } else if (!existing.final && !candle.final) {
+        // Prefer candle with wider coverage or higher close value if both provisional
+        const existingCoverage = existing.coverage ?? 0;
+        const incomingCoverage = candle.coverage ?? 0;
+        if (incomingCoverage >= existingCoverage) {
+          candleMap.set(candle.timestampNum, candle);
+        }
+      } else if (existing.final === candle.final) {
+        candleMap.set(candle.timestampNum, candle);
+      }
+    }
+  });
+
+  return Array.from(candleMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([, candle]) => candle);
 };
 
 const TOTAL_DATA_TO_LOAD = 500; // Total number of data points to load from backend
@@ -165,9 +309,98 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
   // Per-timeframe data cache to store data loaded for each timeframe
   const timeframeDataCacheRef = useRef<TimeframeDataCache>({});
+  const tradingLogsRef = useRef<TradingLog[]>([]);
+  const lastTradingLogTimestampRef = useRef<number | undefined>(undefined);
+  const incrementalUpdateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const incrementalUpdateInProgressRef = useRef(false);
+
+  const [initialBalance, setInitialBalance] = useState<number | undefined>(() => {
+    if (typeof trading.info?.initial_funds === 'number') {
+      return trading.info.initial_funds;
+    }
+
+    if (typeof trading.info?.initial_balance === 'number') {
+      return trading.info.initial_balance;
+    }
+
+    return undefined;
+  });
 
 
   // Extract trading data fetching logic into reusable function
+  const fetchInitialBalance = useCallback(async (quoteSymbolToUse: string): Promise<number> => {
+    if (initialBalance !== undefined && Number.isFinite(initialBalance) && initialBalance > 0) {
+      return initialBalance;
+    }
+
+    const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
+    try {
+      const transactions = await getTransactions(trading.id, requireAuth);
+      if (!transactions || transactions.length === 0) {
+        throw new Error('No transactions available to derive initial balance.');
+      }
+
+      const sortedByTime = [...transactions].sort((a, b) =>
+        new Date(a.event_time).getTime() - new Date(b.event_time).getTime()
+      );
+
+      const normalizedQuoteSymbol = quoteSymbolToUse?.toUpperCase?.() ?? quoteSymbolToUse;
+
+      const quoteSubAccountIds = new Set<string>();
+      sortedByTime.forEach(tx => {
+        if (tx.quote_symbol && tx.quote_symbol.toUpperCase() === normalizedQuoteSymbol) {
+          quoteSubAccountIds.add(tx.sub_account_id);
+        }
+      });
+
+      let derivedInitial: number | undefined;
+
+      if (quoteSubAccountIds.size > 0) {
+        for (const subAccountId of quoteSubAccountIds) {
+          const firstTx = sortedByTime.find(tx => tx.sub_account_id === subAccountId);
+          if (firstTx) {
+            const balance = parseFloat(firstTx.closing_balance ?? '');
+            if (Number.isFinite(balance) && balance > 0) {
+              derivedInitial = balance;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!derivedInitial) {
+        const firstTxWithQuote = sortedByTime.find(
+          tx => tx.quote_symbol && tx.quote_symbol.toUpperCase() === normalizedQuoteSymbol
+        );
+        if (firstTxWithQuote) {
+          const balance = parseFloat(firstTxWithQuote.closing_balance ?? '');
+          if (Number.isFinite(balance) && balance > 0) {
+            derivedInitial = balance;
+          }
+        }
+      }
+
+      if (!derivedInitial) {
+        const firstTx = sortedByTime[0];
+        const balance = parseFloat(firstTx.closing_balance ?? '');
+        if (Number.isFinite(balance) && balance > 0) {
+          derivedInitial = balance;
+        }
+      }
+
+      if (!derivedInitial || !Number.isFinite(derivedInitial) || derivedInitial <= 0) {
+        throw new Error('Failed to derive initial balance from transactions.');
+      }
+
+      setInitialBalance(derivedInitial);
+      return derivedInitial;
+    } catch (err) {
+      console.error('Failed to derive initial balance from transactions:', err);
+      throw err;
+    }
+  }, [initialBalance, trading.id, trading.type]);
+
+
   const fetchTradingData = useCallback(async (isInitialLoad = false) => {
     try {
       // Only show loading state during initial load, not during refresh
@@ -207,6 +440,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       setStockSymbol(fetchedStockSymbol);
       setQuoteSymbol(fetchedQuoteSymbol);
 
+      let baseline = initialBalance;
+      if (baseline === undefined || !Number.isFinite(baseline) || baseline <= 0) {
+        baseline = await fetchInitialBalance(fetchedQuoteSymbol);
+      }
+
       const exchangeId = trading.exchange_binding?.exchange;
 
       const [equityCurve, tradingLogs] = await Promise.all([
@@ -232,21 +470,30 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         throw new Error('Invalid equity curve data format received from API. Expected new format with data_points array.');
       }
 
-      // Get the initial balance from trading info for ROI calculation
-      const initialBalance = typeof trading.info?.initial_funds === 'number'
-        ? trading.info.initial_funds
-        : (typeof trading.info?.initial_balance === 'number' ? trading.info.initial_balance : undefined);
+      if (baseline === undefined || !Number.isFinite(baseline) || baseline <= 0) {
+        throw new Error('Initial balance is required for ROI calculations but is missing or invalid.');
+      }
+
+      const normalizedEquityCurve = normalizeEquityCurve(equityCurve);
 
       const {
         data,
         metrics: calculatedMetrics,
         candlestickData,
       } = transformNewEquityCurveToChartData(
-        equityCurve,
+        normalizedEquityCurve,
         tradingLogs,
         selectedTimeframe,
-        initialBalance
+        baseline
       );
+
+      const normalizedCandles = normalizeCandlesticks(candlestickData);
+      if (normalizedCandles.length > 0) {
+        const lastCandle = normalizedCandles[normalizedCandles.length - 1];
+        console.debug(
+          `Candles after initial load (${selectedTimeframe}): count=${normalizedCandles.length}, last=${new Date(lastCandle.timestamp).toISOString()} O:${lastCandle.open} H:${lastCandle.high} L:${lastCandle.low} C:${lastCandle.close}`
+        );
+      }
 
       const benchmarkDataFromApi: TradingDataPoint[] = data.map(point => ({
         date: point.date,
@@ -260,36 +507,48 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       const benchmarkData: TradingDataPoint[] = benchmarkDataFromApi;
 
+      tradingLogsRef.current = mergeTradingLogs(tradingLogsRef.current, tradingLogs);
+      if (tradingLogsRef.current.length > 0) {
+        const latestLog = tradingLogsRef.current[tradingLogsRef.current.length - 1];
+        lastTradingLogTimestampRef.current = new Date(latestLog.event_time).getTime();
+      }
+
       setChartState((previous) => {
         const mergedData = mergeTradingDataSets(previous.data, data);
         const mergedBenchmark = mergeTradingDataSets(previous.benchmarkData, benchmarkData);
         const metricsChanged = !areMetricsEqual(previous.metrics, calculatedMetrics);
-        const candlestickChanged = haveCandlestickDataChanged(previous.candlestickData, candlestickData);
+        const candlestickChanged = haveCandlestickDataChanged(previous.candlestickData, normalizedCandles);
+
+        const nextData = mergedData.changed ? mergedData.value : previous.data;
+        const nextBenchmark = mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData;
+        const nextMetrics = metricsChanged ? calculatedMetrics : previous.metrics;
+        const nextCandlesticks = candlestickChanged ? normalizedCandles : previous.candlestickData;
+
+        // Store in cache for this timeframe
+        const cacheKey = selectedTimeframe;
+        timeframeDataCacheRef.current[cacheKey] = {
+          data: nextData,
+          benchmarkData: nextBenchmark,
+          metrics: nextMetrics,
+          candlestickData: nextCandlesticks,
+          equityCurve: normalizedEquityCurve,
+          lastUpdateTimestamp:
+            nextData.length > 0
+              ? nextData[nextData.length - 1].timestampNum
+              : undefined,
+        };
+
+        console.log(`Cached data for timeframe ${cacheKey}: ${nextData.length} data points`);
 
         if (!mergedData.changed && !mergedBenchmark.changed && !metricsChanged && !candlestickChanged) {
           return previous;
         }
 
-        // Store in cache for this timeframe
-        const cacheKey = selectedTimeframe;
-        timeframeDataCacheRef.current[cacheKey] = {
-          data: mergedData.value,
-          benchmarkData: mergedBenchmark.value,
-          metrics: calculatedMetrics,
-          candlestickData,
-          lastUpdateTimestamp:
-            mergedData.value.length > 0
-              ? mergedData.value[mergedData.value.length - 1].timestampNum
-              : undefined,
-        };
-
-        console.log(`Cached data for timeframe ${cacheKey}: ${mergedData.value.length} data points`);
-
         return {
-          data: mergedData.changed ? mergedData.value : previous.data,
-          benchmarkData: mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData,
-          metrics: metricsChanged ? calculatedMetrics : previous.metrics,
-          candlestickData: candlestickChanged ? candlestickData : previous.candlestickData,
+          data: nextData,
+          benchmarkData: nextBenchmark,
+          metrics: nextMetrics,
+          candlestickData: nextCandlesticks,
         };
       });
 
@@ -313,12 +572,227 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         setIsRefetchingData(false);
       }
     }
-  }, [trading.id, selectedTimeframe]);
+  }, [
+    fetchInitialBalance,
+    initialBalance,
+    selectedTimeframe,
+    trading.exchange_binding?.exchange,
+    trading.id,
+    trading.type,
+  ]);
+
+
+  const fetchIncrementalUpdates = useCallback(async () => {
+    const cacheKey = selectedTimeframe;
+    const cacheEntry = timeframeDataCacheRef.current[cacheKey];
+
+    if (!cacheEntry || incrementalUpdateInProgressRef.current) {
+      return;
+    }
+
+    let baseline = initialBalance;
+    if (baseline === undefined || !Number.isFinite(baseline) || baseline <= 0) {
+      try {
+        baseline = await fetchInitialBalance(quoteSymbol);
+      } catch (err) {
+        console.error('Initial balance is required for incremental updates but could not be derived.', err);
+        return;
+      }
+    }
+
+    const existingEquityCurve = cacheEntry.equityCurve;
+    if (!existingEquityCurve || !existingEquityCurve.data_points || existingEquityCurve.data_points.length === 0) {
+      return;
+    }
+
+    const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
+    const exchangeId = trading.exchange_binding?.exchange;
+
+    const lastCachedTimestamp = cacheEntry.lastUpdateTimestamp
+      ?? new Date(existingEquityCurve.data_points[existingEquityCurve.data_points.length - 1].timestamp).getTime();
+    const timeframeMs = timeframeToMilliseconds(selectedTimeframe);
+    const earliestAllowedTimestamp = new Date(existingEquityCurve.start_time).getTime();
+    const startTime = Math.max(lastCachedTimestamp - timeframeMs, earliestAllowedTimestamp);
+    const endTime = Date.now();
+
+    if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
+      return;
+    }
+
+    incrementalUpdateInProgressRef.current = true;
+
+    try {
+      const incrementalEquity = await getEquityCurveByTimeRange(
+        trading.id,
+        selectedTimeframe,
+        startTime,
+        endTime,
+        stockSymbol,
+        quoteSymbol,
+        requireAuth,
+        exchangeId
+      );
+
+      const normalizedIncremental = incrementalEquity ? normalizeEquityCurve(incrementalEquity) : undefined;
+      const newDataPoints = normalizedIncremental?.data_points ?? [];
+
+      if (newDataPoints.length > 0) {
+        const firstNew = newDataPoints[0];
+        const lastNew = newDataPoints[newDataPoints.length - 1];
+        console.debug(
+          `Incremental equity fetched ${newDataPoints.length} points from ${firstNew.timestamp} to ${lastNew.timestamp}`
+        );
+      }
+
+      const combinedMap = new Map<number, typeof newDataPoints[number]>();
+      existingEquityCurve.data_points.forEach(point => {
+        const timestampNum = new Date(point.timestamp).getTime();
+        if (Number.isFinite(timestampNum)) {
+          combinedMap.set(timestampNum, point);
+        }
+      });
+      newDataPoints.forEach(point => {
+        const timestampNum = new Date(point.timestamp).getTime();
+        if (Number.isFinite(timestampNum)) {
+          const existingPoint = combinedMap.get(timestampNum);
+          if (isIncomingPointPreferred(existingPoint, point)) {
+            combinedMap.set(timestampNum, point);
+          }
+        }
+      });
+
+      let combinedPoints = Array.from(combinedMap.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([, point]) => point);
+
+      if (combinedPoints.length > TOTAL_DATA_TO_LOAD) {
+        combinedPoints = combinedPoints.slice(combinedPoints.length - TOTAL_DATA_TO_LOAD);
+      }
+
+      const updatedEquityCurve: EquityCurveNewData = {
+        ...existingEquityCurve,
+        start_time: combinedPoints.length > 0 ? combinedPoints[0].timestamp : existingEquityCurve.start_time,
+        end_time: combinedPoints.length > 0
+          ? combinedPoints[combinedPoints.length - 1].timestamp
+          : existingEquityCurve.end_time,
+        data_points: combinedPoints,
+      };
+
+      const latestTimestampNum = combinedPoints.length > 0
+        ? new Date(combinedPoints[combinedPoints.length - 1].timestamp).getTime()
+        : cacheEntry.lastUpdateTimestamp;
+
+      let hasUpdatedData = newDataPoints.length > 0;
+
+      // Fetch trading logs incrementally to capture new events
+      const newTradingLogs = await getTradingLogs(
+        trading.id,
+        requireAuth,
+        lastTradingLogTimestampRef.current
+      );
+
+      if (newTradingLogs.length > 0) {
+        tradingLogsRef.current = mergeTradingLogs(tradingLogsRef.current, newTradingLogs);
+        const latestLog = tradingLogsRef.current[tradingLogsRef.current.length - 1];
+        lastTradingLogTimestampRef.current = new Date(latestLog.event_time).getTime();
+        hasUpdatedData = true;
+      }
+
+      if (!hasUpdatedData) {
+        // Update cache with latest timestamps even if nothing changed to ensure fresh metadata
+        timeframeDataCacheRef.current[cacheKey] = {
+          ...cacheEntry,
+          equityCurve: updatedEquityCurve,
+          lastUpdateTimestamp: latestTimestampNum,
+        };
+        return;
+      }
+
+      const {
+        data,
+        metrics: calculatedMetrics,
+        candlestickData,
+      } = transformNewEquityCurveToChartData(
+        updatedEquityCurve,
+        tradingLogsRef.current,
+        selectedTimeframe,
+        baseline
+      );
+
+      const normalizedCandles = normalizeCandlesticks(candlestickData);
+
+      if (normalizedCandles.length > 0) {
+        const lastCandle = normalizedCandles[normalizedCandles.length - 1];
+        console.debug(
+          `Candles after incremental update (${selectedTimeframe}): count=${normalizedCandles.length}, last=${new Date(lastCandle.timestamp).toISOString()} O:${lastCandle.open} H:${lastCandle.high} L:${lastCandle.low} C:${lastCandle.close}`
+        );
+      }
+
+      const benchmarkData: TradingDataPoint[] = data.map(point => ({
+        date: point.date,
+        timestamp: point.timestamp,
+        timestampNum: point.timestampNum,
+        netValue: 0,
+        roi: 0,
+        benchmark: point.benchmark ?? 0,
+        benchmarkPrice: point.benchmarkPrice ?? 0,
+      }));
+
+      setChartState((previous) => {
+        const mergedData = mergeTradingDataSets(previous.data, data);
+        const mergedBenchmark = mergeTradingDataSets(previous.benchmarkData, benchmarkData);
+        const metricsChanged = !areMetricsEqual(previous.metrics, calculatedMetrics);
+        const candlestickChanged = haveCandlestickDataChanged(previous.candlestickData, normalizedCandles);
+
+        const nextData = mergedData.changed ? mergedData.value : previous.data;
+        const nextBenchmark = mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData;
+        const nextMetrics = metricsChanged ? calculatedMetrics : previous.metrics;
+        const nextCandlesticks = candlestickChanged ? normalizedCandles : previous.candlestickData;
+
+        timeframeDataCacheRef.current[cacheKey] = {
+          data: nextData,
+          benchmarkData: nextBenchmark,
+          metrics: nextMetrics,
+          candlestickData: nextCandlesticks,
+          equityCurve: updatedEquityCurve,
+          lastUpdateTimestamp:
+            nextData.length > 0
+              ? nextData[nextData.length - 1].timestampNum
+              : latestTimestampNum,
+        };
+
+        if (!mergedData.changed && !mergedBenchmark.changed && !metricsChanged && !candlestickChanged) {
+          return previous;
+        }
+
+        return {
+          data: nextData,
+          benchmarkData: nextBenchmark,
+          metrics: nextMetrics,
+          candlestickData: nextCandlesticks,
+        };
+      });
+    } catch (err) {
+      console.error('Failed to fetch incremental trading data:', err);
+    } finally {
+      incrementalUpdateInProgressRef.current = false;
+    }
+  }, [
+    fetchInitialBalance,
+    initialBalance,
+    quoteSymbol,
+    selectedTimeframe,
+    stockSymbol,
+    trading.id,
+    trading.type,
+    trading.exchange_binding?.exchange,
+  ]);
 
 
   // Initial data loading effect - only run once on mount
   useEffect(() => {
     fetchTradingData(true); // Mark as initial load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run on mount
 
   // Timeframe change effect - use cached data if available, otherwise fetch
@@ -340,11 +814,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         setInitialized(false); // Reset to show latest 100 points
       } else {
         // No cache for this timeframe, fetch fresh data
-        console.log(`No cached data for timeframe ${cacheKey}, fetching fresh data`);
+        console.debug(`No cached data for timeframe ${cacheKey}, fetching fresh data`);
         setInitialized(false); // Reset initialization flag to show latest 100 again
         fetchTradingData(false); // Don't show loading spinner
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTimeframe]);
 
   // Reset initialized flag when data changes significantly
@@ -354,6 +829,35 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       setInitialized(true);
     }
   }, [chartState.data.length, initialized]);
+
+  // Periodically fetch incremental updates when data is available
+  useEffect(() => {
+    if (incrementalUpdateTimerRef.current) {
+      clearInterval(incrementalUpdateTimerRef.current);
+      incrementalUpdateTimerRef.current = null;
+    }
+
+    if (chartState.data.length === 0) {
+      return;
+    }
+
+    const timeframeMs = timeframeToMilliseconds(selectedTimeframe);
+    const intervalMs = Math.min(
+      Math.max(Math.floor(timeframeMs / 2), 15_000),
+      5 * 60 * 1000
+    );
+
+    incrementalUpdateTimerRef.current = setInterval(() => {
+      fetchIncrementalUpdates();
+    }, intervalMs);
+
+    return () => {
+      if (incrementalUpdateTimerRef.current) {
+        clearInterval(incrementalUpdateTimerRef.current);
+        incrementalUpdateTimerRef.current = null;
+      }
+    };
+  }, [chartState.data.length, fetchIncrementalUpdates, selectedTimeframe]);
 
 
   // Data is already filtered by the API with the selected timeframe
