@@ -69,15 +69,18 @@ function timeframeToMilliseconds(timeframe: string): number {
  * @param equityCurve - The equity curve data from the API
  * @param tradingLogs - Trading logs for event matching (optional)
  * @param timeframe - The timeframe for the data (optional)
- * @param initialBalance - The initial balance to use for ROI calculation (optional).
- *                         If not provided, uses the first positive equity value in the data.
  */
 export function transformNewEquityCurveToChartData(
   equityCurve: EquityCurveNewData,
   tradingLogs: TradingLog[] = [],
-  timeframe: string = '1m',
-  initialBalance?: number
-): { data: TradingDataPoint[]; metrics: TradingMetrics; candlestickData: TradingCandlestickPoint[] } {
+  timeframe: string = '1m'
+): {
+  data: TradingDataPoint[];
+  metrics: TradingMetrics;
+  candlestickData: TradingCandlestickPoint[];
+  initialBalance: number;
+  baselinePrice?: number;
+} {
   // Validate input
   if (!equityCurve || !equityCurve.data_points || !Array.isArray(equityCurve.data_points)) {
     console.error('Invalid equity curve data:', equityCurve);
@@ -121,13 +124,15 @@ export function transformNewEquityCurveToChartData(
     };
   }
 
-  // Determine the baseline equity for ROI calculations
-  // Priority: Use provided initialBalance, otherwise use first positive equity value from data
-  if (initialBalance === undefined || !Number.isFinite(initialBalance) || initialBalance <= 0) {
-    throw new Error('Initial balance is required and must be greater than zero for ROI calculations.');
+  // ROI baseline comes directly from the backend-provided initial funds.
+  const baselineEquity = equityCurve.initial_funds;
+  if (baselineEquity === undefined || !Number.isFinite(baselineEquity) || baselineEquity <= 0) {
+    throw new Error('Equity curve is missing a valid initial_funds value.');
   }
-
-  const baselineEquity = initialBalance;
+  const baselinePrice =
+    typeof equityCurve.baseline_price === 'number' && Number.isFinite(equityCurve.baseline_price)
+      ? equityCurve.baseline_price
+      : undefined;
 
   // Transform equity curve data points to chart data
   const candlestickData: TradingCandlestickPoint[] = [];
@@ -197,7 +202,7 @@ export function transformNewEquityCurveToChartData(
   // Calculate metrics using the new chart data
   const metrics = calculateMetricsFromNewData(chartData, tradingLogs, baselineEquity);
 
-  return { data: chartData, metrics, candlestickData };
+  return { data: chartData, metrics, candlestickData, initialBalance: baselineEquity, baselinePrice };
 }
 
 function normalizeOhlcv(

@@ -319,6 +319,8 @@ export interface EquityCurveNewData {
   timeframe: string;
   start_time: string;
   end_time: string;
+  initial_funds?: number;
+  baseline_price?: number;
   data_points: Array<{
     timestamp: string;
     equity: number;

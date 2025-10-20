@@ -6,7 +6,6 @@ import {
   getTradingLogs,
   getSubAccountsByTrading,
   getEquityCurveByTimeRange,
-  getTransactions,
   ApiError,
   type Trading,
   type TradingLog,
@@ -161,6 +160,7 @@ type ChartState = {
   benchmarkData: TradingDataPoint[];
   metrics: TradingMetrics;
   candlestickData: TradingCandlestickPoint[];
+  baselinePrice?: number;
 };
 
 // Per-timeframe data cache to store loaded data for each timeframe
@@ -172,6 +172,8 @@ type TimeframeDataCache = {
     lastUpdateTimestamp?: number;
     candlestickData: TradingCandlestickPoint[];
     equityCurve: EquityCurveNewData;
+    baselinePrice?: number;
+    initialBalance: number;
   };
 };
 
@@ -296,6 +298,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     benchmarkData: [],
     metrics: {} as TradingMetrics,
     candlestickData: [],
+    baselinePrice: undefined,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -314,91 +317,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const incrementalUpdateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const incrementalUpdateInProgressRef = useRef(false);
 
-  const [initialBalance, setInitialBalance] = useState<number | undefined>(() => {
-    if (typeof trading.info?.initial_funds === 'number') {
-      return trading.info.initial_funds;
-    }
-
-    if (typeof trading.info?.initial_balance === 'number') {
-      return trading.info.initial_balance;
-    }
-
-    return undefined;
-  });
-
-
-  // Extract trading data fetching logic into reusable function
-  const fetchInitialBalance = useCallback(async (quoteSymbolToUse: string): Promise<number> => {
-    if (initialBalance !== undefined && Number.isFinite(initialBalance) && initialBalance > 0) {
-      return initialBalance;
-    }
-
-    const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
-    try {
-      const transactions = await getTransactions(trading.id, requireAuth);
-      if (!transactions || transactions.length === 0) {
-        throw new Error('No transactions available to derive initial balance.');
-      }
-
-      const sortedByTime = [...transactions].sort((a, b) =>
-        new Date(a.event_time).getTime() - new Date(b.event_time).getTime()
-      );
-
-      const normalizedQuoteSymbol = quoteSymbolToUse?.toUpperCase?.() ?? quoteSymbolToUse;
-
-      const quoteSubAccountIds = new Set<string>();
-      sortedByTime.forEach(tx => {
-        if (tx.quote_symbol && tx.quote_symbol.toUpperCase() === normalizedQuoteSymbol) {
-          quoteSubAccountIds.add(tx.sub_account_id);
-        }
-      });
-
-      let derivedInitial: number | undefined;
-
-      if (quoteSubAccountIds.size > 0) {
-        for (const subAccountId of quoteSubAccountIds) {
-          const firstTx = sortedByTime.find(tx => tx.sub_account_id === subAccountId);
-          if (firstTx) {
-            const balance = parseFloat(firstTx.closing_balance ?? '');
-            if (Number.isFinite(balance) && balance > 0) {
-              derivedInitial = balance;
-              break;
-            }
-          }
-        }
-      }
-
-      if (!derivedInitial) {
-        const firstTxWithQuote = sortedByTime.find(
-          tx => tx.quote_symbol && tx.quote_symbol.toUpperCase() === normalizedQuoteSymbol
-        );
-        if (firstTxWithQuote) {
-          const balance = parseFloat(firstTxWithQuote.closing_balance ?? '');
-          if (Number.isFinite(balance) && balance > 0) {
-            derivedInitial = balance;
-          }
-        }
-      }
-
-      if (!derivedInitial) {
-        const firstTx = sortedByTime[0];
-        const balance = parseFloat(firstTx.closing_balance ?? '');
-        if (Number.isFinite(balance) && balance > 0) {
-          derivedInitial = balance;
-        }
-      }
-
-      if (!derivedInitial || !Number.isFinite(derivedInitial) || derivedInitial <= 0) {
-        throw new Error('Failed to derive initial balance from transactions.');
-      }
-
-      setInitialBalance(derivedInitial);
-      return derivedInitial;
-    } catch (err) {
-      console.error('Failed to derive initial balance from transactions:', err);
-      throw err;
-    }
-  }, [initialBalance, trading.id, trading.type]);
+  const [initialBalance, setInitialBalance] = useState<number | undefined>(undefined);
 
 
   const fetchTradingData = useCallback(async (isInitialLoad = false) => {
@@ -440,11 +359,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       setStockSymbol(fetchedStockSymbol);
       setQuoteSymbol(fetchedQuoteSymbol);
 
-      let baseline = initialBalance;
-      if (baseline === undefined || !Number.isFinite(baseline) || baseline <= 0) {
-        baseline = await fetchInitialBalance(fetchedQuoteSymbol);
-      }
-
       const exchangeId = trading.exchange_binding?.exchange;
 
       const [equityCurve, tradingLogs] = await Promise.all([
@@ -470,22 +384,21 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         throw new Error('Invalid equity curve data format received from API. Expected new format with data_points array.');
       }
 
-      if (baseline === undefined || !Number.isFinite(baseline) || baseline <= 0) {
-        throw new Error('Initial balance is required for ROI calculations but is missing or invalid.');
-      }
-
       const normalizedEquityCurve = normalizeEquityCurve(equityCurve);
 
       const {
         data,
         metrics: calculatedMetrics,
         candlestickData,
+        initialBalance: resolvedInitialBalance,
+        baselinePrice,
       } = transformNewEquityCurveToChartData(
         normalizedEquityCurve,
         tradingLogs,
-        selectedTimeframe,
-        baseline
+        selectedTimeframe
       );
+
+      setInitialBalance(resolvedInitialBalance);
 
       const normalizedCandles = normalizeCandlesticks(candlestickData);
       if (normalizedCandles.length > 0) {
@@ -523,6 +436,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         const nextBenchmark = mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData;
         const nextMetrics = metricsChanged ? calculatedMetrics : previous.metrics;
         const nextCandlesticks = candlestickChanged ? normalizedCandles : previous.candlestickData;
+        const nextBaselinePrice = baselinePrice ?? previous.baselinePrice;
 
         // Store in cache for this timeframe
         const cacheKey = selectedTimeframe;
@@ -532,6 +446,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           metrics: nextMetrics,
           candlestickData: nextCandlesticks,
           equityCurve: normalizedEquityCurve,
+          baselinePrice: nextBaselinePrice,
+          initialBalance: resolvedInitialBalance,
           lastUpdateTimestamp:
             nextData.length > 0
               ? nextData[nextData.length - 1].timestampNum
@@ -549,6 +465,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           benchmarkData: nextBenchmark,
           metrics: nextMetrics,
           candlestickData: nextCandlesticks,
+          baselinePrice: nextBaselinePrice,
         };
       });
 
@@ -573,8 +490,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       }
     }
   }, [
-    fetchInitialBalance,
-    initialBalance,
     selectedTimeframe,
     trading.exchange_binding?.exchange,
     trading.id,
@@ -588,16 +503,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
     if (!cacheEntry || incrementalUpdateInProgressRef.current) {
       return;
-    }
-
-    let baseline = initialBalance;
-    if (baseline === undefined || !Number.isFinite(baseline) || baseline <= 0) {
-      try {
-        baseline = await fetchInitialBalance(quoteSymbol);
-      } catch (err) {
-        console.error('Initial balance is required for incremental updates but could not be derived.', err);
-        return;
-      }
     }
 
     const existingEquityCurve = cacheEntry.equityCurve;
@@ -712,12 +617,15 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         data,
         metrics: calculatedMetrics,
         candlestickData,
+        initialBalance: resolvedInitialBalance,
+        baselinePrice,
       } = transformNewEquityCurveToChartData(
         updatedEquityCurve,
         tradingLogsRef.current,
-        selectedTimeframe,
-        baseline
+        selectedTimeframe
       );
+
+      setInitialBalance(resolvedInitialBalance);
 
       const normalizedCandles = normalizeCandlesticks(candlestickData);
 
@@ -748,6 +656,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         const nextBenchmark = mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData;
         const nextMetrics = metricsChanged ? calculatedMetrics : previous.metrics;
         const nextCandlesticks = candlestickChanged ? normalizedCandles : previous.candlestickData;
+        const nextBaselinePrice = baselinePrice ?? previous.baselinePrice ?? cacheEntry.baselinePrice;
 
         timeframeDataCacheRef.current[cacheKey] = {
           data: nextData,
@@ -755,6 +664,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           metrics: nextMetrics,
           candlestickData: nextCandlesticks,
           equityCurve: updatedEquityCurve,
+          baselinePrice: nextBaselinePrice,
+          initialBalance: resolvedInitialBalance,
           lastUpdateTimestamp:
             nextData.length > 0
               ? nextData[nextData.length - 1].timestampNum
@@ -770,6 +681,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           benchmarkData: nextBenchmark,
           metrics: nextMetrics,
           candlestickData: nextCandlesticks,
+          baselinePrice: nextBaselinePrice,
         };
       });
     } catch (err) {
@@ -778,8 +690,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       incrementalUpdateInProgressRef.current = false;
     }
   }, [
-    fetchInitialBalance,
-    initialBalance,
     quoteSymbol,
     selectedTimeframe,
     stockSymbol,
@@ -805,11 +715,20 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       if (cachedData) {
         // Use cached data for this timeframe
         console.log(`Using cached data for timeframe ${cacheKey}: ${cachedData.data.length} points`);
+        if (
+          cachedData.initialBalance !== undefined &&
+          Number.isFinite(cachedData.initialBalance) &&
+          cachedData.initialBalance > 0 &&
+          cachedData.initialBalance !== initialBalance
+        ) {
+          setInitialBalance(cachedData.initialBalance);
+        }
         setChartState({
           data: cachedData.data,
           benchmarkData: cachedData.benchmarkData,
           metrics: cachedData.metrics,
           candlestickData: cachedData.candlestickData,
+          baselinePrice: cachedData.baselinePrice,
         });
         setInitialized(false); // Reset to show latest 100 points
       } else {
@@ -1236,12 +1155,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 className=""
                 loading={loading || isRefetchingData}
                 initialBalance={initialBalance}
+                baselinePrice={chartState.baselinePrice}
               />
             </div>
           </div>
 
           {/* Main Chart - Performance and Benchmark */}
-          <div style={{ flex: '0 0 30%', marginBottom: '10px', outline: 'none' }} tabIndex={-1}>
+          <div style={{ flex: '0 0 30%', marginTop: '150px', marginBottom: '10px', outline: 'none' }} tabIndex={-1}>
             <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
               <ComposedChart
                 data={filteredData}

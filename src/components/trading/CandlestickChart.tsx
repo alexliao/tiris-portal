@@ -27,6 +27,7 @@ interface CandlestickChartProps {
   className?: string;
   loading?: boolean;
   initialBalance?: number;
+  baselinePrice?: number;
 }
 
 // Error boundary to catch chart errors
@@ -74,6 +75,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   className = '',
   loading = false,
   initialBalance,
+  baselinePrice,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -737,11 +739,11 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       }
     }
 
-    const baselinePrice = benchmarkPoints.find(point => {
-      const price = point.benchmarkPrice;
-      return typeof price === 'number' && Number.isFinite(price);
-    })?.benchmarkPrice;
-    benchmarkBaselineRef.current = baselinePrice;
+    const resolvedBaselinePrice =
+      typeof baselinePrice === 'number' && Number.isFinite(baselinePrice) && baselinePrice > 0
+        ? baselinePrice
+        : undefined;
+    benchmarkBaselineRef.current = resolvedBaselinePrice;
 
     const equityData = equityPoints
       .map((point) => {
@@ -750,19 +752,19 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           return null;
         }
 
-        if (point.roi === undefined || point.roi === null || baselinePrice === undefined) {
+        if (point.roi === undefined || point.roi === null || resolvedBaselinePrice === undefined) {
           return null;
         }
 
         return {
           time: timeInSeconds as Time,
-          value: baselinePrice * (1 + point.roi / 100),
+          value: resolvedBaselinePrice * (1 + point.roi / 100),
         };
       })
       .filter((item): item is { time: Time; value: number } => item !== null);
 
     if (equityAreaSeriesRef.current) {
-      if (equityData.length > 0) {
+      if (resolvedBaselinePrice !== undefined && equityData.length > 0) {
         equityData.sort((a, b) => (a.time as number) - (b.time as number));
         equityAreaSeriesRef.current.setData(equityData);
       } else {
@@ -840,7 +842,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         });
       });
     }
-  }, [candles, equityPoints, benchmarkPoints, loading, hasInitialized, timeframe]);
+  }, [candles, equityPoints, benchmarkPoints, loading, hasInitialized, timeframe, baselinePrice]);
 
   useEffect(() => {
     if (!hasInitialized) {
