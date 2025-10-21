@@ -299,7 +299,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showTradingDots, setShowTradingDots] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('1m');
   const [stockSymbol, setStockSymbol] = useState<string>('ETH');
   const [quoteSymbol, setQuoteSymbol] = useState<string>('USDT');
@@ -310,6 +309,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     equity: true,
     benchmark: true,
     position: true,
+    signals: false,
   });
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
@@ -916,10 +916,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             {/* Legend Buttons - Left Aligned */}
             <div className="flex items-center gap-1 flex-wrap">
               {[
-                { key: 'price' as const, label: 'Price', color: '#4B5563' },
                 { key: 'equity' as const, label: 'Equity', color: '#10B981' },
                 { key: 'benchmark' as const, label: 'Benchmark', color: '#F59E0B' },
                 { key: 'position' as const, label: 'Position', color: '#6366F1' },
+                { key: 'signals' as const, label: 'Signals', color: '#3B82F6' },
+                { key: 'price' as const, label: 'Price', color: '#4B5563' },
               ].map((item) => (
                 <button
                   key={item.key}
@@ -940,20 +941,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   {item.label}
                 </button>
               ))}
-              <button
-                onClick={() => setShowTradingDots(!showTradingDots)}
-                className={`flex items-center gap-1 rounded-md border px-3 py-1 text-xs font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                  showTradingDots
-                    ? 'bg-white border-gray-300 text-gray-700 focus:ring-blue-200'
-                    : 'bg-gray-100 border-gray-200 text-gray-400 focus:ring-blue-100'
-                }`}
-              >
-                <span
-                  className="inline-block h-2 w-2 rounded-full"
-                  style={{ backgroundColor: showTradingDots ? '#3B82F6' : '#D1D5DB' }}
-                />
-                Signals
-              </button>
             </div>
             {/* Timeframe Selector Buttons - Right Aligned */}
             <div className="flex items-center gap-1 flex-wrap">
@@ -977,7 +964,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         
         <div
           ref={chartContainerRef}
-          className={`${height} flex flex-col`}
+          className={`flex flex-col`}
           style={{
             outline: 'none',
             overflow: 'visible'
@@ -986,7 +973,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           tabIndex={-1}
         >
           {/* Candlestick Chart */}
-          <div style={{ flex: '0 0 35%', outline: 'none', minHeight: '250px', display: 'flex', flexDirection: 'column', marginBottom: '10px' }} tabIndex={-1}>
+          <div style={{ flex: '0 0 35%', outline: 'none', minHeight: '250px', display: 'flex', flexDirection: 'column'}} tabIndex={-1}>
             <div
               style={{
                 flex: '1 1 auto',
@@ -1005,8 +992,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 loading={loading || isRefetchingData}
                 initialBalance={initialBalance}
                 baselinePrice={chartState.baselinePrice}
-                tradingSignalsVisible={showTradingDots}
-                onTradingSignalsToggle={(next) => setShowTradingDots(next)}
+                tradingSignalsVisible={seriesVisibility.signals}
+                onTradingSignalsToggle={(next) => setSeriesVisibility(prev => ({
+                  ...prev,
+                  signals: next,
+                }))}
                 seriesVisibility={seriesVisibility}
                 onSeriesVisibilityChange={(next) => setSeriesVisibility(next)}
               />

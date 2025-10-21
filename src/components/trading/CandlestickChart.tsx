@@ -34,8 +34,8 @@ interface CandlestickChartProps {
   baselinePrice?: number;
   tradingSignalsVisible?: boolean;
   onTradingSignalsToggle?: (nextVisible: boolean) => void;
-  seriesVisibility?: { price: boolean; equity: boolean; benchmark: boolean; position: boolean };
-  onSeriesVisibilityChange?: (visibility: { price: boolean; equity: boolean; benchmark: boolean; position: boolean }) => void;
+  seriesVisibility?: { price: boolean; equity: boolean; benchmark: boolean; position: boolean; signals: boolean };
+  onSeriesVisibilityChange?: (visibility: { price: boolean; equity: boolean; benchmark: boolean; position: boolean; signals: boolean }) => void;
 }
 
 const DEFAULT_VISIBLE_CANDLE_COUNT = 100;
