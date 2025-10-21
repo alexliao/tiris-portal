@@ -16,6 +16,7 @@ import {
   type BusinessDay,
   type TickMarkType,
   type LogicalRange,
+  type Logical,
 } from 'lightweight-charts';
 import type {
   TradingCandlestickPoint,
@@ -87,9 +88,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   initialBalance,
   baselinePrice,
   tradingSignalsVisible,
-  onTradingSignalsToggle,
   seriesVisibility: externalSeriesVisibility,
-  onSeriesVisibilityChange,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -113,7 +112,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const previousLatestBarTimeRef = useRef<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [internalSeriesVisibility, setInternalSeriesVisibility] = useState({
+  const [internalSeriesVisibility] = useState({
     price: false,
     equity: true,
     benchmark: true,
@@ -196,7 +195,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     volumePriceScaleRef.current?.applyOptions({
       visible: priceVisible,
-      position: 'right',
       scaleMargins: volumeMargins,
       borderColor: '#d1d4dc',
     });
@@ -208,7 +206,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     positionPriceScaleRef.current?.applyOptions({
       visible: positionVisible,
-      position: 'right',
       scaleMargins: positionMargins,
       borderColor: '#d1d4dc',
     });
@@ -430,7 +427,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           ? { top: 0.72, bottom: 0.18 }
           : { top: 0.78, bottom: 0.02 },
         visible: seriesVisibilityStateRef.current.price,
-        position: 'right',
         borderColor: '#d1d4dc',
       });
 
@@ -456,7 +452,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           ? { top: 0.9, bottom: 0 }
           : { top: 0.98, bottom: 0.02 },
         visible: seriesVisibilityStateRef.current.position,
-        position: 'right',
         borderColor: '#d1d4dc',
       });
 
@@ -999,8 +994,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
               const lastIndex = chartData.length - 1;
               const firstVisibleIndex = Math.max(0, lastIndex - DEFAULT_VISIBLE_CANDLE_COUNT + 1);
               const visibleRange: LogicalRange = {
-                from: firstVisibleIndex,
-                to: lastIndex,
+                from: firstVisibleIndex as unknown as Logical,
+                to: lastIndex as unknown as Logical,
               };
               timeScale.setVisibleLogicalRange(visibleRange);
               console.log(`✅ Chart showing latest ${DEFAULT_VISIBLE_CANDLE_COUNT} candlesticks`);

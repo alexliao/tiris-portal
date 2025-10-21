@@ -97,6 +97,7 @@ export function transformNewEquityCurveToChartData(
         initialPrice: 0,
       },
       candlestickData: [],
+      initialBalance: 0,
     };
   }
 
@@ -134,6 +135,7 @@ export function transformNewEquityCurveToChartData(
         initialPrice: 0,
       },
       candlestickData: [],
+      initialBalance: 0,
     };
   }
 

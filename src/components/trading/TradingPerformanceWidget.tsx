@@ -287,7 +287,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   className = '',
   showHeader = true,
   showHighlights = true,
-  height = 'h-screen'
 }) => {
   const { t } = useTranslation();
   const [chartState, setChartState] = useState<ChartState>({
