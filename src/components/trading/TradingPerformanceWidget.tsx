@@ -971,12 +971,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   {tf}
                 </button>
               ))}
-              {isRefetchingData && (
-                <div className="ml-2 flex items-center text-sm text-gray-500">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600 mr-1"></div>
-                  <span className="font-['Nunito']">Loading...</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
