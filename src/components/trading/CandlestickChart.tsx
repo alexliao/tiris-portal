@@ -15,6 +15,7 @@ import {
   type Time,
   type BusinessDay,
   type TickMarkType,
+  type LogicalRange,
 } from 'lightweight-charts';
 import type {
   TradingCandlestickPoint,
@@ -36,6 +37,8 @@ interface CandlestickChartProps {
   seriesVisibility?: { price: boolean; equity: boolean; benchmark: boolean; position: boolean };
   onSeriesVisibilityChange?: (visibility: { price: boolean; equity: boolean; benchmark: boolean; position: boolean }) => void;
 }
+
+const DEFAULT_VISIBLE_CANDLE_COUNT = 100;
 
 // Error boundary to catch chart errors
 class ChartErrorBoundary extends Component<
@@ -104,6 +107,10 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const heightRef = useRef(height);
   const benchmarkBaselineRef = useRef<number | undefined>(undefined);
+  const hasUserAdjustedRangeRef = useRef(false);
+  const suppressTimeRangeEventRef = useRef(false);
+  const previousCandlesLengthRef = useRef(0);
+  const previousLatestBarTimeRef = useRef<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [internalSeriesVisibility, setInternalSeriesVisibility] = useState({
@@ -162,6 +169,12 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     typeof tradingSignalsVisible === 'boolean'
       ? tradingSignalsVisible
       : localSignalsVisible;
+
+  useEffect(() => {
+    hasUserAdjustedRangeRef.current = false;
+    previousCandlesLengthRef.current = 0;
+    previousLatestBarTimeRef.current = null;
+  }, [timeframe]);
 
 
   const applyScaleVisibility = (visibility = seriesVisibilityStateRef.current) => {
@@ -324,6 +337,21 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
       rightPriceScaleRef.current = chart.priceScale('right');
       rightPriceScaleRef.current.applyOptions({ visible: seriesVisibilityStateRef.current.price });
+
+      const timeScale = chart.timeScale();
+      const handleVisibleRangeChange = (newRange: LogicalRange | null) => {
+        if (!newRange) {
+          return;
+        }
+
+        if (suppressTimeRangeEventRef.current) {
+          return;
+        }
+
+        hasUserAdjustedRangeRef.current = true;
+      };
+
+      timeScale.subscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
 
       const series = chart.addSeries(CandlestickSeries, {
         priceScaleId: 'right',
@@ -644,6 +672,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       return () => {
         window.removeEventListener('resize', handleResize);
         chart.unsubscribeCrosshairMove(handleCrosshairMove);
+        timeScale.unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
         if (tooltipRef.current && chartContainerRef.current?.contains(tooltipRef.current)) {
           chartContainerRef.current.removeChild(tooltipRef.current);
         }
@@ -743,6 +772,19 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     setError(null);
     candlestickSeriesRef.current.setData(chartData);
+
+    const lastBarTime = chartData.length > 0 ? Number(chartData[chartData.length - 1].time) : Number.NaN;
+    const datasetResetDetected =
+      previousCandlesLengthRef.current === 0 ||
+      chartData.length < previousCandlesLengthRef.current ||
+      (Number.isFinite(lastBarTime) &&
+        typeof previousLatestBarTimeRef.current === 'number' &&
+        previousLatestBarTimeRef.current !== null &&
+        lastBarTime < previousLatestBarTimeRef.current);
+
+    if (datasetResetDetected) {
+      hasUserAdjustedRangeRef.current = false;
+    }
 
     const volumeData = candles
       .map((candle) => {
@@ -942,15 +984,44 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
             return;
           }
 
+          if (hasUserAdjustedRangeRef.current) {
+            return;
+          }
+
+          const timeScale = chartRef.current.timeScale();
+          suppressTimeRangeEventRef.current = true;
+
           try {
-            chartRef.current.timeScale().fitContent();
-            console.log('✅ Chart fitted to content - showing all candlesticks');
-          } catch (fitErr) {
-            console.warn('Failed to fit content, chart will show default view:', fitErr);
+            if (chartData.length <= DEFAULT_VISIBLE_CANDLE_COUNT) {
+              timeScale.fitContent();
+              console.log('✅ Chart fitted to content - showing all available candlesticks');
+            } else {
+              const lastIndex = chartData.length - 1;
+              const firstVisibleIndex = Math.max(0, lastIndex - DEFAULT_VISIBLE_CANDLE_COUNT + 1);
+              const visibleRange: LogicalRange = {
+                from: firstVisibleIndex,
+                to: lastIndex,
+              };
+              timeScale.setVisibleLogicalRange(visibleRange);
+              console.log(`✅ Chart showing latest ${DEFAULT_VISIBLE_CANDLE_COUNT} candlesticks`);
+            }
+          } catch (rangeErr) {
+            console.warn('Failed to adjust candlestick visible range, chart will show default view:', rangeErr);
+          } finally {
+            requestAnimationFrame(() => {
+              suppressTimeRangeEventRef.current = false;
+            });
           }
         });
       });
     }
+
+    if (Number.isFinite(lastBarTime)) {
+      previousLatestBarTimeRef.current = lastBarTime;
+    } else {
+      previousLatestBarTimeRef.current = null;
+    }
+    previousCandlesLengthRef.current = chartData.length;
   }, [
     candles,
     equityPoints,
