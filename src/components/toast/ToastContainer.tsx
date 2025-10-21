@@ -2,7 +2,8 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Toast } from './Toast';
-import { useToastContext } from './ToastProvider';
+import type { Toast as ToastType } from './types';
+import { useToastContext } from './useToastContext';
 
 export const ToastContainer: React.FC = () => {
   const { t } = useTranslation();
@@ -20,7 +21,7 @@ export const ToastContainer: React.FC = () => {
       aria-label={t('common.notifications')}
     >
       <div className="flex flex-col-reverse space-y-reverse space-y-2 pointer-events-auto">
-        {toasts.map((toast) => (
+        {toasts.map((toast: ToastType) => (
           <Toast key={toast.id} toast={toast} />
         ))}
       </div>

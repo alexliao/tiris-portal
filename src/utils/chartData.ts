@@ -140,8 +140,8 @@ export function transformNewEquityCurveToChartData(
   }
 
   // ROI baseline comes directly from the backend-provided initial funds.
-  const baselineEquity = equityCurve.initial_funds;
-  if (baselineEquity === undefined || !Number.isFinite(baselineEquity) || baselineEquity <= 0) {
+  const initialPortfolioValue: number = equityCurve.initial_funds ?? 0;
+  if (!Number.isFinite(initialPortfolioValue) || initialPortfolioValue <= 0) {
     throw new Error('Equity curve is missing a valid initial_funds value.');
   }
   const baselinePrice =
@@ -156,7 +156,7 @@ export function transformNewEquityCurveToChartData(
     const date = point.timestamp.split('T')[0];
 
     // Calculate ROI percentage from equity value using the baseline
-    const roi = ((point.equity - baselineEquity) / baselineEquity) * 100;
+    const roi = ((point.equity - initialPortfolioValue) / initialPortfolioValue) * 100;
 
     const benchmarkReturn = point.benchmark_return ?? 0;
     const benchmarkPercentage = benchmarkReturn * 100;
@@ -215,9 +215,9 @@ export function transformNewEquityCurveToChartData(
   }
 
   // Calculate metrics using the new chart data
-  const metrics = calculateMetricsFromNewData(chartData, tradingLogs, baselineEquity);
+  const metrics = calculateMetricsFromNewData(chartData, tradingLogs, initialPortfolioValue);
 
-  return { data: chartData, metrics, candlestickData, initialBalance: baselineEquity, baselinePrice };
+  return { data: chartData, metrics, candlestickData, initialBalance: initialPortfolioValue, baselinePrice };
 }
 
 function normalizeOhlcv(
@@ -487,7 +487,7 @@ export function transformTransactionsToChartData(
   // Get unique dates from transactions
   const uniqueDates = [...new Set(sortedTransactions.map(tx => tx.event_time.split('T')[0]))].sort();
   
-  let initialPortfolioValue = 10000; // Standard starting amount
+  const initialPortfolioValue = 10000; // Standard starting amount
   
   uniqueDates.forEach(date => {
     // Get all transactions for this date

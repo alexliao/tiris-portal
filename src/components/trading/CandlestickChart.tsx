@@ -14,7 +14,6 @@ import {
   type CandlestickData,
   type Time,
   type BusinessDay,
-  type TickMarkType,
   type LogicalRange,
   type Logical,
 } from 'lightweight-charts';
@@ -230,22 +229,22 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
       const localTimeFormatter = typeof Intl !== 'undefined'
         ? new Intl.DateTimeFormat(resolvedLocale?.locale, {
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-            timeZone: resolvedLocale?.timeZone,
-          })
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: resolvedLocale?.timeZone,
+        })
         : undefined;
 
       const localDateFormatter = typeof Intl !== 'undefined'
         ? new Intl.DateTimeFormat(resolvedLocale?.locale, {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric',
-            timeZone: resolvedLocale?.timeZone,
-          })
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric',
+          timeZone: resolvedLocale?.timeZone,
+        })
         : undefined;
 
       const fallbackDateTimeFormat = (date: Date) => `${pad2(date.getMonth() + 1)}/${pad2(date.getDate())} ${pad2(
@@ -309,7 +308,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           secondsVisible: false,
           borderColor: '#d1d4dc',
           barSpacing: 12,
-          tickMarkFormatter: (time: Time, _tickMarkType: TickMarkType, _locale: string) => formatTimeValue(time),
+          tickMarkFormatter: (time: Time) => formatTimeValue(time),
         },
         localization: {
           locale: resolvedLocale?.locale,

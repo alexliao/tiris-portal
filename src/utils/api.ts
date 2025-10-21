@@ -24,6 +24,8 @@ interface ApiResponse<T> {
   };
 }
 
+type AnyRecord = Record<string, unknown>;
+
 export interface Trading {
   id: string;
   name: string;
@@ -35,7 +37,7 @@ export interface Trading {
     type: string;
     status?: string;
     created_at?: string;
-    info?: { [key: string]: any };
+    info?: { [key: string]: unknown };
     api_key?: string | null;
     api_secret?: string | null;
   };
@@ -46,7 +48,7 @@ export interface Trading {
     strategy?: string;
     timeframe?: string;
     bot_id?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -67,7 +69,7 @@ export interface Transaction {
     symbol?: string;
     order_type?: string;
     side?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -88,7 +90,7 @@ export interface TradingLog {
     quantity?: string;
     strategy?: string;
     confidence?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -245,14 +247,14 @@ export async function getTradingById(tradingId: string, requireAuth: boolean = t
 export async function getLatestBacktestTrading(): Promise<Trading | null> {
   const tradings = await getTradings();
   const backtestTradings = tradings.filter(t => t.type === 'backtest');
-  
+
   if (backtestTradings.length === 0) {
     return null;
   }
-  
+
   // Try to find a backtest with actual transaction data
   // Check each backtest trading to find one with data
-  for (const trading of backtestTradings.sort((a, b) => 
+  for (const trading of backtestTradings.sort((a, b) =>
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   )) {
     try {
@@ -266,10 +268,10 @@ export async function getLatestBacktestTrading(): Promise<Trading | null> {
       continue;
     }
   }
-  
+
   // If no backtest has transaction data, return the latest one anyway
   console.warn('No backtest trading found with transaction data, using latest');
-  return backtestTradings.sort((a, b) => 
+  return backtestTradings.sort((a, b) =>
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   )[0];
 }
@@ -512,7 +514,7 @@ export interface ExchangeBinding {
     api_key?: string;
     api_secret?: string;
     passphrase?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -523,7 +525,7 @@ export interface CreateTradingRequest {
   info: {
     strategy?: string;
     description?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -533,7 +535,7 @@ export async function getPublicExchangeBindings(): Promise<ExchangeBinding[]> {
 }
 
 export async function getExchangeBindings(): Promise<ExchangeBinding[]> {
-  const response = await apiRequest<any>('/exchange-bindings');
+  const response = await apiRequest<AnyRecord>('/exchange-bindings');
   console.log('getExchangeBindings raw response:', response);
   console.log('getExchangeBindings response type:', typeof response);
   console.log('getExchangeBindings is array:', Array.isArray(response));
@@ -545,18 +547,18 @@ export async function getExchangeBindings(): Promise<ExchangeBinding[]> {
 
   // If response is an object with items property (paginated response)
   if (response && typeof response === 'object' && 'items' in response) {
-    return (response as any).items || [];
+    return (response as { items: ExchangeBinding[] }).items || [];
   }
 
   // If response is an object with exchange_bindings property, extract it
   if (response && typeof response === 'object' && 'exchange_bindings' in response) {
-    return (response as any).exchange_bindings || [];
+    return (response as { exchange_bindings: ExchangeBinding[] }).exchange_bindings || [];
   }
 
   // If response is an object with the array directly as values, try to extract
   if (response && typeof response === 'object') {
     // Sometimes APIs return the array directly in the data field
-    return response as any || [];
+    return response as unknown as ExchangeBinding[] || [];
   }
 
   console.warn('Unexpected exchange bindings response format:', response);
@@ -578,7 +580,7 @@ export interface CreateExchangeBindingRequest {
     description?: string;
     quote_currency?: string;
     passphrase?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -599,7 +601,7 @@ export interface UpdateExchangeBindingRequest {
     description?: string;
     quote_currency?: string;
     passphrase?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -633,28 +635,28 @@ function extractExchangeCredentials(binding?: ExchangeBinding | null): { apiKey:
   }
 
   const info = binding.info || {};
-  const credentialsSections = [info.credentials, info.credential, info.security, info.api_credentials, info.apiCredentials];
+  const credentialsSections = [info.credentials, info.credential, info.security, info.api_credentials, info.apiCredentials].filter((section): section is Record<string, unknown> => section !== undefined && section !== null && typeof section === 'object');
 
   const candidateKeys: Array<string | null | undefined> = [
     binding.api_key,
-    info.api_key,
-    info.apiKey,
-    info.api_key_plain,
-    info.apiKeyPlain,
-    info.api_key_preview,
-    info.apiKeyPreview,
-    ...credentialsSections.map(section => section?.api_key ?? section?.apiKey ?? section?.key ?? null),
+    info.api_key as string | undefined,
+    info.apiKey as string | undefined,
+    info.api_key_plain as string | undefined,
+    info.apiKeyPlain as string | undefined,
+    info.api_key_preview as string | undefined,
+    info.apiKeyPreview as string | undefined,
+    ...credentialsSections.map(section => (section.api_key ?? section.apiKey ?? section.key ?? null) as string | null),
   ];
 
   const candidateSecrets: Array<string | null | undefined> = [
     binding.api_secret,
-    info.api_secret,
-    info.apiSecret,
-    info.api_secret_plain,
-    info.apiSecretPlain,
-    info.api_secret_preview,
-    info.apiSecretPreview,
-    ...credentialsSections.map(section => section?.api_secret ?? section?.apiSecret ?? section?.secret ?? null),
+    info.api_secret as string | undefined,
+    info.apiSecret as string | undefined,
+    info.api_secret_plain as string | undefined,
+    info.apiSecretPlain as string | undefined,
+    info.api_secret_preview as string | undefined,
+    info.apiSecretPreview as string | undefined,
+    ...credentialsSections.map(section => (section.api_secret ?? section.apiSecret ?? section.secret ?? null) as string | null),
   ];
 
   const apiKey = candidateKeys.find((value): value is string => typeof value === 'string' && value.trim().length > 0) ?? null;
@@ -707,7 +709,7 @@ export async function fetchExchangeBalanceForBinding(
     // Filter for existing real tradings with the same exchange binding
     const existingRealTradings = tradings.filter(
       t => t.type === 'real' &&
-      (t.exchange_binding_id === exchangeBindingId || t.exchange_binding?.id === exchangeBindingId)
+        (t.exchange_binding_id === exchangeBindingId || t.exchange_binding?.id === exchangeBindingId)
     );
 
     console.log(`Found ${existingRealTradings.length} existing real tradings with same exchange binding`);
@@ -764,9 +766,9 @@ export async function createRealTrading(request: CreateTradingRequest): Promise<
   console.log('🔍 [REAL DEBUG] Creating real trading with business logic steps...');
   console.log('🔍 [REAL DEBUG] Request received:', request);
 
-  const quoteCurrency = request.info?.quote_currency;
+  const quoteCurrency = request.info?.quote_currency as string | undefined;
 
-  if (!quoteCurrency) {
+  if (!quoteCurrency || typeof quoteCurrency !== 'string') {
     throw new Error('Quote currency is required to create a real trading.');
   }
 
@@ -883,7 +885,7 @@ export async function createRealTrading(request: CreateTradingRequest): Promise<
     // Use initial_funds if provided by user, otherwise use the fetched initial_balance
     const initialFunds = request.info?.initial_funds;
     const initialBalance = request.info?.initial_balance || 0;
-    const depositAmount = typeof initialFunds === 'number' ? initialFunds : initialBalance;
+    const depositAmount = typeof initialFunds === 'number' ? initialFunds : Number(initialBalance);
 
     if (depositAmount > 0) {
       await createTradingLog({
@@ -916,7 +918,7 @@ export interface CreateSubAccountRequest {
   symbol: string;
   balance: string;
   trading_id: string;
-  info?: { [key: string]: any };
+  info?: { [key: string]: unknown };
 }
 
 // Create a new sub-account
@@ -936,7 +938,7 @@ export interface CreateTradingLogRequest {
   sub_account_id?: string;
   transaction_id?: string;
   event_time?: string;
-  info?: { [key: string]: any };
+  info?: { [key: string]: unknown };
 }
 
 // Create a new trading log
@@ -967,12 +969,12 @@ export interface Bot {
         type: string;
         api_key?: string | null;
         api_secret?: string | null;
-        info?: { [key: string]: any };
+        info?: { [key: string]: unknown };
       };
-      params?: { [key: string]: any };
+      params?: { [key: string]: unknown };
     };
     status?: {
-      info?: { [key: string]: any };
+      info?: { [key: string]: unknown };
       errors?: Array<{
         timestamp: string;
         code: string;
@@ -1010,9 +1012,9 @@ export interface BotCreateRequest {
       type: string;
       api_key?: string | null;
       api_secret?: string | null;
-      info?: { [key: string]: any };
+      info?: { [key: string]: unknown };
     };
-    params?: { [key: string]: any };
+    params?: { [key: string]: unknown };
   };
 }
 
@@ -1261,7 +1263,7 @@ interface SubAccount {
   balance: string;
   trading_id: string;
   created_at: string;
-  info: { [key: string]: any };
+  info: { [key: string]: unknown };
 }
 
 // Get available strategies from tiris-bot API

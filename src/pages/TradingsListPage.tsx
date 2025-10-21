@@ -77,7 +77,7 @@ export const TradingsListPage: React.FC = () => {
   // Helper function to get strategy name from bot data
   const getStrategyForTrading = (trading: Trading): string => {
     const bot = bots.find(b => b.record.spec.trading.id === trading.id);
-    return bot?.record.spec.params?.strategy_name || trading.info?.strategy || 'N/A';
+    return String(bot?.record.spec.params?.strategy_name || trading.info?.strategy || 'N/A');
   };
 
   const handleCreateTrading = () => {

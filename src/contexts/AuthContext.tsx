@@ -30,11 +30,14 @@ interface AuthContextType {
   refreshAuth: () => Promise<void>;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;
 }
+
+// Export context separately to avoid fast-refresh issues
+export { AuthContext };
 
 const convertBackendUserToUser = (backendUser: BackendUser): User => {
   // Prefer full name if available; fall back to username.

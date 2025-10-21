@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, XCircle, Info, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Toast as ToastType } from './types';
-import { useToastContext } from './ToastProvider';
+import { useToastContext } from './useToastContext';
 
 interface ToastProps {
   toast: ToastType;

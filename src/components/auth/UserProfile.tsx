@@ -14,10 +14,9 @@ export const UserProfile: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
 
-  if (!user) return null;
-
   // Close on outside click / Escape
   useEffect(() => {
+    if (!user) return;
     function onClickOutside(e: MouseEvent) {
       if (!isDropdownOpen) return;
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -33,7 +32,9 @@ export const UserProfile: React.FC = () => {
       document.removeEventListener('mousedown', onClickOutside);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, user]);
+
+  if (!user) return null;
 
   const handleCopyEmail = async () => {
     if (!user?.email) return;

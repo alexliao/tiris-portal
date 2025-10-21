@@ -59,7 +59,7 @@ export const OAuthCallback: React.FC = () => {
         if (!code || !state) {
           throw new Error('Missing code or state parameter');
         }
-        const provider = (sessionStorage.getItem('oauth_provider') || 'google') as any;
+        const provider = (sessionStorage.getItem('oauth_provider') || 'google') as 'google' | 'wechat';
         const authData = await authService.handleCallback(provider, code, state);
 
         // Persist tokens
@@ -72,8 +72,8 @@ export const OAuthCallback: React.FC = () => {
         const target = sessionStorage.getItem('redirect_after_login') || '/dashboard';
         // Force full reload so AuthContext re-initializes from localStorage
         window.location.replace(target);
-      } catch (e) {
-        console.error('OAuth callback error:', e);
+      } catch (error) {
+        console.error('OAuth callback error:', error);
         window.location.replace('/');
       }
     })();

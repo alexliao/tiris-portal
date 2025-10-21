@@ -19,7 +19,7 @@ test.describe('Data Deduplication', () => {
     ];
 
     // Simulate the deduplication logic from fetchIncrementalData
-    const existingDataMap = new Map<number, any>();
+    const existingDataMap = new Map<number, typeof existingData[0]>();
     existingData.forEach(point => {
       existingDataMap.set(point.timestampNum, point);
     });
@@ -39,14 +39,14 @@ test.describe('Data Deduplication', () => {
   });
 
   test('should handle empty existing data during incremental update', () => {
-    const existingData: any[] = [];
+    const existingData: Array<{ timestampNum: number; netValue: number; roi: number; benchmark: number; benchmarkPrice: number }> = [];
     const newData = [
       { timestampNum: 1000, netValue: 100, roi: 5, benchmark: 0, benchmarkPrice: 0 },
       { timestampNum: 2000, netValue: 150, roi: 10, benchmark: 0, benchmarkPrice: 0 },
     ];
 
     // Simulate deduplication with empty existing data
-    const existingDataMap = new Map<number, any>();
+    const existingDataMap = new Map<number, typeof newData[0]>();
     existingData.forEach(point => {
       existingDataMap.set(point.timestampNum, point);
     });
@@ -71,7 +71,7 @@ test.describe('Data Deduplication', () => {
     ];
 
     // Simulate deduplication when all new data is duplicate
-    const existingDataMap = new Map<number, any>();
+    const existingDataMap = new Map<number, typeof existingData[0]>();
     existingData.forEach(point => {
       existingDataMap.set(point.timestampNum, point);
     });
@@ -120,9 +120,6 @@ test.describe('Incremental Updates Feature', () => {
     // Wait for chart to load
     const chartContainer = page.locator('[class*="ResponsiveContainer"]').first();
     await expect(chartContainer).toBeVisible();
-
-    // Get initial data count (should be ~100 visible points)
-    const initialDataCount = await page.locator('[role="img"]').count();
 
     // Get the current timeframe button (e.g., "1m")
     const currentTimeframeButton = page.locator('button').filter({ hasText: /^1m$/ }).first();
@@ -245,8 +242,6 @@ test.describe('Incremental Updates Feature', () => {
     // Look for next button to pan forward
     const nextButton = page.locator('button:has-text("Next →")').first();
     if (await nextButton.isVisible() && !await nextButton.isDisabled()) {
-      const initialText = await nextButton.textContent();
-
       // Click next button
       await nextButton.click();
 
@@ -304,8 +299,6 @@ test.describe('Incremental Updates Feature', () => {
     const paginationText = page.locator('text=/\\d+ - \\d+ \\/ \\d+/').first();
 
     if (await paginationText.isVisible()) {
-      const initialText = await paginationText.textContent();
-
       // Switch to different timeframe
       const timeframe1h = page.locator('button').filter({ hasText: /^1h$/ }).first();
       if (await timeframe1h.isVisible()) {

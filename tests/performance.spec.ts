@@ -97,10 +97,6 @@ test.describe('Performance Page', () => {
   test('should display currency formatting correctly', async ({ page }) => {
     await page.goto('/performance');
     
-    // Look for dollar amounts (should be properly formatted)
-    const currencyPattern = /\$[\d,]+/;
-    const currencyElements = page.locator(`text=${currencyPattern.source}`);
-    
     // Should have at least the starting capital displayed
     await expect(page.locator('text=/Starting Capital: \\$10,000/')).toBeVisible();
   });

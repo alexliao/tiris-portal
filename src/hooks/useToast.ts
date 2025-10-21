@@ -1,4 +1,4 @@
-import { useToastContext } from '../components/toast/ToastProvider';
+import { useToastContext } from '../components/toast/useToastContext';
 
 /**
  * Hook for easy toast notifications

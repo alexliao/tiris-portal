@@ -15,28 +15,28 @@ const extractExchangeCredentials = (binding?: ExchangeBinding | null) => {
   }
 
   const info = binding.info || {};
-  const credentialsSections = [info.credentials, info.credential, info.security, info.api_credentials, info.apiCredentials];
+  const credentialsSections = [info.credentials, info.credential, info.security, info.api_credentials, info.apiCredentials].filter((section): section is Record<string, unknown> => section !== undefined && section !== null && typeof section === 'object');
 
   const candidateKeys: Array<string | null | undefined> = [
     binding.api_key,
-    info.api_key,
-    info.apiKey,
-    info.api_key_plain,
-    info.apiKeyPlain,
-    info.api_key_preview,
-    info.apiKeyPreview,
-    ...credentialsSections.map(section => section?.api_key ?? section?.apiKey ?? section?.key ?? null),
+    info.api_key as string | undefined,
+    info.apiKey as string | undefined,
+    info.api_key_plain as string | undefined,
+    info.apiKeyPlain as string | undefined,
+    info.api_key_preview as string | undefined,
+    info.apiKeyPreview as string | undefined,
+    ...credentialsSections.map(section => (section.api_key ?? section.apiKey ?? section.key ?? null) as string | null),
   ];
 
   const candidateSecrets: Array<string | null | undefined> = [
     binding.api_secret,
-    info.api_secret,
-    info.apiSecret,
-    info.api_secret_plain,
-    info.apiSecretPlain,
-    info.api_secret_preview,
-    info.apiSecretPreview,
-    ...credentialsSections.map(section => section?.api_secret ?? section?.apiSecret ?? section?.secret ?? null),
+    info.api_secret as string | undefined,
+    info.apiSecret as string | undefined,
+    info.api_secret_plain as string | undefined,
+    info.apiSecretPlain as string | undefined,
+    info.api_secret_preview as string | undefined,
+    info.apiSecretPreview as string | undefined,
+    ...credentialsSections.map(section => (section.api_secret ?? section.apiSecret ?? section.secret ?? null) as string | null),
   ];
 
   const apiKey = candidateKeys.find((value): value is string => typeof value === 'string' && value.trim().length > 0) ?? null;
@@ -379,7 +379,7 @@ export const TradingDetailPage: React.FC = () => {
 
     if (isAuthenticated && !authLoading) {
       // Get timeframe from bot params or trading info
-      const timeframe = bot?.record.spec.params?.timeframe || trading?.info?.timeframe;
+      const timeframe = (bot?.record.spec.params?.timeframe || trading?.info?.timeframe) as string | undefined;
       const refreshIntervalMs = calculateRefreshInterval(timeframe);
 
       console.log(`Starting automatic data refresh with ${refreshIntervalMs}ms interval (timeframe: ${timeframe || 'default'})`);
@@ -580,7 +580,7 @@ export const TradingDetailPage: React.FC = () => {
                 ...currentTrading,
                 info: {
                   ...currentTrading.info,
-                  strategy: currentBot.record.spec.params.strategy_name
+                  strategy: currentBot.record.spec.params.strategy_name as string
                 }
               };
             }
@@ -882,11 +882,11 @@ export const TradingDetailPage: React.FC = () => {
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.strategy')}</div>
-                <div className="text-sm text-gray-900">{bot?.record.spec.params?.strategy_name || trading.info?.strategy_name || trading.info?.strategy || 'N/A'}</div>
+                <div className="text-sm text-gray-900">{String(bot?.record.spec.params?.strategy_name || trading.info?.strategy_name || trading.info?.strategy || 'N/A')}</div>
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.timeframe')}</div>
-                <div className="text-sm text-gray-900">{bot?.record.spec.params?.timeframe || trading.info?.timeframe || 'N/A'}</div>
+                <div className="text-sm text-gray-900">{String(bot?.record.spec.params?.timeframe || trading.info?.timeframe || 'N/A')}</div>
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.exchangeBinding')}</div>
@@ -896,7 +896,7 @@ export const TradingDetailPage: React.FC = () => {
                 <div>
                   <div className="text-sm font-medium text-gray-600">{t('trading.detail.initialFunds')}</div>
                   <div className="text-sm text-gray-900">
-                    {Math.floor(typeof trading.info.initial_funds === 'number' ? trading.info.initial_funds : trading.info.initial_balance).toLocaleString()} {trading.info?.quote_currency || 'USDT'}
+                    {Math.floor(typeof trading.info.initial_funds === 'number' ? trading.info.initial_funds : Number(trading.info.initial_balance || 0)).toLocaleString()} {String(trading.info?.quote_currency || 'USDT')}
                   </div>
                 </div>
               )}

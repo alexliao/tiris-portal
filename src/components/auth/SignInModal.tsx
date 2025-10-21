@@ -118,7 +118,8 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
               </button>
 
               {/* WeChat Sign In - Hidden but keeping code for future use */}
-              {false && (
+              {/* eslint-disable-next-line no-constant-binary-expression */}
+              {Boolean(false && handleWeChatLogin) && (
                 <>
                   <div className="relative my-4">
                     <div className="absolute inset-0 flex items-center">

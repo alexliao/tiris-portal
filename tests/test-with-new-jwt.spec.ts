@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 
 test.describe('Trading Detail Page with New JWT Token', () => {
   const NEW_JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYjZhOWE5MmMtOWQ0NC00ZGUyLTg0MjItZTcyMGFkN2ViMGVjIiwidXNlcm5hbWUiOiJBbGV4TGlhbyIsImVtYWlsIjoiYWxleDE5NzQ0NUBnbWFpbC5jb20iLCJyb2xlIjoidXNlciIsImlzcyI6InRpcmlzLWJhY2tlbmQiLCJzdWIiOiJiNmE5YTkyYy05ZDQ0LTRkZTItODQyMi1lNzIwYWQ3ZWIwZWMiLCJleHAiOjE3ODg5MDY2NjgsIm5iZiI6MTc1NzM3MDY2OCwiaWF0IjoxNzU3MzcwNjY4fQ.5sCJogRpVPp0FiUUPMtIbmJUWOVfcOzgiBIsPJ3-QB4';
@@ -12,8 +12,8 @@ test.describe('Trading Detail Page with New JWT Token', () => {
     });
 
     // Enable error logging
-    page.on('pageerror', error => {
-      console.log(`[BROWSER ERROR]:`, error.message);
+    page.on('pageerror', (err) => {
+      console.log(`[BROWSER ERROR]:`, err.message);
     });
 
     // Navigate to the app first
@@ -141,7 +141,7 @@ test.describe('Trading Detail Page with New JWT Token', () => {
           }
         }
       }
-    } catch (error) {
+    } catch {
       console.log('Could not get real trading ID, using test ID');
     }
     

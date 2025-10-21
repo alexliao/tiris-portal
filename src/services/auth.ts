@@ -128,10 +128,10 @@ class AuthService {
 
       if (!response.ok) {
         // Try to get error details from response body
-        let errorBody: any = {};
+        let errorBody: { error?: { message?: string; code?: string; details?: string } } = {};
         try {
           errorBody = await response.json();
-        } catch (e) {
+        } catch {
           // Response body is not JSON
         }
         
@@ -251,10 +251,10 @@ class AuthService {
       });
 
       if (!response.ok) {
-        let errorBody: any = {};
+        let errorBody: { error?: { message?: string; code?: string; details?: string } } = {};
         try {
           errorBody = await response.json();
-        } catch (e) {
+        } catch {
           // Response body is not JSON
         }
         
@@ -318,10 +318,10 @@ class AuthService {
       });
 
       if (!response.ok) {
-        let errorBody: any = {};
+        let errorBody: { error?: { message?: string; code?: string; details?: string } } = {};
         try {
           errorBody = await response.json();
-        } catch (e) {
+        } catch {
           // Response body is not JSON
         }
         
@@ -412,8 +412,9 @@ class AuthService {
   }
 
   // Backend WeChat OAuth flow
-  private async backendWeChatLogin(): Promise<AuthResponse> {
-    return new Promise(async (resolve, reject) => {
+  private backendWeChatLogin(): Promise<AuthResponse> {
+    return new Promise((resolve, reject) => {
+      (async () => {
       try {
         // Step 1: Get auth URL from backend
         const loginData = await this.initiateLogin('wechat');
@@ -473,6 +474,7 @@ class AuthService {
       } catch (error) {
         reject(error);
       }
+      })();
     });
   }
 }
