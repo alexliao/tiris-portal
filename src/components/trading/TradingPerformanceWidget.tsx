@@ -36,6 +36,42 @@ const timeframeToMilliseconds = (timeframe: Timeframe): number => {
 const CHART_LEFT_MARGIN = 5;
 const CHART_RIGHT_MARGIN = 0;
 
+const MIN_WARMUP_RETRY_MS = 1_500;
+const DEFAULT_WARMUP_RETRY_MS = 2_000;
+
+const getWarmupStateFromCurve = (
+  curve?: EquityCurveNewData | null
+): { active: boolean; retryAfterMs: number } => {
+  if (!curve) {
+    return { active: false, retryAfterMs: 0 };
+  }
+
+  const statusValue = typeof curve.status === 'string' ? curve.status.toLowerCase() : undefined;
+  const warming =
+    curve.warming_up === true ||
+    statusValue === 'warming' ||
+    Boolean(curve.gap_count && curve.gap_count > 0);
+
+  if (!warming) {
+    return { active: false, retryAfterMs: 0 };
+  }
+
+  const retryAfterSeconds =
+    typeof curve.retry_after === 'number' && Number.isFinite(curve.retry_after)
+      ? curve.retry_after
+      : undefined;
+
+  const retryAfterMs = Math.max(
+    Math.round((retryAfterSeconds ?? DEFAULT_WARMUP_RETRY_MS / 1000) * 1000),
+    MIN_WARMUP_RETRY_MS
+  );
+
+  return {
+    active: true,
+    retryAfterMs,
+  };
+};
+
 interface TradingPerformanceWidgetProps {
   trading: Trading;
   className?: string;
@@ -321,17 +357,42 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const incrementalUpdateInProgressRef = useRef(false);
 
   const [initialBalance, setInitialBalance] = useState<number | undefined>(undefined);
+  const warmupRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [warmupState, setWarmupState] = useState<{ active: boolean; retryAfterMs: number }>(
+    () => ({ active: false, retryAfterMs: 0 })
+  );
+  const apiRequestCountRef = useRef(0);
+  const [isApiFetching, setIsApiFetching] = useState(false);
+
+  const beginApiCall = useCallback(() => {
+    apiRequestCountRef.current += 1;
+    if (apiRequestCountRef.current === 1) {
+      setIsApiFetching(true);
+    }
+  }, []);
+
+  const endApiCall = useCallback(() => {
+    if (apiRequestCountRef.current === 0) {
+      return;
+    }
+    apiRequestCountRef.current -= 1;
+    if (apiRequestCountRef.current === 0) {
+      setIsApiFetching(false);
+    }
+  }, []);
 
 
-  const fetchTradingData = useCallback(async (isInitialLoad = false) => {
+  const fetchTradingData = useCallback(async (isInitialLoad = false, silentRefresh = false) => {
     try {
       // Only show loading state during initial load, not during refresh
       if (isInitialLoad) {
         setLoading(true);
         setError(null);
-      } else {
+      } else if (!silentRefresh) {
         setIsRefetchingData(true);
       }
+
+      beginApiCall();
 
       // Determine if authentication is required based on trading type
       const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
@@ -473,6 +534,17 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         };
       });
 
+      const nextWarmupState = getWarmupStateFromCurve(normalizedEquityCurve);
+      setWarmupState((previous) => {
+        if (
+          previous.active === nextWarmupState.active &&
+          previous.retryAfterMs === nextWarmupState.retryAfterMs
+        ) {
+          return previous;
+        }
+        return nextWarmupState;
+      });
+
     } catch (err) {
       console.error('Failed to fetch trading data:', err);
       // Only show errors during initial load, silently handle refresh errors
@@ -485,11 +557,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           setError('Failed to load trading data - Unknown error');
         }
       }
+      setWarmupState((previous) => (previous.active ? { active: false, retryAfterMs: 0 } : previous));
     } finally {
+      endApiCall();
       // Only hide loading state if we showed it (initial load)
       if (isInitialLoad) {
         setLoading(false);
-      } else {
+      } else if (!silentRefresh) {
         setIsRefetchingData(false);
       }
     }
@@ -498,6 +572,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     trading.exchange_binding?.exchange,
     trading.id,
     trading.type,
+    beginApiCall,
+    endApiCall,
   ]);
 
 
@@ -529,6 +605,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
 
     incrementalUpdateInProgressRef.current = true;
+    beginApiCall();
 
     try {
       const incrementalEquity = await getEquityCurveByTimeRange(
@@ -578,6 +655,25 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         combinedPoints = combinedPoints.slice(combinedPoints.length - TOTAL_DATA_TO_LOAD);
       }
 
+      const warmupSourceCurve = normalizedIncremental ?? incrementalEquity ?? existingEquityCurve;
+      const derivedWarmupState = getWarmupStateFromCurve(warmupSourceCurve);
+
+      let derivedRetryAfterSeconds: number | undefined;
+      if (
+        warmupSourceCurve &&
+        typeof warmupSourceCurve.retry_after === 'number' &&
+        Number.isFinite(warmupSourceCurve.retry_after)
+      ) {
+        derivedRetryAfterSeconds = warmupSourceCurve.retry_after;
+      } else if (derivedWarmupState.active) {
+        derivedRetryAfterSeconds = Math.max(Math.round(derivedWarmupState.retryAfterMs / 1000), 1);
+      } else if (
+        typeof existingEquityCurve.retry_after === 'number' &&
+        Number.isFinite(existingEquityCurve.retry_after)
+      ) {
+        derivedRetryAfterSeconds = existingEquityCurve.retry_after;
+      }
+
       const updatedEquityCurve: EquityCurveNewData = {
         ...existingEquityCurve,
         start_time: combinedPoints.length > 0 ? combinedPoints[0].timestamp : existingEquityCurve.start_time,
@@ -585,7 +681,20 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           ? combinedPoints[combinedPoints.length - 1].timestamp
           : existingEquityCurve.end_time,
         data_points: combinedPoints,
+        warming_up: derivedWarmupState.active,
+        retry_after: derivedRetryAfterSeconds,
+        gap_count: warmupSourceCurve?.gap_count ?? existingEquityCurve.gap_count,
+        status: warmupSourceCurve?.status ?? existingEquityCurve.status,
+        message: warmupSourceCurve?.message ?? existingEquityCurve.message,
       };
+
+      const nextWarmupState = getWarmupStateFromCurve(updatedEquityCurve);
+      setWarmupState((previous) => {
+        if (previous.active === nextWarmupState.active && previous.retryAfterMs === nextWarmupState.retryAfterMs) {
+          return previous;
+        }
+        return nextWarmupState;
+      });
 
       const latestTimestampNum = combinedPoints.length > 0
         ? new Date(combinedPoints[combinedPoints.length - 1].timestamp).getTime()
@@ -693,6 +802,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       console.error('Failed to fetch incremental trading data:', err);
     } finally {
       incrementalUpdateInProgressRef.current = false;
+      endApiCall();
     }
   }, [
     quoteSymbol,
@@ -701,6 +811,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     trading.id,
     trading.type,
     trading.exchange_binding?.exchange,
+    beginApiCall,
+    endApiCall,
   ]);
 
 
@@ -753,6 +865,35 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       setInitialized(true);
     }
   }, [chartState.data.length, initialized]);
+
+  // When backend is warming up equity data, retry in the background using the suggested cadence
+  useEffect(() => {
+    if (warmupRetryTimerRef.current) {
+      clearTimeout(warmupRetryTimerRef.current);
+      warmupRetryTimerRef.current = null;
+    }
+
+    if (!warmupState.active) {
+      return;
+    }
+
+    const delayMs = Math.max(
+      warmupState.retryAfterMs > 0 ? warmupState.retryAfterMs : DEFAULT_WARMUP_RETRY_MS,
+      MIN_WARMUP_RETRY_MS
+    );
+
+    warmupRetryTimerRef.current = setTimeout(() => {
+      warmupRetryTimerRef.current = null;
+      fetchTradingData(false, true);
+    }, delayMs);
+
+    return () => {
+      if (warmupRetryTimerRef.current) {
+        clearTimeout(warmupRetryTimerRef.current);
+        warmupRetryTimerRef.current = null;
+      }
+    };
+  }, [fetchTradingData, warmupState]);
 
   // Periodically fetch incremental updates when data is available
   useEffect(() => {
@@ -943,7 +1084,18 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
               ))}
             </div>
             {/* Timeframe Selector Buttons - Right Aligned */}
-            <div className="flex items-center gap-1 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              {isApiFetching && (
+                <span className="inline-flex items-center justify-center">
+                  <span
+                    className="h-4 w-4 rounded-full border-2 border-green-500 border-t-transparent animate-spin"
+                    aria-hidden="true"
+                  />
+                  <span className="sr-only">
+                    {t('trading.detail.loadingDataLabel', 'Fetching latest market data')}
+                  </span>
+                </span>
+              )}
               {(['1m', '1h', '8h', '1d'] as Timeframe[]).map((tf) => (
                 <button
                   key={tf}
