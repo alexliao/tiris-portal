@@ -19,6 +19,7 @@ export interface TradingDataPoint {
     type: 'buy' | 'sell' | 'stop_loss' | 'deposit' | 'withdraw';
     description: string;
   };
+  isPartial?: boolean; // Indicates the point was derived from partial/warmup data
 }
 
 type TradingEventType = NonNullable<TradingDataPoint['event']>['type'];
@@ -152,34 +153,92 @@ export function transformNewEquityCurveToChartData(
   // Transform equity curve data points to chart data
   const candlestickData: TradingCandlestickPoint[] = [];
 
-  const chartData: TradingDataPoint[] = equityCurve.data_points.map((point) => {
+  let lastEquityValue = initialPortfolioValue;
+  let lastBenchmarkReturn = 0;
+  let lastStockPrice: number | undefined = baselinePrice;
+  let lastPosition = 0;
+
+  const chartData: TradingDataPoint[] = [];
+
+  for (const point of equityCurve.data_points) {
+    const timestampNum = new Date(point.timestamp).getTime();
+    if (!Number.isFinite(timestampNum)) {
+      // Skip malformed timestamps entirely
+      continue;
+    }
+
     const date = point.timestamp.split('T')[0];
 
-    // Calculate ROI percentage from equity value using the baseline
-    const roi = ((point.equity - initialPortfolioValue) / initialPortfolioValue) * 100;
+    const equityValue = typeof point.equity === 'number' && Number.isFinite(point.equity)
+      ? point.equity
+      : null;
+    if (equityValue !== null) {
+      lastEquityValue = equityValue;
+    }
 
-    const benchmarkReturn = point.benchmark_return ?? 0;
-    const benchmarkPercentage = benchmarkReturn * 100;
+    const benchmarkReturnValue = typeof point.benchmark_return === 'number' && Number.isFinite(point.benchmark_return)
+      ? point.benchmark_return
+      : null;
+    if (benchmarkReturnValue !== null) {
+      lastBenchmarkReturn = benchmarkReturnValue;
+    }
+
+    const stockPriceValue = typeof point.stock_price === 'number' && Number.isFinite(point.stock_price)
+      ? point.stock_price
+      : null;
+    if (stockPriceValue !== null) {
+      lastStockPrice = stockPriceValue;
+    }
+
+    const stockBalanceValue = typeof point.stock_balance === 'number' && Number.isFinite(point.stock_balance)
+      ? point.stock_balance
+      : null;
+    if (stockBalanceValue !== null) {
+      lastPosition = stockBalanceValue;
+    }
+
+    const roiRaw = initialPortfolioValue > 0
+      ? ((lastEquityValue - initialPortfolioValue) / initialPortfolioValue) * 100
+      : 0;
+    const roi = Math.round(roiRaw * 100) / 100;
+    const netValue = Math.round(lastEquityValue * 100) / 100;
+
+    const benchmarkPercentage = Math.round((lastBenchmarkReturn * 100) * 100) / 100;
+    const benchmarkPrice =
+      typeof lastStockPrice === 'number' && Number.isFinite(lastStockPrice)
+        ? Math.round(lastStockPrice * 100) / 100
+        : undefined;
+
+    const normalizedPosition =
+      typeof lastPosition === 'number' && Number.isFinite(lastPosition)
+        ? Math.round(lastPosition * 10000) / 10000
+        : undefined;
 
     const transformedPoint: TradingDataPoint = {
       date,
       timestamp: point.timestamp,
-      timestampNum: new Date(point.timestamp).getTime(),
-      netValue: Math.round(point.equity * 100) / 100,
-      roi: Math.round(roi * 100) / 100,
-      benchmark: Math.round(benchmarkPercentage * 100) / 100,
-      benchmarkPrice: Math.round((point.stock_price ?? 0) * 100) / 100,
-      position: Math.round(point.stock_balance * 10000) / 10000,
+      timestampNum,
+      netValue,
+      roi,
+      benchmark: benchmarkPercentage,
+      benchmarkPrice,
+      position: normalizedPosition,
       event: undefined, // Will be assigned later
+      isPartial:
+        equityValue === null || stockPriceValue === null || benchmarkReturnValue === null,
     };
 
-    const candle = normalizeOhlcv(point.timestamp, point.ohlcv, point.stock_price);
+    const fallbackPriceForCandle =
+      typeof lastStockPrice === 'number' && Number.isFinite(lastStockPrice)
+        ? lastStockPrice
+        : undefined;
+    const candle = normalizeOhlcv(point.timestamp, point.ohlcv ?? undefined, fallbackPriceForCandle);
     if (candle) {
       candlestickData.push(candle);
     }
 
-    return transformedPoint;
-  });
+    chartData.push(transformedPoint);
+  }
 
   // Calculate the time window based on the timeframe - use half the interval
   const timeframeMs = timeframeToMilliseconds(timeframe);

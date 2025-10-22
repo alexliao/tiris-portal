@@ -121,18 +121,21 @@ export class ApiError extends Error {
   public code: string;
   public details?: string;
   public status?: number;
+  public payload?: unknown;
 
   constructor(
     code: string,
     message: string,
     details?: string,
-    status?: number
+    status?: number,
+    payload?: unknown
   ) {
     super(message);
     this.name = 'ApiError';
     this.code = code;
     this.details = details;
     this.status = status;
+    this.payload = payload;
   }
 }
 
@@ -164,12 +167,13 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}, requir
   // Handle 202 Accepted (warmup in progress)
   if (response.status === 202) {
     const warmupData = await response.json();
-    // Return 202 as an error so callers can handle retry
+    // Return 202 as an ApiError but include payload so callers can surface partial data
     throw new ApiError(
       warmupData.status || 'WARMING_UP',
       warmupData.message || 'Data is being fetched, please retry',
       `${warmupData.gaps || 0} gaps to fill, retry after ${warmupData.retry_after || 2} seconds`,
-      202
+      202,
+      warmupData
     );
   }
 
@@ -190,7 +194,8 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}, requir
       data.error?.code || 'UNKNOWN_ERROR',
       data.error?.message || 'An unknown error occurred',
       data.error?.details,
-      response.status
+      response.status,
+      data
     );
   }
 
@@ -335,15 +340,78 @@ export interface EquityCurveNewData {
   end_time: string;
   initial_funds?: number;
   baseline_price?: number;
+  warming_up?: boolean;
+  gap_count?: number;
+  retry_after?: number;
+  status?: string;
+  message?: string;
   data_points: Array<{
     timestamp: string;
-    equity: number;
+    equity: number | null;
     quote_balance: number;
-    stock_balance: number;
-    stock_price: number;
-    benchmark_return?: number;
-    ohlcv?: EquityCurveOhlcv;
+    stock_balance: number | null;
+    stock_price: number | null;
+    benchmark_return?: number | null;
+    ohlcv?: EquityCurveOhlcv | null;
+    events?: Array<Record<string, unknown>>;
   }>;
+}
+
+export interface EquityCurveWarmupEnvelope {
+  status?: string;
+  message?: string;
+  retry_after?: number;
+  gaps?: number;
+  data?: EquityCurveNewData;
+}
+
+function buildWarmupEquityCurve(
+  payload: unknown,
+  tradingId: string,
+  timeframe: string,
+  range?: { startTimeMs?: number; endTimeMs?: number }
+): EquityCurveNewData | undefined {
+  const warmup = payload as EquityCurveWarmupEnvelope | undefined;
+  if (!warmup) {
+    return undefined;
+  }
+
+  const baseData = warmup.data;
+  if (baseData && Array.isArray(baseData.data_points)) {
+    return {
+      ...baseData,
+      warming_up: baseData.warming_up ?? true,
+      gap_count: baseData.gap_count ?? warmup.gaps,
+      retry_after: baseData.retry_after ?? warmup.retry_after,
+      status: warmup.status ?? baseData.status,
+      message: warmup.message ?? baseData.message,
+    };
+  }
+
+  const nowIso = new Date().toISOString();
+  const startIso = range?.startTimeMs
+    ? new Date(range.startTimeMs).toISOString()
+    : baseData?.start_time ?? nowIso;
+  const endIso = range?.endTimeMs
+    ? new Date(range.endTimeMs).toISOString()
+    : baseData?.end_time ?? startIso;
+
+  const dataPoints = baseData && Array.isArray(baseData.data_points) ? baseData.data_points : [];
+
+  return {
+    trading_id: baseData?.trading_id ?? tradingId,
+    timeframe: baseData?.timeframe ?? timeframe,
+    start_time: startIso,
+    end_time: endIso,
+    initial_funds: baseData?.initial_funds ?? 0,
+    baseline_price: baseData?.baseline_price ?? 0,
+    warming_up: true,
+    gap_count: warmup.gaps,
+    retry_after: warmup.retry_after,
+    status: warmup.status,
+    message: warmup.message,
+    data_points: dataPoints,
+  };
 }
 
 export async function getEquityCurve(
@@ -365,53 +433,24 @@ export async function getEquityCurve(
   }
 
   const endpoint = `/tradings/${tradingId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
-
-  const maxRetries = 3;
-  let retryCount = 0;
-
-  while (retryCount < maxRetries) {
-    try {
-      const data = await apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);
-      console.log(`✅ getEquityCurve response: received ${data.data_points?.length ?? 0} data points`);
-      return data;
-    } catch (error) {
-      // Handle 202 Accepted (OHLCV data warming) response - data is being fetched
-      if (error instanceof ApiError && error.status === 202) {
-        retryCount++;
-        if (retryCount < maxRetries) {
-          const retryDelay = 2000; // 2 seconds as per API spec
-          console.log(`⏳ Equity curve data is warming (attempt ${retryCount}/${maxRetries}), retrying after ${retryDelay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
-          continue;
-        } else {
-          console.warn(`⚠️ Equity curve warming exceeded max retries (${maxRetries})`);
-          // Return empty data instead of throwing, similar to getOHLCV
-          return {
-            trading_id: tradingId,
-            timeframe,
-            start_time: new Date().toISOString(),
-            end_time: new Date().toISOString(),
-            data_points: [],
-            initial_funds: 0,
-            baseline_price: 0,
-          };
-        }
+  try {
+    const data = await apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);
+    console.log(`✅ getEquityCurve response: received ${data.data_points?.length ?? 0} data points`);
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 202) {
+      const warmupCurve = buildWarmupEquityCurve(error.payload, tradingId, timeframe);
+      if (warmupCurve) {
+        console.warn(
+          `⏳ Equity curve data warming detected. Returning ${warmupCurve.data_points.length} partial data points (gap_count=${warmupCurve.gap_count ?? 'unknown'}).`
+        );
+        return warmupCurve;
       }
-      // Other errors should be thrown
-      console.error(`❌ getEquityCurve error: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
     }
-  }
 
-  return {
-    trading_id: tradingId,
-    timeframe,
-    start_time: new Date().toISOString(),
-    end_time: new Date().toISOString(),
-    data_points: [],
-    initial_funds: 0,
-    baseline_price: 0,
-  };
+    console.error(`❌ getEquityCurve error: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
+  }
 }
 
 /**
@@ -449,53 +488,27 @@ export async function getEquityCurveByTimeRange(
   }
 
   const endpoint = `/tradings/${tradingId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
-
-  const maxRetries = 3;
-  let retryCount = 0;
-
-  while (retryCount < maxRetries) {
-    try {
-      const data = await apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);
-      console.log(`✅ getEquityCurveByTimeRange response: received ${data.data_points?.length ?? 0} data points`);
-      return data;
-    } catch (error) {
-      // Handle 202 Accepted (OHLCV data warming) response - data is being fetched
-      if (error instanceof ApiError && error.status === 202) {
-        retryCount++;
-        if (retryCount < maxRetries) {
-          const retryDelay = 2000; // 2 seconds as per API spec
-          console.log(`⏳ Equity curve (time range) data is warming (attempt ${retryCount}/${maxRetries}), retrying after ${retryDelay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
-          continue;
-        } else {
-          console.warn(`⚠️ Equity curve (time range) warming exceeded max retries (${maxRetries})`);
-          // Return empty data instead of throwing, similar to getOHLCV
-          return {
-            trading_id: tradingId,
-            timeframe,
-            start_time: new Date(startTime).toISOString(),
-            end_time: new Date(endTime).toISOString(),
-            data_points: [],
-            initial_funds: 0,
-            baseline_price: 0,
-          };
-        }
+  try {
+    const data = await apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);
+    console.log(`✅ getEquityCurveByTimeRange response: received ${data.data_points?.length ?? 0} data points`);
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 202) {
+      const warmupCurve = buildWarmupEquityCurve(error.payload, tradingId, timeframe, {
+        startTimeMs: startTime,
+        endTimeMs: endTime,
+      });
+      if (warmupCurve) {
+        console.warn(
+          `⏳ Equity curve (time range) warming detected. Returning ${warmupCurve.data_points.length} partial data points (gap_count=${warmupCurve.gap_count ?? 'unknown'}).`
+        );
+        return warmupCurve;
       }
-      // Other errors should be thrown
-      console.error(`❌ getEquityCurveByTimeRange error: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
     }
-  }
 
-  return {
-    trading_id: tradingId,
-    timeframe,
-    start_time: new Date(startTime).toISOString(),
-    end_time: new Date(endTime).toISOString(),
-    data_points: [],
-    initial_funds: 0,
-    baseline_price: 0,
-  };
+    console.error(`❌ getEquityCurveByTimeRange error: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
+  }
 }
 
 export interface ExchangeBinding {

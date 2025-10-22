@@ -51,6 +51,7 @@ const areTradingPointsEqual = (a: TradingDataPoint, b: TradingDataPoint): boolea
   if ((a.benchmark ?? null) !== (b.benchmark ?? null)) return false;
   if ((a.benchmarkPrice ?? null) !== (b.benchmarkPrice ?? null)) return false;
   if ((a.position ?? null) !== (b.position ?? null)) return false;
+  if ((a.isPartial ?? false) !== (b.isPartial ?? false)) return false;
 
   const aEventType = a.event?.type ?? null;
   const bEventType = b.event?.type ?? null;
@@ -280,7 +281,7 @@ const normalizeCandlesticks = (candles: TradingCandlestickPoint[]): TradingCandl
     .map(([, candle]) => candle);
 };
 
-const TOTAL_DATA_TO_LOAD = 500; // Total number of data points to load from backend
+const TOTAL_DATA_TO_LOAD = 200; // Total number of data points to load from backend
 
 const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps> = ({
   trading,
