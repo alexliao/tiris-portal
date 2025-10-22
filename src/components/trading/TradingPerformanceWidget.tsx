@@ -317,7 +317,7 @@ const normalizeCandlesticks = (candles: TradingCandlestickPoint[]): TradingCandl
     .map(([, candle]) => candle);
 };
 
-const TOTAL_DATA_TO_LOAD = 200; // Total number of data points to load from backend
+const TOTAL_DATA_TO_LOAD = 500; // Total number of data points to load from backend
 
 const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps> = ({
   trading,
@@ -362,13 +362,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     () => ({ active: false, retryAfterMs: 0 })
   );
   const apiRequestCountRef = useRef(0);
-  const [isApiFetching, setIsApiFetching] = useState(false);
+  const [isWarmingUp, setIsWarmingUp] = useState(false);
 
   const beginApiCall = useCallback(() => {
     apiRequestCountRef.current += 1;
-    if (apiRequestCountRef.current === 1) {
-      setIsApiFetching(true);
-    }
   }, []);
 
   const endApiCall = useCallback(() => {
@@ -376,13 +373,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       return;
     }
     apiRequestCountRef.current -= 1;
-    if (apiRequestCountRef.current === 0) {
-      setIsApiFetching(false);
-    }
   }, []);
 
 
   const fetchTradingData = useCallback(async (isInitialLoad = false, silentRefresh = false) => {
+    let is202Error = false;
+
     try {
       // Only show loading state during initial load, not during refresh
       if (isInitialLoad) {
@@ -547,19 +543,37 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
     } catch (err) {
       console.error('Failed to fetch trading data:', err);
+
+      // Check if this is a 202 (warmup in progress) - if so, keep the warmup spinner showing
+      is202Error = err instanceof ApiError && err.status === 202;
+
       // Only show errors during initial load, silently handle refresh errors
       if (isInitialLoad) {
         if (err instanceof ApiError) {
-          setError(`API Error (${err.code}): ${err.message}`);
+          // Don't show error for 202 responses - we'll retry automatically
+          if (err.status !== 202) {
+            setError(`API Error (${err.code}): ${err.message}`);
+          }
         } else if (err instanceof Error) {
           setError(`Network Error: ${err.message}`);
         } else {
           setError('Failed to load trading data - Unknown error');
         }
       }
-      setWarmupState((previous) => (previous.active ? { active: false, retryAfterMs: 0 } : previous));
+
+      // If this is a 202 error, start showing the warmup spinner
+      // Otherwise, stop showing it and clear the warmup state
+      if (is202Error) {
+        setIsWarmingUp(true);
+        setWarmupState((previous) => (previous.active ? previous : { active: true, retryAfterMs: DEFAULT_WARMUP_RETRY_MS }));
+      } else {
+        setIsWarmingUp(false);
+        setWarmupState((previous) => (previous.active ? { active: false, retryAfterMs: 0 } : previous));
+      }
     } finally {
+      // Always end the API call - the warmup spinner is controlled by isWarmingUp state instead
       endApiCall();
+
       // Only hide loading state if we showed it (initial load)
       if (isInitialLoad) {
         setLoading(false);
@@ -874,7 +888,16 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
 
     if (!warmupState.active) {
+      // Warmup is complete, stop showing the spinner
+      if (isWarmingUp) {
+        setIsWarmingUp(false);
+      }
       return;
+    }
+
+    // Warmup is active, make sure the spinner is visible
+    if (!isWarmingUp) {
+      setIsWarmingUp(true);
     }
 
     const delayMs = Math.max(
@@ -893,7 +916,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         warmupRetryTimerRef.current = null;
       }
     };
-  }, [fetchTradingData, warmupState]);
+  }, [fetchTradingData, warmupState, isWarmingUp]);
 
   // Periodically fetch incremental updates when data is available
   useEffect(() => {
@@ -1085,7 +1108,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             </div>
             {/* Timeframe Selector Buttons - Right Aligned */}
             <div className="flex items-center gap-2 flex-wrap">
-              {isApiFetching && (
+              {isWarmingUp && (
                 <span className="inline-flex items-center justify-center">
                   <span
                     className="h-4 w-4 rounded-full border-2 border-green-500 border-t-transparent animate-spin"
