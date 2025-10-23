@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, Component, type ErrorInfo, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   createChart,
   createSeriesMarkers,
@@ -66,6 +67,7 @@ class ChartErrorBoundary extends Component<
           style={{ height: this.props.height }}
         >
           <p className="text-red-600 text-sm">
+            {/* Note: Error boundary doesn't have access to i18n, fallback to English */}
             Chart error: {this.state.error?.message || 'Unknown error'}
           </p>
         </div>
@@ -89,6 +91,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   tradingSignalsVisible,
   seriesVisibility: externalSeriesVisibility,
 }) => {
+  const { t } = useTranslation();
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -218,7 +221,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       const containerWidth = chartContainerRef.current.clientWidth;
       console.log(`📊 Chart container dimensions: width=${containerWidth}px, height=${heightRef.current}px`);
       if (containerWidth === 0) {
-        console.warn('Chart container width is 0, chart may not render properly');
+        console.warn(t('trading.chart.containerWidthZero', 'Chart container width is 0, chart may not render properly'));
       }
 
       const resolvedLocale = typeof Intl !== 'undefined'
@@ -581,32 +584,40 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         }
 
         if (currentVisibility.price && candlestickData) {
+          const openLabel = t('trading.chart.tooltipLabels.open');
+          const highLabel = t('trading.chart.tooltipLabels.high');
+          const lowLabel = t('trading.chart.tooltipLabels.low');
+          const closeLabel = t('trading.chart.tooltipLabels.close');
           tooltipLines.push(
-            `<div>O: ${candlestickData.open.toFixed(2)} H: ${candlestickData.high.toFixed(2)}</div>`
+            `<div>${openLabel}: ${candlestickData.open.toFixed(2)} ${highLabel}: ${candlestickData.high.toFixed(2)}</div>`
           );
           tooltipLines.push(
-            `<div>L: ${candlestickData.low.toFixed(2)} C: ${candlestickData.close.toFixed(2)}</div>`
+            `<div>${lowLabel}: ${candlestickData.low.toFixed(2)} ${closeLabel}: ${candlestickData.close.toFixed(2)}</div>`
           );
         }
 
         if (currentVisibility.price && volumeValue !== undefined) {
+          const volumeLabel = t('trading.chart.tooltipLabels.volume');
           const formattedVolume = Number(volumeValue).toLocaleString(undefined, {
             maximumFractionDigits: 0,
           });
-          tooltipLines.push(`<div>Volume: ${formattedVolume}</div>`);
+          tooltipLines.push(`<div>${volumeLabel}: ${formattedVolume}</div>`);
         }
 
         if (currentVisibility.position && positionValue !== undefined) {
+          const positionLabel = t('trading.chart.tooltipLabels.position');
           const formattedPosition = Number(positionValue).toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 4,
           });
-          tooltipLines.push(`<div>Position: ${formattedPosition}</div>`);
+          tooltipLines.push(`<div>${positionLabel}: ${formattedPosition}</div>`);
         }
 
         if (currentVisibility.equity) {
           if (roiValue !== undefined) {
-            tooltipLines.push(`<div>ROI: ${roiValue.toFixed(2)}%</div>`);
+            const roiLabel = t('trading.chart.tooltipLabels.roi');
+            const portfolioLabel = t('trading.chart.tooltipLabels.portfolio');
+            tooltipLines.push(`<div>${roiLabel}: ${roiValue.toFixed(2)}%</div>`);
 
             if (
               initialBalance !== undefined &&
@@ -614,13 +625,14 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
               initialBalance > 0
             ) {
               const portfolioValue = initialBalance * (1 + roiValue / 100);
-              tooltipLines.push(`<div>Portfolio: $${portfolioValue.toFixed(2)}</div>`);
+              tooltipLines.push(`<div>${portfolioLabel}: $${portfolioValue.toFixed(2)}</div>`);
             }
           }
         }
 
         if (currentVisibility.benchmark && benchmarkPercent !== undefined) {
-          tooltipLines.push(`<div>Benchmark: ${benchmarkPercent.toFixed(2)}%</div>`);
+          const benchmarkLabel = t('trading.chart.tooltipLabels.benchmark');
+          tooltipLines.push(`<div>${benchmarkLabel}: ${benchmarkPercent.toFixed(2)}%</div>`);
         }
 
         tooltipEl.innerHTML = tooltipLines.join('');
@@ -676,7 +688,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       };
     } catch (err) {
       console.error('Failed to initialize candlestick chart:', err);
-      setError(`Failed to initialize chart: ${err instanceof Error ? err.message : String(err)}`);
+      setError(t('trading.chart.failedToInitialize', `Failed to initialize chart: ${err instanceof Error ? err.message : String(err)}`));
     }
   }, [initialBalance]);
 
@@ -728,7 +740,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       volumeSeriesRef.current?.setData([]);
       positionSeriesRef.current?.setData([]);
       if (!loading) {
-        setError('No candlestick data available for this timeframe.');
+        setError(t('trading.chart.noDataAvailable', 'No candlestick data available for this timeframe.'));
       }
       return;
     }
@@ -738,7 +750,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       const timeInSeconds = candle.timestampNum / 1000;
 
       if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
-        console.error(`Skipping invalid candle with timestamp: ${candle.timestamp}`);
+        console.error(t('trading.chart.invalidCandle', `Skipping invalid candle with timestamp: ${candle.timestamp}`));
         continue;
       }
 
@@ -754,7 +766,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     if (chartData.length === 0) {
       candlestickSeriesRef.current.setData([]);
       volumeSeriesRef.current?.setData([]);
-      setError('No valid candlestick data available after validation');
+      setError(t('trading.chart.noValidData', 'No valid candlestick data available after validation'));
       return;
     }
 

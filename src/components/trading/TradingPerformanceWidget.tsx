@@ -343,11 +343,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [isRefetchingData, setIsRefetchingData] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [seriesVisibility, setSeriesVisibility] = useState({
-    price: false,
     equity: true,
     benchmark: true,
-    position: true,
-    signals: false,
+    signals: true,
+    price: false,
+    position: false,
   });
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
@@ -412,7 +412,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       );
 
       if (!stockSubAccount || !balanceSubAccount) {
-        throw new Error(`Missing required sub-accounts. Found ${subAccounts.length} sub-accounts, but need both stock and balance accounts.`);
+        throw new Error(t('trading.tradingDetail.missingSubAccounts', `Missing required sub-accounts. Found ${subAccounts.length} sub-accounts, but need both stock and balance accounts.`, { count: subAccounts.length }));
       }
 
       const fetchedStockSymbol = stockSubAccount.symbol;
@@ -445,7 +445,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       // Validate equity curve data - expect new API format only
       if (!equityCurve || !equityCurve.data_points || !Array.isArray(equityCurve.data_points)) {
         console.error('Invalid equity curve data format. Expected data_points array, got:', equityCurve);
-        throw new Error('Invalid equity curve data format received from API. Expected new format with data_points array.');
+        throw new Error(t('trading.tradingDetail.invalidEquityCurveFormat', 'Invalid equity curve data format received from API. Expected new format with data_points array.'));
       }
 
       const normalizedEquityCurve = normalizeEquityCurve(equityCurve);
@@ -559,30 +559,30 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         if (err instanceof ApiError) {
           // Don't show error for 202 responses - we'll retry automatically
           if (err.status !== 202) {
-            setError(`API Error (${err.code}): ${err.message}`);
+            setError(`${t('trading.tradingDetail.errorFetchingData', 'Error fetching trading data')} (${err.code}): ${err.message}`);
           }
         } else if (err instanceof Error) {
-          setError(`Network Error: ${err.message}`);
+          setError(`${t('trading.tradingDetail.networkError', 'Network Error')}: ${err.message}`);
         } else {
-          setError('Failed to load trading data - Unknown error');
+          setError(t('trading.tradingDetail.unknownErrorMessage', 'Failed to load trading data'));
         }
       } else {
         // During refresh (not initial load), show toast notification for non-202 errors
         if (!is202Error) {
           if (err instanceof ApiError) {
             toast.error(
-              t('trading.detail.errorFetchingData', 'Error fetching trading data'),
+              t('trading.tradingDetail.errorFetchingData', 'Error fetching trading data'),
               `${err.code ? `[${err.code}] ` : ''}${err.message}`
             );
           } else if (err instanceof Error) {
             toast.error(
-              t('trading.detail.networkError', 'Network Error'),
+              t('trading.tradingDetail.networkError', 'Network Error'),
               err.message
             );
           } else {
             toast.error(
-              t('trading.detail.unknownError', 'Unknown Error'),
-              t('trading.detail.unknownErrorMessage', 'Failed to load trading data')
+              t('trading.tradingDetail.unknownError', 'Unknown Error'),
+              t('trading.tradingDetail.unknownErrorMessage', 'Failed to load trading data')
             );
           }
         }
@@ -1135,11 +1135,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             {/* Legend Buttons - Left Aligned */}
             <div className="flex items-center gap-1 flex-wrap">
               {[
-                { key: 'equity' as const, label: 'Equity', color: '#10B981' },
-                { key: 'benchmark' as const, label: 'Benchmark', color: '#F59E0B' },
-                { key: 'position' as const, label: 'Position', color: '#6366F1' },
-                { key: 'signals' as const, label: 'Signals', color: '#3B82F6' },
-                { key: 'price' as const, label: 'Price', color: '#4B5563' },
+                { key: 'equity' as const, labelKey: 'trading.tradingDetail.equityLabel', color: '#10B981' },
+                { key: 'benchmark' as const, labelKey: 'trading.tradingDetail.benchmarkLabel', color: '#F59E0B' },
+                { key: 'signals' as const, labelKey: 'trading.tradingDetail.signalsLabel', color: '#3B82F6' },
+                { key: 'price' as const, labelKey: 'trading.tradingDetail.priceLabel', color: '#4B5563' },
+                { key: 'position' as const, labelKey: 'trading.tradingDetail.positionLabel', color: '#6366F1' },
               ].map((item) => (
                 <button
                   key={item.key}
@@ -1157,7 +1157,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                     className="inline-block h-2 w-2 rounded-full"
                     style={{ backgroundColor: seriesVisibility[item.key] ? item.color : '#D1D5DB' }}
                   />
-                  {item.label}
+                  {t(item.labelKey)}
                 </button>
               ))}
             </div>

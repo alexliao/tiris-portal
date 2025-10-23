@@ -36,10 +36,10 @@
     "loading": "正在加载实时交易数据...",
     "noData": "目前没有可用的交易数据。",
     "chart": {
-      "title": "投资组合收益率 vs 基准收益率",
+      "title": "资产收益率 vs 基准收益率",
       "toggleShow": "显示交易信号",
       "toggleHide": "隐藏交易信号",
-      "portfolioValue": "投资组合价值",
+      "portfolioValue": "资产价值",
       "return": "收益率",
       "ethReturn": "基准收益率"
     },
@@ -51,7 +51,7 @@
       "totalTrades": "总交易次数"
     },
     "legend": {
-      "portfolioReturn": "投资组合收益率（面积图）",
+      "portfolioReturn": "资产收益率（面积图）",
       "ethBenchmark": "基准收益率（线图）",
       "zeroLine": "零线",
       "buySignals": "买入",
@@ -59,8 +59,8 @@
     },
     "tooltip": {
       "time": "时间",
-      "portfolioValue": "投资组合价值",
-      "portfolioReturn": "投资组合收益率",
+      "portfolioValue": "资产价值",
+      "portfolioReturn": "资产收益率",
       "ethBenchmark": "基准收益率",
       "excessReturn": "超额收益率",
       "buy": "买入",
@@ -349,8 +349,8 @@
     "chart": {
       "showTradingSignals": "显示交易信号",
       "hideTradingSignals": "隐藏交易信号",
-      "portfolioValue": "投资组合价值",
-      "portfolioReturn": "投资组合收益率",
+      "portfolioValue": "资产价值",
+      "portfolioReturn": "资产收益率",
       "ethBenchmark": "基准收益率",
       "ethReturn": "基准收益率",
       "excessReturn": "超额收益",
@@ -374,7 +374,38 @@
       "timeRange.1d": "1天",
       "timeRange.1M": "1个月",
       "timeRange.1y": "1年",
-      "timeRange.all": "全部"
+      "timeRange.all": "全部",
+      "chartError": "图表错误",
+      "noDataAvailable": "此时间周期没有可用的K线数据。",
+      "noValidData": "验证后没有有效的K线数据可用",
+      "failedToInitialize": "图表初始化失败",
+      "containerWidthZero": "图表容器宽度为0，图表可能无法正确渲染",
+      "invalidCandle": "跳过时间戳无效的K线数据",
+      "tooltipLabels": {
+        "open": "开",
+        "high": "高",
+        "low": "低",
+        "close": "收",
+        "volume": "量",
+        "position": "仓位",
+        "roi": "收益率",
+        "portfolio": "资产",
+        "benchmark": "基准收益率"
+      }
+    },
+    "tradingDetail": {
+      "errorFetchingData": "获取交易数据出错",
+      "networkError": "网络错误",
+      "unknownError": "未知错误",
+      "unknownErrorMessage": "加载交易数据失败",
+      "missingSubAccounts": "缺少必需的子账户。找到 {{count}} 个子账户，但需要同时有股票和余额账户。",
+      "invalidEquityCurveFormat": "从API收到的权益曲线数据格式无效。预期的是包含data_points数组的新格式。",
+      "loadingDataLabel": "正在获取最新市场数据",
+      "equityLabel": "权益",
+      "benchmarkLabel": "基准",
+      "signalsLabel": "信号",
+      "priceLabel": "价格",
+      "positionLabel": "仓位"
     },
     "events": {
       "buy": "买入",

@@ -373,7 +373,38 @@
       "timeRange.1d": "1 Day",
       "timeRange.1M": "1 Month",
       "timeRange.1y": "1 Year",
-      "timeRange.all": "All"
+      "timeRange.all": "All",
+      "chartError": "Chart error",
+      "noDataAvailable": "No candlestick data available for this timeframe.",
+      "noValidData": "No valid candlestick data available after validation",
+      "failedToInitialize": "Failed to initialize chart",
+      "containerWidthZero": "Chart container width is 0, chart may not render properly",
+      "invalidCandle": "Skipping invalid candle with timestamp",
+      "tooltipLabels": {
+        "open": "O",
+        "high": "H",
+        "low": "L",
+        "close": "C",
+        "volume": "Volume",
+        "position": "Position",
+        "roi": "ROI",
+        "portfolio": "Portfolio",
+        "benchmark": "Benchmark"
+      }
+    },
+    "tradingDetail": {
+      "errorFetchingData": "Error fetching trading data",
+      "networkError": "Network Error",
+      "unknownError": "Unknown Error",
+      "unknownErrorMessage": "Failed to load trading data",
+      "missingSubAccounts": "Missing required sub-accounts. Found {{count}} sub-accounts, but need both stock and balance accounts.",
+      "invalidEquityCurveFormat": "Invalid equity curve data format received from API. Expected new format with data_points array.",
+      "loadingDataLabel": "Fetching latest market data",
+      "equityLabel": "Equity",
+      "benchmarkLabel": "Benchmark",
+      "signalsLabel": "Signals",
+      "priceLabel": "Price",
+      "positionLabel": "Position"
     },
     "events": {
       "buy": "buy",
