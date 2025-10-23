@@ -17,6 +17,7 @@ import {
   type TradingCandlestickPoint,
 } from '../../utils/chartData';
 import CandlestickChart from './CandlestickChart';
+import { useToast } from '../../hooks/useToast';
 
 type Timeframe = '1m' | '1h' | '4h' | '8h' | '1d' | '1w';
 
@@ -326,6 +327,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   showHighlights = true,
 }) => {
   const { t } = useTranslation();
+  const toast = useToast();
   const [chartState, setChartState] = useState<ChartState>({
     data: [],
     benchmarkData: [],
@@ -552,7 +554,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       // Check if this is a 202 (warmup in progress) - if so, keep the warmup spinner showing
       is202Error = err instanceof ApiError && err.status === 202;
 
-      // Only show errors during initial load, silently handle refresh errors
+      // Handle errors - show in inline error state during initial load, toast during refresh
       if (isInitialLoad) {
         if (err instanceof ApiError) {
           // Don't show error for 202 responses - we'll retry automatically
@@ -563,6 +565,26 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           setError(`Network Error: ${err.message}`);
         } else {
           setError('Failed to load trading data - Unknown error');
+        }
+      } else {
+        // During refresh (not initial load), show toast notification for non-202 errors
+        if (!is202Error) {
+          if (err instanceof ApiError) {
+            toast.error(
+              t('trading.detail.errorFetchingData', 'Error fetching trading data'),
+              `${err.code ? `[${err.code}] ` : ''}${err.message}`
+            );
+          } else if (err instanceof Error) {
+            toast.error(
+              t('trading.detail.networkError', 'Network Error'),
+              err.message
+            );
+          } else {
+            toast.error(
+              t('trading.detail.unknownError', 'Unknown Error'),
+              t('trading.detail.unknownErrorMessage', 'Failed to load trading data')
+            );
+          }
         }
       }
 
@@ -593,6 +615,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     trading.type,
     beginApiCall,
     endApiCall,
+    toast,
+    t,
   ]);
 
 
