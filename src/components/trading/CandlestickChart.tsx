@@ -597,8 +597,10 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           }
         }
 
-        const roiLabel = t('trading.chart.tooltipLabels.roi');
-        tooltipLines.push(`<div>${roiLabel}: ${roiValue.toFixed(2)}%</div>`);
+        if (roiValue !== undefined) {
+          const roiLabel = t('trading.chart.tooltipLabels.roi');
+          tooltipLines.push(`<div>${roiLabel}: ${roiValue.toFixed(2)}%</div>`);
+        }
 
         if (currentVisibility.benchmark && benchmarkPercent !== undefined) {
           const benchmarkLabel = t('trading.chart.tooltipLabels.benchmark');
