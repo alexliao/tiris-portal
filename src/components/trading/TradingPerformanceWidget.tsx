@@ -358,9 +358,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
   const [initialBalance, setInitialBalance] = useState<number | undefined>(undefined);
   const warmupRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warmupTimerScheduledAtRef = useRef<number>(0); // Timestamp when timer was scheduled
   const [warmupState, setWarmupState] = useState<{ active: boolean; retryAfterMs: number }>(
     () => ({ active: false, retryAfterMs: 0 })
   );
+  const [warmupRetryTrigger, setWarmupRetryTrigger] = useState(0); // Force effect re-run after retry
   const apiRequestCountRef = useRef(0);
   const [isWarmingUp, setIsWarmingUp] = useState(false);
 
@@ -531,13 +533,16 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       });
 
       const nextWarmupState = getWarmupStateFromCurve(normalizedEquityCurve);
+      console.log('fetchTradingData success - nextWarmupState:', nextWarmupState, 'warming_up:', normalizedEquityCurve.warming_up);
       setWarmupState((previous) => {
         if (
           previous.active === nextWarmupState.active &&
           previous.retryAfterMs === nextWarmupState.retryAfterMs
         ) {
+          console.log('Warmup state unchanged, skipping state update');
           return previous;
         }
+        console.log('Warmup state changed from', previous, 'to', nextWarmupState);
         return nextWarmupState;
       });
 
@@ -882,41 +887,67 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
   // When backend is warming up equity data, retry in the background using the suggested cadence
   useEffect(() => {
-    if (warmupRetryTimerRef.current) {
-      clearTimeout(warmupRetryTimerRef.current);
-      warmupRetryTimerRef.current = null;
-    }
-
     if (!warmupState.active) {
-      // Warmup is complete, stop showing the spinner
+      // Warmup is complete, stop showing the spinner and clear any pending timer
+      if (warmupRetryTimerRef.current) {
+        console.log('Warmup complete, clearing retry timer');
+        clearTimeout(warmupRetryTimerRef.current);
+        warmupRetryTimerRef.current = null;
+        warmupTimerScheduledAtRef.current = 0;
+      }
       if (isWarmingUp) {
         setIsWarmingUp(false);
       }
       return;
     }
 
-    // Warmup is active, make sure the spinner is visible
+    // Warmup is active - ensure spinner is visible
     if (!isWarmingUp) {
       setIsWarmingUp(true);
     }
 
+    // Check if a timer is already scheduled and still valid (hasn't fired yet)
+    const now = Date.now();
+    const timerScheduledAt = warmupTimerScheduledAtRef.current;
     const delayMs = Math.max(
       warmupState.retryAfterMs > 0 ? warmupState.retryAfterMs : DEFAULT_WARMUP_RETRY_MS,
       MIN_WARMUP_RETRY_MS
     );
 
-    warmupRetryTimerRef.current = setTimeout(() => {
+    // If timer is already scheduled and less than (delayMs - 500ms) has passed, keep the existing timer
+    // This prevents resetting the timer when state updates but nothing meaningful changed
+    if (warmupRetryTimerRef.current && timerScheduledAt > 0) {
+      const elapsedMs = now - timerScheduledAt;
+      if (elapsedMs < delayMs - 500) {
+        // Timer is still valid, don't reset it
+        console.log(`Warmup timer already running (${(delayMs - elapsedMs).toFixed(0)}ms remaining), skipping reset`);
+        return;
+      }
+      // Timer should have fired or is about to fire, clear it for reset
+      clearTimeout(warmupRetryTimerRef.current);
       warmupRetryTimerRef.current = null;
-      fetchTradingData(false, true);
+    }
+
+    // Set a new timer
+    console.log(`Starting warmup retry timer for ${delayMs}ms (retry_after: ${warmupState.retryAfterMs}ms)`);
+    warmupTimerScheduledAtRef.current = now;
+
+    warmupRetryTimerRef.current = setTimeout(() => {
+      console.log('Warmup retry timer fired, fetching data');
+      warmupRetryTimerRef.current = null;
+      warmupTimerScheduledAtRef.current = 0;
+      // Trigger effect re-run after fetch so we can schedule next retry if still warming
+      fetchTradingData(false, true).then(() => {
+        setWarmupRetryTrigger(prev => prev + 1);
+      }).catch(() => {
+        setWarmupRetryTrigger(prev => prev + 1);
+      });
     }, delayMs);
 
     return () => {
-      if (warmupRetryTimerRef.current) {
-        clearTimeout(warmupRetryTimerRef.current);
-        warmupRetryTimerRef.current = null;
-      }
+      // Don't clear the timer in cleanup - let it fire naturally
     };
-  }, [fetchTradingData, warmupState, isWarmingUp]);
+  }, [warmupState, fetchTradingData, isWarmingUp, warmupRetryTrigger]);
 
   // Periodically fetch incremental updates when data is available
   useEffect(() => {

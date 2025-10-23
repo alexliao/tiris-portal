@@ -84,12 +84,12 @@ export const TradingDetailPage: React.FC = () => {
     }
   };
 
-  // Calculate refresh interval based on timeframe (timeframe/5, min 1s, max 60s)
+  // Calculate refresh interval based on timeframe (timeframe/10, min 1s, max 60s)
   const calculateRefreshInterval = (timeframe?: string): number => {
-    if (!timeframe) return 60000; // Default 60 seconds if no timeframe
+    if (!timeframe) return 30000; // Default 30 seconds if no timeframe
 
     const timeframeSeconds = timeframeToSeconds(timeframe);
-    const intervalSeconds = Math.floor(timeframeSeconds / 5);
+    const intervalSeconds = Math.floor(timeframeSeconds / 10);
 
     // Clamp between 1 and 60 seconds
     const clampedSeconds = Math.max(3, Math.min(60, intervalSeconds));
