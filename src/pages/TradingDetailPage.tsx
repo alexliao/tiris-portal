@@ -481,7 +481,7 @@ export const TradingDetailPage: React.FC = () => {
 
         if (!finalApiKey || !finalApiSecret) {
           console.warn('Missing API credentials for real trading');
-          throw new Error('Exchange API credentials are required to run a real trading bot. Please update your exchange binding.');
+          throw new Error(t('trading.tradingDetail.apiCredentialsRequired'));
         }
       }
       let currentBot = bot;
@@ -492,7 +492,7 @@ export const TradingDetailPage: React.FC = () => {
 
         // Use the exchange binding that was already loaded during component initialization
         if (!exchangeBinding) {
-          throw new Error('Exchange binding information not available. Please try refreshing the page.');
+          throw new Error(t('trading.tradingDetail.exchangeBindingNotAvailable'));
         }
 
         console.log('Using exchange binding for bot creation:', exchangeBinding);
@@ -882,15 +882,15 @@ export const TradingDetailPage: React.FC = () => {
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.strategy')}</div>
-                <div className="text-sm text-gray-900">{String(bot?.record.spec.params?.strategy_name || trading.info?.strategy_name || trading.info?.strategy || 'N/A')}</div>
+                <div className="text-sm text-gray-900">{String(bot?.record.spec.params?.strategy_name || trading.info?.strategy_name || trading.info?.strategy || t('trading.tradingDetail.notAvailable'))}</div>
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.timeframe')}</div>
-                <div className="text-sm text-gray-900">{String(bot?.record.spec.params?.timeframe || trading.info?.timeframe || 'N/A')}</div>
+                <div className="text-sm text-gray-900">{String(bot?.record.spec.params?.timeframe || trading.info?.timeframe || t('trading.tradingDetail.notAvailable'))}</div>
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.exchangeBinding')}</div>
-                <div className="text-sm text-gray-900">{exchangeBinding ? exchangeBinding.name : 'Loading...'}</div>
+                <div className="text-sm text-gray-900">{exchangeBinding ? exchangeBinding.name : t('trading.tradingDetail.loading')}</div>
               </div>
               {(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) && (
                 <div>

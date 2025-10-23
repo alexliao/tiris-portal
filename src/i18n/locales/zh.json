@@ -161,7 +161,8 @@
     "userMenu": "用户菜单",
     "toggleMobileMenu": "切换移动菜单",
     "tabs": "标签页",
-    "backToDashboard": "返回交易中心"
+    "backToDashboard": "返回交易中心",
+    "closeButton": "关闭"
   },
   "dashboard": {
     "title": "交易中心",
@@ -177,6 +178,8 @@
     "exchanges": "交易所",
     "manageExchanges": "管理您的交易所连接",
     "yourTradings": "您的交易",
+    "totalExchanges": "总交易所数",
+    "activeConnections": "活跃",
     "loadingTradings": "正在加载交易...",
     "noTradingsFound": "未找到交易",
     "noTradingsDescription": "创建交易后，它们将在此处显示。",
@@ -405,7 +408,12 @@
       "benchmarkLabel": "基准",
       "signalsLabel": "信号",
       "priceLabel": "价格",
-      "positionLabel": "仓位"
+      "positionLabel": "仓位",
+      "apiCredentialsRequired": "运行实盘交易机器人需要交易所API凭证。请更新您的交易所绑定。",
+      "exchangeBindingNotAvailable": "交易所绑定信息不可用。请尝试刷新页面。",
+      "notSignedIn": "您必须登录才能删除交易",
+      "loading": "加载中...",
+      "notAvailable": "不可用"
     },
     "events": {
       "buy": "买入",

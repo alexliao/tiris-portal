@@ -77,7 +77,7 @@ export const TradingsListPage: React.FC = () => {
   // Helper function to get strategy name from bot data
   const getStrategyForTrading = (trading: Trading): string => {
     const bot = bots.find(b => b.record.spec.trading.id === trading.id);
-    return String(bot?.record.spec.params?.strategy_name || trading.info?.strategy || 'N/A');
+    return String(bot?.record.spec.params?.strategy_name || trading.info?.strategy || t('trading.tradingDetail.notAvailable'));
   };
 
   const handleCreateTrading = () => {
@@ -111,7 +111,7 @@ export const TradingsListPage: React.FC = () => {
 
     const token = localStorage.getItem('access_token');
     if (!token) {
-      setError('You must be signed in to delete tradings');
+      setError(t('trading.tradingDetail.notSignedIn'));
       setDeleteConfirmation(prev => ({ ...prev, isDeleting: false }));
       return;
     }

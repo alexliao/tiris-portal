@@ -163,7 +163,8 @@
     "tabs": "Tabs",
     "backToDashboard": "Back to Trading Center",
     "signInToView": "Sign in to view",
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "closeButton": "Close"
   },
   "dashboard": {
     "title": "Trading Center",
@@ -176,6 +177,8 @@
     "manageExchanges": "Manage your exchange connections",
     "yourTradings": "Your Tradings",
     "allTradings": "All Tradings",
+    "totalExchanges": "Total Exchanges",
+    "activeConnections": "Active",
     "loadingTradings": "Loading tradings...",
     "noTradingsFound": "No tradings found",
     "noTradingsDescription": "Your tradings will appear here once you create them.",
@@ -408,7 +411,12 @@
       "benchmarkLabel": "Benchmark",
       "signalsLabel": "Signals",
       "priceLabel": "Price",
-      "positionLabel": "Position"
+      "positionLabel": "Position",
+      "apiCredentialsRequired": "Exchange API credentials are required to run a real trading bot. Please update your exchange binding.",
+      "exchangeBindingNotAvailable": "Exchange binding information not available. Please try refreshing the page.",
+      "notSignedIn": "You must be signed in to delete tradings",
+      "loading": "Loading...",
+      "notAvailable": "N/A"
     },
     "events": {
       "buy": "buy",
