@@ -583,11 +583,34 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           tooltipLines.push(`<div style="font-weight: 600; margin-bottom: 4px;">${formattedTime}</div>`);
         }
 
+        const portfolioLabel = t('trading.chart.tooltipLabels.portfolio');
+        if (currentVisibility.equity) {
+          if (roiValue !== undefined) {
+            if (
+              initialBalance !== undefined &&
+              Number.isFinite(initialBalance) &&
+              initialBalance > 0
+            ) {
+              const portfolioValue = initialBalance * (1 + roiValue / 100);
+              tooltipLines.push(`<div>${portfolioLabel}: $${portfolioValue.toFixed(2)}</div>`);
+            }
+          }
+        }
+
+        const roiLabel = t('trading.chart.tooltipLabels.roi');
+        tooltipLines.push(`<div>${roiLabel}: ${roiValue.toFixed(2)}%</div>`);
+
+        if (currentVisibility.benchmark && benchmarkPercent !== undefined) {
+          const benchmarkLabel = t('trading.chart.tooltipLabels.benchmark');
+          tooltipLines.push(`<div>${benchmarkLabel}: ${benchmarkPercent.toFixed(2)}%</div>`);
+        }
+
         if (currentVisibility.price && candlestickData) {
           const openLabel = t('trading.chart.tooltipLabels.open');
           const highLabel = t('trading.chart.tooltipLabels.high');
           const lowLabel = t('trading.chart.tooltipLabels.low');
           const closeLabel = t('trading.chart.tooltipLabels.close');
+          tooltipLines.push(`<hr />`);
           tooltipLines.push(
             `<div>${openLabel}: ${candlestickData.open.toFixed(2)} ${highLabel}: ${candlestickData.high.toFixed(2)}</div>`
           );
@@ -610,29 +633,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
             minimumFractionDigits: 2,
             maximumFractionDigits: 4,
           });
+          tooltipLines.push(`<hr />`);
           tooltipLines.push(`<div>${positionLabel}: ${formattedPosition}</div>`);
-        }
-
-        if (currentVisibility.equity) {
-          if (roiValue !== undefined) {
-            const roiLabel = t('trading.chart.tooltipLabels.roi');
-            const portfolioLabel = t('trading.chart.tooltipLabels.portfolio');
-            tooltipLines.push(`<div>${roiLabel}: ${roiValue.toFixed(2)}%</div>`);
-
-            if (
-              initialBalance !== undefined &&
-              Number.isFinite(initialBalance) &&
-              initialBalance > 0
-            ) {
-              const portfolioValue = initialBalance * (1 + roiValue / 100);
-              tooltipLines.push(`<div>${portfolioLabel}: $${portfolioValue.toFixed(2)}</div>`);
-            }
-          }
-        }
-
-        if (currentVisibility.benchmark && benchmarkPercent !== undefined) {
-          const benchmarkLabel = t('trading.chart.tooltipLabels.benchmark');
-          tooltipLines.push(`<div>${benchmarkLabel}: ${benchmarkPercent.toFixed(2)}%</div>`);
         }
 
         tooltipEl.innerHTML = tooltipLines.join('');
