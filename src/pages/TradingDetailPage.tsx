@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getBot, getSubAccountsByTrading } from '../utils/api';
+import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading } from '../utils/api';
 import { AlertCircle, Play, Square, Loader2, Copy, Check } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -177,6 +177,24 @@ export const TradingDetailPage: React.FC = () => {
           const embeddedCredentials = extractExchangeCredentials(resolvedBinding);
           resolvedBinding.api_key = embeddedCredentials.apiKey;
           resolvedBinding.api_secret = embeddedCredentials.apiSecret;
+
+          // For real trading, if credentials are missing from embedded binding, fetch the full binding details
+          if (foundTrading.type === 'real' && (!resolvedBinding.api_key || !resolvedBinding.api_secret)) {
+            const bindingIdToUse = foundTrading.exchange_binding_id || embeddedBinding.id;
+            try {
+              const fullBinding = await getExchangeBindingById(bindingIdToUse);
+              if (fullBinding) {
+                const privateBinding: ExchangeBinding = { ...fullBinding };
+                const privateCredentials = extractExchangeCredentials(privateBinding);
+                privateBinding.api_key = privateCredentials.apiKey;
+                privateBinding.api_secret = privateCredentials.apiSecret;
+                resolvedBinding = privateBinding;
+              }
+            } catch (err) {
+              console.warn('Failed to fetch full exchange binding for real trading:', err);
+              // Keep the embedded binding (which may be missing credentials) as fallback
+            }
+          }
         }
 
         // Note: At this point, foundTrading can only be 'paper' or 'backtest' based on the earlier check
@@ -194,14 +212,28 @@ export const TradingDetailPage: React.FC = () => {
               resolvedBinding = publicBinding;
             }
           } else {
-            const privateExchangeBindings = await getExchangeBindings();
-            const binding = privateExchangeBindings.find(eb => eb.id === foundTrading.exchange_binding_id);
-            if (binding) {
-              const privateBinding: ExchangeBinding = { ...binding };
-              const privateCredentials = extractExchangeCredentials(privateBinding);
-              privateBinding.api_key = privateCredentials.apiKey;
-              privateBinding.api_secret = privateCredentials.apiSecret;
-              resolvedBinding = privateBinding;
+            // For real trading, fetch the specific exchange binding by ID to ensure we get the full details including credentials
+            try {
+              const binding = await getExchangeBindingById(foundTrading.exchange_binding_id);
+              if (binding) {
+                const privateBinding: ExchangeBinding = { ...binding };
+                const privateCredentials = extractExchangeCredentials(privateBinding);
+                privateBinding.api_key = privateCredentials.apiKey;
+                privateBinding.api_secret = privateCredentials.apiSecret;
+                resolvedBinding = privateBinding;
+              }
+            } catch (err) {
+              console.warn('Failed to fetch specific exchange binding by ID:', err);
+              // Fall back to fetching all bindings if the specific request fails
+              const privateExchangeBindings = await getExchangeBindings();
+              const binding = privateExchangeBindings.find(eb => eb.id === foundTrading.exchange_binding_id);
+              if (binding) {
+                const privateBinding: ExchangeBinding = { ...binding };
+                const privateCredentials = extractExchangeCredentials(privateBinding);
+                privateBinding.api_key = privateCredentials.apiKey;
+                privateBinding.api_secret = privateCredentials.apiSecret;
+                resolvedBinding = privateBinding;
+              }
             }
           }
         }
@@ -480,8 +512,23 @@ export const TradingDetailPage: React.FC = () => {
         finalApiSecret = apiSecret;
 
         if (!finalApiKey || !finalApiSecret) {
-          console.warn('Missing API credentials for real trading');
-          throw new Error(t('trading.tradingDetail.apiCredentialsRequired'));
+          // If credentials are missing, try to fetch the full binding
+          if (exchangeBinding?.id) {
+            try {
+              const fullBinding = await getExchangeBindingById(exchangeBinding.id);
+              const { apiKey: fullApiKey, apiSecret: fullApiSecret } = extractExchangeCredentials(fullBinding);
+              if (fullApiKey && fullApiSecret) {
+                finalApiKey = fullApiKey;
+                finalApiSecret = fullApiSecret;
+              }
+            } catch (err) {
+              console.error('Failed to fetch full exchange binding for bot creation:', err);
+            }
+          }
+
+          if (!finalApiKey || !finalApiSecret) {
+            throw new Error(t('trading.tradingDetail.apiCredentialsRequired'));
+          }
         }
       }
       let currentBot = bot;
