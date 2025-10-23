@@ -121,6 +121,7 @@
     "creatingAccount": "Creating Account...",
     "accountCreated": "Account Created",
     "welcomeMessage": "Welcome to TIRIS! Your account has been created successfully.",
+    "authenticationFailed": "Authentication failed",
     "googleAuthFailed": "Google authentication failed",
     "wechatAuthFailed": "WeChat authentication failed",
     "logoutSuccess": "You have been successfully signed out.",
@@ -160,7 +161,9 @@
     "userMenu": "User menu",
     "toggleMobileMenu": "Toggle mobile menu",
     "tabs": "Tabs",
-    "backToDashboard": "Back to Trading Center"
+    "backToDashboard": "Back to Trading Center",
+    "signInToView": "Sign in to view",
+    "signIn": "Sign in"
   },
   "dashboard": {
     "title": "Trading Center",
@@ -277,7 +280,8 @@
       "stopBot": "Stop Bot",
       "startBot": "Start Bot",
       "bot": "Bot",
-      "copyId": "Copy trading ID"
+      "copyId": "Copy trading ID",
+      "signInMessage": "Sign in to view trading details"
     },
     "status": {
       "active": "Active",
