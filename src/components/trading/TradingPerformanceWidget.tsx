@@ -1147,16 +1147,49 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                     ...prev,
                     [item.key]: !prev[item.key],
                   }))}
-                  className={`flex items-center gap-1 rounded-md border px-3 py-1 text-xs font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  className={`flex items-center gap-1 rounded-md border px-3 py-1 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                     seriesVisibility[item.key]
                       ? 'bg-white border-gray-300 text-gray-700 focus:ring-blue-200'
                       : 'bg-gray-100 border-gray-200 text-gray-400 focus:ring-blue-100'
                   }`}
                 >
-                  <span
-                    className="inline-block h-2 w-2 rounded-full"
-                    style={{ backgroundColor: seriesVisibility[item.key] ? item.color : '#D1D5DB' }}
-                  />
+                  {item.key === 'signals' ? (
+                    <svg
+                      className="inline-block h-3 w-3"
+                      viewBox="0 0 12 12"
+                      fill={seriesVisibility[item.key] ? item.color : '#D1D5DB'}
+                    >
+                      <polygon points="6,1 11,11 1,11" />
+                    </svg>
+                  ) : item.key === 'price' ? (
+                    <svg
+                      className="inline-block h-4 w-4"
+                      viewBox="0 0 12 12"
+                      fill="currentColor"
+                    >
+                      {/* Green candlestick (left) */}
+                      <line x1="3" y1="2" x2="3" y2="10" stroke="#10B981" strokeWidth="1.2" />
+                      <rect x="1.5" y="5" width="3" height="3" fill="#10B981" />
+                      {/* Red candlestick (right) */}
+                      <line x1="9" y1="1" x2="9" y2="10" stroke="#EF4444" strokeWidth="1.2" />
+                      <rect x="7.5" y="3" width="3" height="4" fill="#EF4444" />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="inline-block h-3 w-3"
+                      viewBox="0 0 12 12"
+                    >
+                      <line
+                        x1="2"
+                        y1="6"
+                        x2="10"
+                        y2="6"
+                        stroke={seriesVisibility[item.key] ? item.color : '#D1D5DB'}
+                        strokeWidth="5"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  )}
                   {t(item.labelKey)}
                 </button>
               ))}
