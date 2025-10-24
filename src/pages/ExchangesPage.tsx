@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getExchangeBindings, createExchangeBinding, deleteExchangeBinding, updateExchangeBinding, getTradings, getExchanges, type ExchangeBinding, type CreateExchangeBindingRequest, type UpdateExchangeBindingRequest, type Trading, ApiError } from '../utils/api';
+import { getExchangeBindings, createExchangeBinding, deleteExchangeBinding, updateExchangeBinding, getTradings, getRealExchanges, type ExchangeBinding, type CreateExchangeBindingRequest, type UpdateExchangeBindingRequest, type Trading, type ExchangeConfigResponse, ApiError } from '../utils/api';
 import { Plus, Trash2, Edit2, AlertCircle } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -391,7 +391,7 @@ interface ExchangeModalProps {
 
 const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSuccess, exchange }) => {
   const { t } = useTranslation();
-  const [availableExchanges, setAvailableExchanges] = useState<string[]>([]);
+  const [availableExchanges, setAvailableExchanges] = useState<ExchangeConfigResponse[]>([]);
   const [loadingExchanges, setLoadingExchanges] = useState(true);
 
   // Helper function to generate default name based on exchange type
@@ -401,8 +401,8 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
   };
 
   const [formData, setFormData] = useState({
-    name: exchange?.name || getDefaultName(availableExchanges[0] || 'binance'),
-    exchange: exchange?.exchange || availableExchanges[0] || 'binance',
+    name: exchange?.name || getDefaultName(availableExchanges[0]?.id || 'binance'),
+    exchange: exchange?.exchange || availableExchanges[0]?.id || 'binance',
     api_key: '',
     api_secret: '',
     passphrase: '',
@@ -411,20 +411,20 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch available exchanges from the API
+  // Fetch available exchanges for real trading from the API
   useEffect(() => {
     const fetchExchanges = async () => {
       try {
         setLoadingExchanges(true);
-        const exchanges = await getExchanges();
-        setAvailableExchanges(exchanges);
+        const exchangeConfigs = await getRealExchanges();
+        setAvailableExchanges(exchangeConfigs);
 
         // If this is a new exchange (not editing), set the first exchange as default
-        if (!exchange && exchanges.length > 0) {
+        if (!exchange && exchangeConfigs.length > 0) {
           setFormData(prev => ({
             ...prev,
-            exchange: exchanges[0],
-            name: getDefaultName(exchanges[0]),
+            exchange: exchangeConfigs[0].id,
+            name: getDefaultName(exchangeConfigs[0].id),
           }));
         }
       } catch (err) {
@@ -569,9 +569,9 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
                 {loadingExchanges ? (
                   <option value="">{t('exchanges.loadingExchanges')}</option>
                 ) : availableExchanges.length > 0 ? (
-                  availableExchanges.map((exchangeName) => (
-                    <option key={exchangeName} value={exchangeName}>
-                      {getExchangeTypeName(exchangeName)}
+                  availableExchanges.map((exchangeConfig) => (
+                    <option key={exchangeConfig.id} value={exchangeConfig.id}>
+                      {exchangeConfig.name}
                     </option>
                   ))
                 ) : (

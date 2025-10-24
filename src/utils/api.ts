@@ -1285,8 +1285,33 @@ export async function getStrategies(): Promise<string[]> {
 }
 
 // Get available exchanges from tiris-bot API
-export async function getExchanges(): Promise<string[]> {
-  return botApiRequest<string[]>('/exchanges');
+export async function getExchanges(): Promise<ExchangeConfigResponse[]> {
+  return botApiRequest<ExchangeConfigResponse[]>('/exchanges');
+}
+
+// Get exchanges supported for real trading
+export async function getRealExchanges(): Promise<ExchangeConfigResponse[]> {
+  return botApiRequest<ExchangeConfigResponse[]>('/exchanges/real');
+}
+
+// Get exchanges supported for paper trading
+export async function getPaperExchanges(): Promise<ExchangeConfigResponse[]> {
+  return botApiRequest<ExchangeConfigResponse[]>('/exchanges/paper');
+}
+
+// Get exchanges supported for backtest trading
+export async function getBacktestExchanges(): Promise<ExchangeConfigResponse[]> {
+  return botApiRequest<ExchangeConfigResponse[]>('/exchanges/backtest');
+}
+
+// Exchange configuration response interface based on OpenAPI spec
+export interface ExchangeConfigResponse {
+  id: string;                          // Exchange ID/key (e.g., 'binance', 'okx')
+  name: string;                        // Display name of the exchange
+  ccxt_id: string;                     // CCXT module name for the exchange
+  sandbox: boolean;                    // Whether this is a sandbox/demo environment
+  ccxt_passphrase_field?: string | null; // Field name for passphrase in exchange config (if required)
+  virtual_exchange_fee: number;        // Fee rate for paper/backtest trading (as decimal, e.g., 0.001 = 0.1%)
 }
 
 // Exchange account response interface based on OpenAPI spec
