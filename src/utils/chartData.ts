@@ -66,6 +66,61 @@ function timeframeToMilliseconds(timeframe: string): number {
 }
 
 /**
+ * Split equity data into before and after creation time datasets
+ * Used to visualize the creation time with different colored area chart series
+ *
+ * @param data - The full equity data points
+ * @param createdAt - The creation timestamp (ISO string)
+ * @param timeframe - The timeframe for the data (optional, used to shift dividing line)
+ * @returns Object with beforeData and afterData arrays
+ */
+export function splitEquityDataByCreationTime(
+  data: TradingDataPoint[],
+  createdAt: string | undefined,
+  timeframe: string = '1m'
+): {
+  beforeCreationData: TradingDataPoint[];
+  afterCreationData: TradingDataPoint[];
+  creationTimestampNum?: number;
+} {
+  if (!createdAt || !data.length) {
+    return {
+      beforeCreationData: [],
+      afterCreationData: data,
+    };
+  }
+
+  const creationTimestampNum = new Date(createdAt).getTime();
+  if (!Number.isFinite(creationTimestampNum)) {
+    return {
+      beforeCreationData: [],
+      afterCreationData: data,
+    };
+  }
+
+  // Shift the dividing line one timeframe earlier so after-creation data aligns with creation marker
+  const timeframeMs = timeframeToMilliseconds(timeframe);
+  const shiftedCreationTime = creationTimestampNum - timeframeMs;
+
+  const beforeCreationData: TradingDataPoint[] = [];
+  const afterCreationData: TradingDataPoint[] = [];
+
+  for (const point of data) {
+    if (point.timestampNum < shiftedCreationTime) {
+      beforeCreationData.push(point);
+    } else {
+      afterCreationData.push(point);
+    }
+  }
+
+  return {
+    beforeCreationData,
+    afterCreationData,
+    creationTimestampNum,
+  };
+}
+
+/**
  * Transform new equity curve API data into chart data format
  * This is the primary function used with the new API endpoint
  *

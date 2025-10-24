@@ -12,6 +12,7 @@ import {
 } from '../../utils/api';
 import {
   transformNewEquityCurveToChartData,
+  splitEquityDataByCreationTime,
   type TradingDataPoint,
   type TradingMetrics,
   type TradingCandlestickPoint,
@@ -193,6 +194,7 @@ const haveCandlestickDataChanged = (
 type ChartState = {
   data: TradingDataPoint[];
   benchmarkData: TradingDataPoint[];
+  beforeCreationData: TradingDataPoint[];
   metrics: TradingMetrics;
   candlestickData: TradingCandlestickPoint[];
   baselinePrice?: number;
@@ -203,6 +205,7 @@ type TimeframeDataCache = {
   [timeframe: string]: {
     data: TradingDataPoint[];
     benchmarkData: TradingDataPoint[];
+    beforeCreationData: TradingDataPoint[];
     metrics: TradingMetrics;
     lastUpdateTimestamp?: number;
     candlestickData: TradingCandlestickPoint[];
@@ -331,6 +334,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [chartState, setChartState] = useState<ChartState>({
     data: [],
     benchmarkData: [],
+    beforeCreationData: [],
     metrics: {} as TradingMetrics,
     candlestickData: [],
     baselinePrice: undefined,
@@ -485,6 +489,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       const benchmarkData: TradingDataPoint[] = benchmarkDataFromApi;
 
+      // Split equity data into before and after creation time
+      const { beforeCreationData, afterCreationData } = splitEquityDataByCreationTime(data, trading.created_at, selectedTimeframe);
+
       tradingLogsRef.current = mergeTradingLogs(tradingLogsRef.current, tradingLogs);
       if (tradingLogsRef.current.length > 0) {
         const latestLog = tradingLogsRef.current[tradingLogsRef.current.length - 1];
@@ -492,13 +499,15 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       }
 
       setChartState((previous) => {
-        const mergedData = mergeTradingDataSets(previous.data, data);
+        const mergedData = mergeTradingDataSets(previous.data, afterCreationData);
         const mergedBenchmark = mergeTradingDataSets(previous.benchmarkData, benchmarkData);
+        const mergedBeforeCreationData = mergeTradingDataSets(previous.beforeCreationData, beforeCreationData);
         const metricsChanged = !areMetricsEqual(previous.metrics, calculatedMetrics);
         const candlestickChanged = haveCandlestickDataChanged(previous.candlestickData, normalizedCandles);
 
         const nextData = mergedData.changed ? mergedData.value : previous.data;
         const nextBenchmark = mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData;
+        const nextBeforeCreationData = mergedBeforeCreationData.changed ? mergedBeforeCreationData.value : previous.beforeCreationData;
         const nextMetrics = metricsChanged ? calculatedMetrics : previous.metrics;
         const nextCandlesticks = candlestickChanged ? normalizedCandles : previous.candlestickData;
         const nextBaselinePrice = baselinePrice ?? previous.baselinePrice;
@@ -508,6 +517,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         timeframeDataCacheRef.current[cacheKey] = {
           data: nextData,
           benchmarkData: nextBenchmark,
+          beforeCreationData: nextBeforeCreationData,
           metrics: nextMetrics,
           candlestickData: nextCandlesticks,
           equityCurve: normalizedEquityCurve,
@@ -519,15 +529,16 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
               : undefined,
         };
 
-        console.log(`Cached data for timeframe ${cacheKey}: ${nextData.length} data points`);
+        console.log(`Cached data for timeframe ${cacheKey}: ${nextData.length} data points, beforeCreation: ${nextBeforeCreationData.length}`);
 
-        if (!mergedData.changed && !mergedBenchmark.changed && !metricsChanged && !candlestickChanged) {
+        if (!mergedData.changed && !mergedBenchmark.changed && !mergedBeforeCreationData.changed && !metricsChanged && !candlestickChanged) {
           return previous;
         }
 
         return {
           data: nextData,
           benchmarkData: nextBenchmark,
+          beforeCreationData: nextBeforeCreationData,
           metrics: nextMetrics,
           candlestickData: nextCandlesticks,
           baselinePrice: nextBaselinePrice,
@@ -803,14 +814,19 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         event: point.event,
       }));
 
+      // Split equity data into before and after creation time
+      const { beforeCreationData, afterCreationData } = splitEquityDataByCreationTime(data, trading.created_at, selectedTimeframe);
+
       setChartState((previous) => {
-        const mergedData = mergeTradingDataSets(previous.data, data);
+        const mergedData = mergeTradingDataSets(previous.data, afterCreationData);
         const mergedBenchmark = mergeTradingDataSets(previous.benchmarkData, benchmarkData);
+        const mergedBeforeCreationData = mergeTradingDataSets(previous.beforeCreationData, beforeCreationData);
         const metricsChanged = !areMetricsEqual(previous.metrics, calculatedMetrics);
         const candlestickChanged = haveCandlestickDataChanged(previous.candlestickData, normalizedCandles);
 
         const nextData = mergedData.changed ? mergedData.value : previous.data;
         const nextBenchmark = mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData;
+        const nextBeforeCreationData = mergedBeforeCreationData.changed ? mergedBeforeCreationData.value : previous.beforeCreationData;
         const nextMetrics = metricsChanged ? calculatedMetrics : previous.metrics;
         const nextCandlesticks = candlestickChanged ? normalizedCandles : previous.candlestickData;
         const nextBaselinePrice = baselinePrice ?? previous.baselinePrice ?? cacheEntry.baselinePrice;
@@ -818,6 +834,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         timeframeDataCacheRef.current[cacheKey] = {
           data: nextData,
           benchmarkData: nextBenchmark,
+          beforeCreationData: nextBeforeCreationData,
           metrics: nextMetrics,
           candlestickData: nextCandlesticks,
           equityCurve: updatedEquityCurve,
@@ -829,13 +846,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
               : latestTimestampNum,
         };
 
-        if (!mergedData.changed && !mergedBenchmark.changed && !metricsChanged && !candlestickChanged) {
+        if (!mergedData.changed && !mergedBenchmark.changed && !mergedBeforeCreationData.changed && !metricsChanged && !candlestickChanged) {
           return previous;
         }
 
         return {
           data: nextData,
           benchmarkData: nextBenchmark,
+          beforeCreationData: nextBeforeCreationData,
           metrics: nextMetrics,
           candlestickData: nextCandlesticks,
           baselinePrice: nextBaselinePrice,
@@ -886,6 +904,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         setChartState({
           data: cachedData.data,
           benchmarkData: cachedData.benchmarkData,
+          beforeCreationData: cachedData.beforeCreationData,
           metrics: cachedData.metrics,
           candlestickData: cachedData.candlestickData,
           baselinePrice: cachedData.baselinePrice,
@@ -1249,6 +1268,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 candles={chartState.candlestickData}
                 equityPoints={chartState.data}
                 benchmarkPoints={visibleBenchmarkData}
+                beforeCreationEquityPoints={chartState.beforeCreationData}
                 timeframe={selectedTimeframe}
                 height={400}
                 className=""

@@ -27,6 +27,7 @@ interface CandlestickChartProps {
   candles: TradingCandlestickPoint[];
   equityPoints: TradingDataPoint[];
   benchmarkPoints: TradingDataPoint[];
+  beforeCreationEquityPoints?: TradingDataPoint[];
   timeframe?: string;
   height?: number;
   className?: string;
@@ -82,6 +83,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   candles,
   equityPoints,
   benchmarkPoints,
+  beforeCreationEquityPoints,
   timeframe = '1m',
   height = 400,
   className = '',
@@ -95,6 +97,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const beforeCreationAreaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
   const equityAreaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
   const benchmarkLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const benchmarkMarkersSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
@@ -366,6 +369,19 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         throw new Error('Failed to create candlestick series - returned null or undefined');
       }
 
+      const beforeCreationSeries = chart.addSeries(AreaSeries, {
+        priceScaleId: 'right',
+        lineColor: '#6EE7B7',
+        topColor: 'rgba(110, 231, 183, 0)',
+        bottomColor: 'rgba(110, 231, 183, 0)',
+        lineWidth: 2,
+        priceFormat: {
+          type: 'custom',
+          minMove: 0.01,
+          formatter: (value: number) => `$${value.toFixed(2)}`,
+        },
+      });
+
       const equitySeries = chart.addSeries(AreaSeries, {
         priceScaleId: 'right',
         lineColor: '#10B981',
@@ -459,6 +475,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
       chartRef.current = chart;
       candlestickSeriesRef.current = series;
+      beforeCreationAreaSeriesRef.current = beforeCreationSeries;
       equityAreaSeriesRef.current = equitySeries;
       benchmarkLineSeriesRef.current = benchmarkSeries;
       if (!benchmarkMarkersSeriesRef.current) {
@@ -865,6 +882,34 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         : undefined;
     benchmarkBaselineRef.current = resolvedBaselinePrice;
 
+    // Handle before creation equity data
+    const beforeCreationData = (beforeCreationEquityPoints || [])
+      .map((point: TradingDataPoint) => {
+        const timeInSeconds = point.timestampNum / 1000;
+        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+          return null;
+        }
+
+        if (point.roi === undefined || point.roi === null || resolvedBaselinePrice === undefined) {
+          return null;
+        }
+
+        return {
+          time: timeInSeconds as Time,
+          value: resolvedBaselinePrice * (1 + point.roi / 100),
+        };
+      })
+      .filter((item): item is { time: Time; value: number } => item !== null);
+
+    if (beforeCreationAreaSeriesRef.current) {
+      if (resolvedBaselinePrice !== undefined && beforeCreationData.length > 0) {
+        beforeCreationData.sort((a: { time: Time; value: number }, b: { time: Time; value: number }) => (a.time as number) - (b.time as number));
+        beforeCreationAreaSeriesRef.current.setData(beforeCreationData);
+      } else {
+        beforeCreationAreaSeriesRef.current.setData([]);
+      }
+    }
+
     const equityData = equityPoints
       .map((point) => {
         const timeInSeconds = point.timestampNum / 1000;
@@ -1051,6 +1096,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     seriesVisibilityStateRef.current = seriesVisibility;
     candlestickSeriesRef.current?.applyOptions({ visible: seriesVisibility.price });
     equityAreaSeriesRef.current?.applyOptions({ visible: seriesVisibility.equity });
+    beforeCreationAreaSeriesRef.current?.applyOptions({ visible: seriesVisibility.equity });
     benchmarkLineSeriesRef.current?.applyOptions({ visible: seriesVisibility.benchmark });
     applyScaleVisibility(seriesVisibility);
   }, [hasInitialized, seriesVisibility]);
