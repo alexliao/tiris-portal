@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, AlertCircle } from 'lucide-react';
+
 import {
   createTrading,
   createPaperTrading,
@@ -9,9 +10,11 @@ import {
   getExchangeBindings,
   getStrategies,
   fetchExchangeBalanceForBinding,
+  getPaperExchanges,
   type CreateTradingRequest,
   type ExchangeBinding,
   type Trading,
+  type ExchangeConfigResponse,
   ApiError
 } from '../../utils/api';
 
@@ -48,6 +51,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
   const [initialFunds, setInitialFunds] = useState<number>(0);
   const [maxBalance, setMaxBalance] = useState<number>(0);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [paperExchanges, setPaperExchanges] = useState<ExchangeConfigResponse[]>([]);
+  const [selectedPaperExchange, setSelectedPaperExchange] = useState<ExchangeConfigResponse | null>(null);
 
   const generateDefaultName = (type: string): string => {
     const now = new Date();
@@ -69,7 +74,6 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      fetchExchangeBindings();
       // Set default name based on trading type with timestamp
       setFormData(prev => ({
         ...prev,
@@ -77,9 +81,20 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
         type: tradingType,
       }));
 
+      // For real trading, fetch exchange bindings from backend
+      // For paper trading, do NOT fetch exchange bindings (they are only for real trading)
+      if (tradingType === 'real' || tradingType === 'backtest') {
+        fetchExchangeBindings();
+      }
+
       // For paper and real trading, also fetch bot data
       if (tradingType === 'paper' || tradingType === 'real') {
         fetchBotData();
+      }
+
+      // For paper trading, fetch exchanges from tiris-bot API
+      if (tradingType === 'paper') {
+        fetchPaperExchangesData();
       }
 
       // Reset balance and funds when modal opens
@@ -152,6 +167,29 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
     }
   };
 
+  const fetchPaperExchangesData = async () => {
+    try {
+      setIsLoadingBindings(true);
+      console.log('Fetching paper exchanges from tiris-bot API...');
+      const exchanges = await getPaperExchanges();
+      setPaperExchanges(exchanges);
+
+      // Auto-select first exchange if available
+      if (exchanges.length > 0) {
+        setSelectedPaperExchange(exchanges[0]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch paper exchanges:', err);
+      if (err instanceof ApiError) {
+        setError(t('trading.create.failedToLoadExchanges', { error: err.message }));
+      } else {
+        setError(t('trading.create.failedToLoadExchanges', { error: 'Unknown error' }));
+      }
+    } finally {
+      setIsLoadingBindings(false);
+    }
+  };
+
   const fetchExchangeBalance = async (exchangeBindingId: string, quoteCurrency: 'USDT' | 'USDC') => {
     try {
       setIsLoadingBalance(true);
@@ -185,8 +223,15 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       return;
     }
 
-    if (!formData.exchange_binding_id) {
+    // For real and backtest trading, require exchange binding from backend
+    if ((tradingType === 'real' || tradingType === 'backtest') && !formData.exchange_binding_id) {
       setError(t('trading.create.exchangeBindingRequired'));
+      return;
+    }
+
+    // For paper trading, require exchange selection from tiris-bot API
+    if (tradingType === 'paper' && !selectedPaperExchange) {
+      setError(t('trading.create.exchangeRequired'));
       return;
     }
 
@@ -215,14 +260,26 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       setError(null);
 
       let newTrading: Trading;
-      const requestData = { ...formData };
+      let requestData = { ...formData };
 
       // Add bot parameters to info if this is paper trading
       if (tradingType === 'paper') {
-        requestData.info = {
-          ...requestData.info,
-          strategy_name: selectedStrategy,
-        };
+        // For paper trading, omit exchange_binding_id entirely - it's optional per backend spec
+        // The backend will retrieve exchange info from tiris-bot service
+        const { exchange_binding_id, ...paperRequestData } = requestData;
+        requestData = {
+          ...paperRequestData,
+          info: {
+            ...requestData.info,
+            strategy_name: selectedStrategy,
+            // Store exchange information from tiris-bot API
+            exchange_id: selectedPaperExchange?.id,
+            exchange_name: selectedPaperExchange?.name,
+            exchange_ccxt_id: selectedPaperExchange?.ccxt_id,
+            exchange_sandbox: selectedPaperExchange?.sandbox,
+            exchange_virtual_fee: selectedPaperExchange?.virtual_exchange_fee,
+          },
+        } as unknown as CreateTradingRequest;
       }
 
       // Add quote currency, strategy, and initial funds to info if this is real trading
@@ -352,33 +409,35 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
             />
           </div>
 
-          {/* Exchange Binding */}
-          <div className="mb-4">
-            <label htmlFor="exchange_binding" className="block text-sm font-medium text-gray-700 mb-1">
-              {t('trading.create.exchange')}
-            </label>
-            {isLoadingBindings ? (
-              <div className="flex items-center py-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                <span className="text-sm text-gray-600">{t('common.loading')}</span>
-              </div>
-            ) : (
-              <select
-                id="exchange_binding"
-                value={formData.exchange_binding_id}
-                onChange={(e) => handleInputChange('exchange_binding_id', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                required
-              >
-                <option value="">{t('trading.create.selectExchange')}</option>
-                {exchangeBindings.map((binding) => (
-                  <option key={binding.id} value={binding.id}>
-                    {binding.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
+          {/* Exchange Binding - Only for Real and Backtest Trading */}
+          {(tradingType === 'real' || tradingType === 'backtest') && (
+            <div className="mb-4">
+              <label htmlFor="exchange_binding" className="block text-sm font-medium text-gray-700 mb-1">
+                {t('trading.create.exchange')}
+              </label>
+              {isLoadingBindings ? (
+                <div className="flex items-center py-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                  <span className="text-sm text-gray-600">{t('common.loading')}</span>
+                </div>
+              ) : (
+                <select
+                  id="exchange_binding"
+                  value={formData.exchange_binding_id}
+                  onChange={(e) => handleInputChange('exchange_binding_id', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="">{t('trading.create.selectExchange')}</option>
+                  {exchangeBindings.map((binding) => (
+                    <option key={binding.id} value={binding.id}>
+                      {binding.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
 
           {/* Quote Currency and Strategy for Real Trading */}
           {tradingType === 'real' && (
@@ -492,6 +551,37 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
           {/* Bot Parameters for Paper Trading */}
           {tradingType === 'paper' && (
             <>
+              {/* Paper Exchange Selection from tiris-bot API */}
+              <div className="mb-4">
+                <label htmlFor="paper_exchange" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('trading.create.exchange')} <span className="text-red-500">*</span>
+                </label>
+                {paperExchanges.length === 0 ? (
+                  <div className="flex items-center py-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <span className="text-sm text-gray-600">{t('common.loading')}</span>
+                  </div>
+                ) : (
+                  <select
+                    id="paper_exchange"
+                    value={selectedPaperExchange?.id || ''}
+                    onChange={(e) => {
+                      const exchange = paperExchanges.find(ex => ex.id === e.target.value);
+                      setSelectedPaperExchange(exchange || null);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">{t('trading.create.selectExchange')}</option>
+                    {paperExchanges.map((exchange) => (
+                      <option key={exchange.id} value={exchange.id}>
+                        {exchange.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
               {/* Strategy Selection */}
               <div className="mb-4">
                 <label htmlFor="bot_strategy" className="block text-sm font-medium text-gray-700 mb-1">

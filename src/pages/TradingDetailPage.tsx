@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getPublicExchangeBindings, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading } from '../utils/api';
+import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading } from '../utils/api';
 import { AlertCircle, Play, Square, Loader2, Copy, Check } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -201,18 +201,8 @@ export const TradingDetailPage: React.FC = () => {
         if (!resolvedBinding) {
           const isPaperOrBacktest = foundTrading.type === 'paper' || foundTrading.type === 'backtest';
 
-          if (isPaperOrBacktest) {
-            const publicExchangeBindings = await getPublicExchangeBindings();
-            const binding = publicExchangeBindings.find(eb => eb.id === foundTrading.exchange_binding_id) || publicExchangeBindings[0];
-            if (binding) {
-              const publicBinding: ExchangeBinding = { ...binding };
-              const publicCredentials = extractExchangeCredentials(publicBinding);
-              publicBinding.api_key = publicCredentials.apiKey;
-              publicBinding.api_secret = publicCredentials.apiSecret;
-              resolvedBinding = publicBinding;
-            }
-          } else {
-            // For real trading, fetch the specific exchange binding by ID to ensure we get the full details including credentials
+          if (!isPaperOrBacktest) {
+            // For real trading only, fetch the specific exchange binding by ID to ensure we get the full details including credentials
             try {
               const binding = await getExchangeBindingById(foundTrading.exchange_binding_id);
               if (binding) {
@@ -236,6 +226,8 @@ export const TradingDetailPage: React.FC = () => {
               }
             }
           }
+          // For paper/backtest trading: no exchange binding fetch needed
+          // Exchange name will be displayed from trading.info.exchange_name
         }
 
         if (resolvedBinding) {
@@ -537,13 +529,6 @@ export const TradingDetailPage: React.FC = () => {
       if (!currentBot) {
         console.log('No existing bot found, creating new bot for trading ID:', trading.id);
 
-        // Use the exchange binding that was already loaded during component initialization
-        if (!exchangeBinding) {
-          throw new Error(t('trading.tradingDetail.exchangeBindingNotAvailable'));
-        }
-
-        console.log('Using exchange binding for bot creation:', exchangeBinding);
-
         // Fetch sub-accounts for this trading to include in bot creation
         console.log('Fetching sub-accounts for trading:', trading.id);
         const subAccounts = await getSubAccountsByTrading(trading.id);
@@ -566,17 +551,44 @@ export const TradingDetailPage: React.FC = () => {
           throw new Error(`Missing required sub-accounts. Found ${subAccounts.length} sub-accounts, but need both stock and balance accounts.`);
         }
 
-        const exchangeInfo = exchangeBinding.info ? { ...exchangeBinding.info } : undefined;
-        const exchangeSpec: BotCreateRequest['spec']['exchange'] = {
-          id: exchangeBinding.id,
-          name: exchangeBinding.name,
-          type: exchangeBinding.exchange,
-          ...(exchangeInfo ? { info: exchangeInfo } : {}),
-        };
+        // Build exchange spec based on trading type
+        let exchangeSpec: BotCreateRequest['spec']['exchange'];
 
-        if (isRealTrading) {
-          exchangeSpec.api_key = finalApiKey!;
-          exchangeSpec.api_secret = finalApiSecret!;
+        if (trading.type === 'paper' || trading.type === 'backtest') {
+          // For paper/backtest trading, use exchange info from trading.info field
+          const exchangeIdFromInfo = (trading.info as { exchange_id?: string; exchange_name?: string; exchange_ccxt_id?: string })?.exchange_id;
+          const exchangeNameFromInfo = (trading.info as { exchange_id?: string; exchange_name?: string; exchange_ccxt_id?: string })?.exchange_name;
+          const exchangeCcxtIdFromInfo = (trading.info as { exchange_id?: string; exchange_name?: string; exchange_ccxt_id?: string })?.exchange_ccxt_id;
+
+          if (!exchangeIdFromInfo || !exchangeCcxtIdFromInfo) {
+            throw new Error('Exchange information not available in trading details. Please refresh the page.');
+          }
+
+          exchangeSpec = {
+            id: exchangeIdFromInfo,
+            name: exchangeNameFromInfo || exchangeIdFromInfo,
+            type: exchangeCcxtIdFromInfo,
+          };
+        } else {
+          // For real trading, use the exchange binding that was already loaded
+          if (!exchangeBinding) {
+            throw new Error(t('trading.tradingDetail.exchangeBindingNotAvailable'));
+          }
+
+          console.log('Using exchange binding for bot creation:', exchangeBinding);
+
+          const exchangeInfo = exchangeBinding.info ? { ...exchangeBinding.info } : undefined;
+          exchangeSpec = {
+            id: exchangeBinding.id,
+            name: exchangeBinding.name,
+            type: exchangeBinding.exchange,
+            ...(exchangeInfo ? { info: exchangeInfo } : {}),
+          };
+
+          if (isRealTrading) {
+            exchangeSpec.api_key = finalApiKey!;
+            exchangeSpec.api_secret = finalApiSecret!;
+          }
         }
 
         // Create BotSpec using strategy from trading info
@@ -605,7 +617,9 @@ export const TradingDetailPage: React.FC = () => {
               // Use strategy_name from trading info if available, otherwise default
               strategy_name: trading.info?.strategy_name,
               symbol: symbol,
-              exchange: exchangeBinding.exchange,
+              exchange: trading.type === 'paper' || trading.type === 'backtest'
+                ? (trading.info as { exchange_ccxt_id?: string })?.exchange_ccxt_id
+                : exchangeBinding?.exchange,
               // For real trading, pass INITIAL_TRADING_BALANCE
               ...(isRealTrading && {
                 INITIAL_TRADING_BALANCE: trading.info?.initial_funds
@@ -937,7 +951,12 @@ export const TradingDetailPage: React.FC = () => {
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600">{t('trading.detail.exchangeBinding')}</div>
-                <div className="text-sm text-gray-900">{exchangeBinding ? exchangeBinding.name : t('trading.tradingDetail.loading')}</div>
+                <div className="text-sm text-gray-900">
+                  {/* For paper/backtest trading, use the stored exchange_name from info field */}
+                  {(trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name
+                    ? String(trading.info.exchange_name)
+                    : exchangeBinding ? exchangeBinding.name : t('trading.tradingDetail.loading')}
+                </div>
               </div>
               {(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) && (
                 <div>
