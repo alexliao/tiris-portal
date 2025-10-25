@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading } from '../utils/api';
-import { AlertCircle, Play, Square, Loader2, Copy, Check } from 'lucide-react';
+import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading, deleteTrading } from '../utils/api';
+import { AlertCircle, Play, Square, Loader2, Copy, Check, Trash2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 import { THEME_COLORS, getTradingTheme, getTradingIcon } from '../config/theme';
 
 const extractExchangeCredentials = (binding?: ExchangeBinding | null) => {
@@ -48,6 +49,7 @@ const extractExchangeCredentials = (binding?: ExchangeBinding | null) => {
 export const TradingDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [trading, setTrading] = useState<Trading | null>(null);
   const [bot, setBot] = useState<Bot | null>(null);
@@ -59,7 +61,13 @@ export const TradingDetailPage: React.FC = () => {
   const isCheckingStatus = useRef(false);
   const monitoringBotId = useRef<string | null>(null);
   const [copiedId, setCopiedId] = useState(false);
-
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    isDeleting: boolean;
+  }>({
+    isOpen: false,
+    isDeleting: false,
+  });
 
   // Data refresh state management
   const [dataRefreshInterval, setDataRefreshInterval] = useState<NodeJS.Timeout | null>(null);
@@ -704,6 +712,54 @@ export const TradingDetailPage: React.FC = () => {
     }
   };
 
+  const handleDeleteClick = () => {
+    setDeleteConfirmation({
+      isOpen: true,
+      isDeleting: false,
+    });
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmation({
+      isOpen: false,
+      isDeleting: false,
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!trading) {
+      return;
+    }
+
+    try {
+      setDeleteConfirmation(prev => ({ ...prev, isDeleting: true }));
+      await deleteTrading(trading.id, trading.type);
+
+      // Close confirmation dialog
+      setDeleteConfirmation({
+        isOpen: false,
+        isDeleting: false,
+      });
+
+      // Navigate back to the trading list page
+      navigate(`/tradings/${trading.type}`);
+    } catch (err) {
+      console.error('Failed to delete trading:', err);
+      let errorMessage = 'Unknown error';
+      if (err instanceof ApiError) {
+        errorMessage = err.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      setDeleteConfirmation({
+        isOpen: false,
+        isDeleting: false,
+      });
+      setError(t('dashboard.deleteFailed', { error: errorMessage }));
+    }
+  };
+
   const getTypeIcon = (type: string) => {
     const IconComponent = getTradingIcon(type);
     return <IconComponent className="w-8 h-8" />;
@@ -929,6 +985,15 @@ export const TradingDetailPage: React.FC = () => {
                         {t('trading.detail.startBot')}
                       </button>
                     )}
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={handleDeleteClick}
+                      className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                      title={t('common.delete')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
               </div>
@@ -981,6 +1046,28 @@ export const TradingDetailPage: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmation.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title={t('dashboard.deleteTradingTitle')}
+        message={
+          trading?.type === 'real'
+            ? t('dashboard.deleteTradingMessageReal', {
+                name: trading?.name || ''
+              })
+            : t('dashboard.deleteTradingMessage', {
+                name: trading?.name || ''
+              })
+        }
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        isDestructive={true}
+        isLoading={deleteConfirmation.isDeleting}
+      />
+
       <Footer />
     </div>
   );
