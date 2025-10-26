@@ -427,7 +427,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       setStockSymbol(fetchedStockSymbol);
       setQuoteSymbol(fetchedQuoteSymbol);
 
-      const exchangeId = trading.exchange_binding?.exchange;
+      const exchangeType = trading.exchange_binding?.exchange_type;
 
       const [equityCurve, tradingLogs] = await Promise.all([
         // Use new API with timeframe and recent_timeframes parameters
@@ -438,7 +438,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           fetchedStockSymbol,
           fetchedQuoteSymbol,
           requireAuth,
-          exchangeId
+          exchangeType
         ),
         getTradingLogs(trading.id, requireAuth)
       ]);
@@ -621,7 +621,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
   }, [
     selectedTimeframe,
-    trading.exchange_binding?.exchange,
+    trading.exchange_binding?.exchange_type,
     trading.id,
     trading.type,
     beginApiCall,
@@ -645,7 +645,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
 
     const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
-    const exchangeId = trading.exchange_binding?.exchange;
+    const exchangeType = trading.exchange_binding?.exchange_type;
 
     const lastCachedTimestamp = cacheEntry.lastUpdateTimestamp
       ?? new Date(existingEquityCurve.data_points[existingEquityCurve.data_points.length - 1].timestamp).getTime();
@@ -670,7 +670,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         stockSymbol,
         quoteSymbol,
         requireAuth,
-        exchangeId
+        exchangeType
       );
 
       const normalizedIncremental = incrementalEquity ? normalizeEquityCurve(incrementalEquity) : undefined;
@@ -871,7 +871,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     stockSymbol,
     trading.id,
     trading.type,
-    trading.exchange_binding?.exchange,
+    trading.exchange_binding?.exchange_type,
     beginApiCall,
     endApiCall,
   ]);

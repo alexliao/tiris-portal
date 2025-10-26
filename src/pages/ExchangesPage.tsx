@@ -293,7 +293,7 @@ export const ExchangesPage: React.FC = () => {
                           {exchange.name}
                         </h3>
                         <p className="text-white/80 text-sm mt-1">
-                          {getExchangeTypeName(exchange.exchange)}
+                          {getExchangeTypeName(exchange.exchange_type)}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 ml-2">
@@ -401,8 +401,8 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
   };
 
   const [formData, setFormData] = useState({
-    name: exchange?.name || getDefaultName(availableExchanges[0]?.id || 'binance'),
-    exchange: exchange?.exchange || availableExchanges[0]?.id || 'binance',
+    name: exchange?.name || getDefaultName(availableExchanges[0]?.type || 'binance'),
+    exchange: exchange?.exchange_type || availableExchanges[0]?.type || 'binance',
     api_key: '',
     api_secret: '',
     passphrase: '',
@@ -423,8 +423,8 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
         if (!exchange && exchangeConfigs.length > 0) {
           setFormData(prev => ({
             ...prev,
-            exchange: exchangeConfigs[0].id,
-            name: getDefaultName(exchangeConfigs[0].id),
+            exchange: exchangeConfigs[0].type,
+            name: getDefaultName(exchangeConfigs[0].type),
           }));
         }
       } catch (err) {
@@ -504,8 +504,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
         const trimmedPassphrase = formData.passphrase.trim();
         const request: CreateExchangeBindingRequest = {
           name: formData.name,
-          exchange: formData.exchange,
-          type: 'private',
+          exchange_type: formData.exchange,
           api_key: formData.api_key,
           api_secret: formData.api_secret,
           info: {
@@ -570,7 +569,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
                   <option value="">{t('exchanges.loadingExchanges')}</option>
                 ) : availableExchanges.length > 0 ? (
                   availableExchanges.map((exchangeConfig) => (
-                    <option key={exchangeConfig.id} value={exchangeConfig.id}>
+                    <option key={exchangeConfig.type} value={exchangeConfig.type}>
                       {exchangeConfig.name}
                     </option>
                   ))
@@ -585,7 +584,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
                 {t('exchanges.exchange')}
               </label>
               <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700">
-                {getExchangeTypeName(exchange.exchange)}
+                {getExchangeTypeName(exchange.exchange_type)}
               </div>
             </div>
           )}

@@ -176,8 +176,7 @@ export const TradingDetailPage: React.FC = () => {
           resolvedBinding = {
             id: embeddedBinding.id,
             name: embeddedBinding.name,
-            exchange: embeddedBinding.exchange,
-            type: (embeddedBinding.type as 'private' | 'public') || 'private',
+            exchange_type: embeddedBinding.exchange_type,
             status: embeddedBinding.status || 'active',
             created_at: embeddedBinding.created_at || foundTrading.created_at,
             info: embeddedBinding.info ? { ...embeddedBinding.info } : {}
@@ -560,23 +559,22 @@ export const TradingDetailPage: React.FC = () => {
         }
 
         // Build exchange spec based on trading type
-        let exchangeSpec: BotCreateRequest['spec']['exchange'];
+        let exchangeTypeForSpec: string | undefined;
+        let exchangeBindingSpec: BotCreateRequest['spec']['exchange_binding'];
 
         if (trading.type === 'paper' || trading.type === 'backtest') {
           // For paper/backtest trading, use exchange info from trading.info field
-          const exchangeIdFromInfo = (trading.info as { exchange_id?: string; exchange_name?: string; exchange_ccxt_id?: string })?.exchange_id;
-          const exchangeNameFromInfo = (trading.info as { exchange_id?: string; exchange_name?: string; exchange_ccxt_id?: string })?.exchange_name;
-          const exchangeCcxtIdFromInfo = (trading.info as { exchange_id?: string; exchange_name?: string; exchange_ccxt_id?: string })?.exchange_ccxt_id;
+          const exchangeTypeFromInfo = (trading.info as { exchange_type?: string; exchange_name?: string; exchange_ccxt_id?: string })?.exchange_type;
+          const exchangeCcxtIdFromInfo = (trading.info as { exchange_type?: string; exchange_name?: string; exchange_ccxt_id?: string })?.exchange_ccxt_id;
 
-          if (!exchangeIdFromInfo || !exchangeCcxtIdFromInfo) {
+          if (!exchangeTypeFromInfo || !exchangeCcxtIdFromInfo) {
             throw new Error('Exchange information not available in trading details. Please refresh the page.');
           }
 
-          exchangeSpec = {
-            id: exchangeIdFromInfo,
-            name: exchangeNameFromInfo || exchangeIdFromInfo,
-            type: exchangeCcxtIdFromInfo,
-          };
+          exchangeTypeForSpec = exchangeTypeFromInfo;
+
+          // Keep exchange name + ccxt id in params for downstream compatibility
+          exchangeBindingSpec = undefined;
         } else {
           // For real trading, use the exchange binding that was already loaded
           if (!exchangeBinding) {
@@ -586,16 +584,19 @@ export const TradingDetailPage: React.FC = () => {
           console.log('Using exchange binding for bot creation:', exchangeBinding);
 
           const exchangeInfo = exchangeBinding.info ? { ...exchangeBinding.info } : undefined;
-          exchangeSpec = {
+          exchangeBindingSpec = {
             id: exchangeBinding.id,
             name: exchangeBinding.name,
-            type: exchangeBinding.exchange,
+            exchange_type: exchangeBinding.exchange_type,
             ...(exchangeInfo ? { info: exchangeInfo } : {}),
           };
 
-          if (isRealTrading) {
-            exchangeSpec.api_key = finalApiKey!;
-            exchangeSpec.api_secret = finalApiSecret!;
+          // Use exchange type from exchange binding for real trading
+          exchangeTypeForSpec = exchangeBinding.exchange_type;
+
+          if (isRealTrading && exchangeBindingSpec) {
+            exchangeBindingSpec.api_key = finalApiKey!;
+            exchangeBindingSpec.api_secret = finalApiSecret!;
           }
         }
 
@@ -620,19 +621,17 @@ export const TradingDetailPage: React.FC = () => {
                 balance: parseFloat(balanceSubAccount.balance)
               }
             },
-            exchange: exchangeSpec,
             params: {
               // Use strategy_name from trading info if available, otherwise default
               strategy_name: trading.info?.strategy_name,
               symbol: symbol,
-              exchange: trading.type === 'paper' || trading.type === 'backtest'
-                ? (trading.info as { exchange_ccxt_id?: string })?.exchange_ccxt_id
-                : exchangeBinding?.exchange,
               // For real trading, pass INITIAL_TRADING_BALANCE
               ...(isRealTrading && {
                 INITIAL_TRADING_BALANCE: trading.info?.initial_funds
               })
-            }
+            },
+            exchange_type: exchangeTypeForSpec,
+            ...(exchangeBindingSpec && { exchange_binding: exchangeBindingSpec })
           }
         };
 

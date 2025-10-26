@@ -33,8 +33,7 @@ export interface Trading {
   exchange_binding?: {
     id: string;
     name: string;
-    exchange: string;
-    type: string;
+    exchange_type: string;
     status?: string;
     created_at?: string;
     info?: { [key: string]: unknown };
@@ -421,15 +420,15 @@ export async function getEquityCurve(
   stockSymbol: string = 'BTC',
   quoteSymbol: string = 'USDT',
   requireAuth: boolean = true,
-  exchange?: string
+  exchangeType?: string
 ): Promise<EquityCurveNewData> {
   const params = new URLSearchParams();
   params.append('timeframe', timeframe);
   params.append('recent_timeframes', recentTimeframes.toString());
   params.append('stock_symbol', stockSymbol);
   params.append('quote_symbol', quoteSymbol);
-  if (exchange) {
-    params.append('exchange', exchange.toLowerCase());
+  if (exchangeType) {
+    params.append('exchange', exchangeType.toLowerCase());
   }
 
   const endpoint = `/tradings/${tradingId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
@@ -475,7 +474,7 @@ export async function getEquityCurveByTimeRange(
   stockSymbol: string = 'BTC',
   quoteSymbol: string = 'USDT',
   requireAuth: boolean = true,
-  exchange?: string
+  exchangeType?: string
 ): Promise<EquityCurveNewData> {
   const params = new URLSearchParams();
   params.append('timeframe', timeframe);
@@ -483,8 +482,8 @@ export async function getEquityCurveByTimeRange(
   params.append('end_time', endTime.toString());
   params.append('stock_symbol', stockSymbol);
   params.append('quote_symbol', quoteSymbol);
-  if (exchange) {
-    params.append('exchange', exchange.toLowerCase());
+  if (exchangeType) {
+    params.append('exchange', exchangeType.toLowerCase());
   }
 
   const endpoint = `/tradings/${tradingId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
@@ -514,10 +513,10 @@ export async function getEquityCurveByTimeRange(
 export interface ExchangeBinding {
   id: string;
   name: string;
-  exchange: string;
-  type: 'private' | 'public';
+  exchange_type: string;
   status: string;
   created_at: string;
+  updated_at?: string;
   api_key?: string | null;
   api_secret?: string | null;
   info: {
@@ -584,8 +583,7 @@ export async function getExchangeBindingById(id: string): Promise<ExchangeBindin
 
 export interface CreateExchangeBindingRequest {
   name: string;
-  exchange: string;
-  type: 'private' | 'public';
+  exchange_type: string;
   api_key: string;
   api_secret: string;
   info?: {
@@ -700,7 +698,7 @@ export async function fetchExchangeBalanceForBinding(
     const passphrase = exchangeBinding.info?.passphrase || undefined;
 
     const accountData = await getExchangeAccount(
-      exchangeBinding.exchange,
+      exchangeBinding.exchange_type,
       symbol,
       apiKey,
       apiSecret,
@@ -810,7 +808,7 @@ export async function createRealTrading(request: CreateTradingRequest): Promise<
 
     try {
       const accountData = await getExchangeAccount(
-        exchangeBinding.exchange,
+        exchangeBinding.exchange_type,
         symbol,
         apiKey,
         apiSecret,
@@ -976,7 +974,20 @@ export interface Bot {
         name: string;
         type: string;
       };
-      exchange: {
+      exchange_type?: string;
+      exchange_binding?: {
+        id: string;
+        name: string;
+        type?: string;
+        api_key?: string | null;
+        api_secret?: string | null;
+        info?: { [key: string]: unknown };
+      };
+      /**
+       * Some legacy bot records may still include the old exchange object.
+       * Keep it optional for backward compatibility until migrations finish.
+       */
+      exchange?: {
         id: string;
         name: string;
         type: string;
@@ -1002,33 +1013,36 @@ export interface Bot {
   alive: boolean;
 }
 
-export interface BotCreateRequest {
-  spec: {
-    trading: {
+export interface BotSpec {
+  trading: {
+    id: string;
+    name: string;
+    type: string;
+    stock_sub_account?: {
       id: string;
-      name: string;
-      type: string;
-      stock_sub_account?: {
-        id: string;
-        symbol: string;
-        balance: number;
-      } | null;
-      balance_sub_account?: {
-        id: string;
-        symbol: string;
-        balance: number;
-      } | null;
-    };
-    exchange: {
+      symbol: string;
+      balance: number;
+    } | null;
+    balance_sub_account?: {
       id: string;
-      name: string;
-      type: string;
-      api_key?: string | null;
-      api_secret?: string | null;
-      info?: { [key: string]: unknown };
-    };
-    params?: { [key: string]: unknown };
+      symbol: string;
+      balance: number;
+    } | null;
   };
+  params?: { [key: string]: unknown };
+  exchange_type?: string;
+  exchange_binding?: {
+    id: string;
+    name: string;
+    exchange_type?: string;
+    api_key?: string | null;
+    api_secret?: string | null;
+    info?: { [key: string]: unknown };
+  };
+}
+
+export interface BotCreateRequest {
+  spec: BotSpec;
 }
 
 // Bot API request functions
@@ -1284,34 +1298,55 @@ export async function getStrategies(): Promise<string[]> {
   return botApiRequest<string[]>('/strategies');
 }
 
-// Get available exchanges from tiris-bot API
-export async function getExchanges(): Promise<ExchangeConfigResponse[]> {
-  return botApiRequest<ExchangeConfigResponse[]>('/exchanges');
+interface RawExchangeConfigResponse {
+  type: string;                        // Exchange type key (e.g., 'binance_free', 'okx_demo')
+  name: string;
+  ccxt_id: string;
+  sandbox: boolean;
+  ccxt_passphrase_field?: string | null;
+  virtual_exchange_fee: number;
 }
 
-// Get exchanges supported for real trading
-export async function getRealExchanges(): Promise<ExchangeConfigResponse[]> {
-  return botApiRequest<ExchangeConfigResponse[]>('/exchanges/real');
-}
-
-// Get exchanges supported for paper trading
-export async function getPaperExchanges(): Promise<ExchangeConfigResponse[]> {
-  return botApiRequest<ExchangeConfigResponse[]>('/exchanges/paper');
-}
-
-// Get exchanges supported for backtest trading
-export async function getBacktestExchanges(): Promise<ExchangeConfigResponse[]> {
-  return botApiRequest<ExchangeConfigResponse[]>('/exchanges/backtest');
-}
-
-// Exchange configuration response interface based on OpenAPI spec
 export interface ExchangeConfigResponse {
-  id: string;                          // Exchange ID/key (e.g., 'binance', 'okx')
+  type: string;                        // Exchange type key (e.g., 'binance_free', 'okx_demo')
   name: string;                        // Display name of the exchange
   ccxt_id: string;                     // CCXT module name for the exchange
   sandbox: boolean;                    // Whether this is a sandbox/demo environment
   ccxt_passphrase_field?: string | null; // Field name for passphrase in exchange config (if required)
   virtual_exchange_fee: number;        // Fee rate for paper/backtest trading (as decimal, e.g., 0.001 = 0.1%)
+}
+
+const normalizeExchangeConfig = (config: RawExchangeConfigResponse): ExchangeConfigResponse => ({
+  type: config.type,
+  name: config.name,
+  ccxt_id: config.ccxt_id,
+  sandbox: config.sandbox,
+  ccxt_passphrase_field: config.ccxt_passphrase_field ?? null,
+  virtual_exchange_fee: config.virtual_exchange_fee,
+});
+
+// Get available exchanges from tiris-bot API
+export async function getExchanges(): Promise<ExchangeConfigResponse[]> {
+  const response = await botApiRequest<RawExchangeConfigResponse[]>('/exchanges');
+  return response.map(normalizeExchangeConfig);
+}
+
+// Get exchanges supported for real trading
+export async function getRealExchanges(): Promise<ExchangeConfigResponse[]> {
+  const response = await botApiRequest<RawExchangeConfigResponse[]>('/exchanges/real');
+  return response.map(normalizeExchangeConfig);
+}
+
+// Get exchanges supported for paper trading
+export async function getPaperExchanges(): Promise<ExchangeConfigResponse[]> {
+  const response = await botApiRequest<RawExchangeConfigResponse[]>('/exchanges/paper');
+  return response.map(normalizeExchangeConfig);
+}
+
+// Get exchanges supported for backtest trading
+export async function getBacktestExchanges(): Promise<ExchangeConfigResponse[]> {
+  const response = await botApiRequest<RawExchangeConfigResponse[]>('/exchanges/backtest');
+  return response.map(normalizeExchangeConfig);
 }
 
 // Exchange account response interface based on OpenAPI spec
@@ -1399,7 +1434,7 @@ export async function deleteTrading(tradingId: string, tradingType: string): Pro
 // OHLCV Data API
 
 export interface OHLCVCandle {
-  ex: string;          // Exchange ID
+  ex: string;          // Exchange type identifier
   market: string;      // Market symbol (e.g., "BTC/USDT")
   ts: string;          // Timestamp (ISO 8601)
   o: number;           // Open price
@@ -1413,7 +1448,7 @@ export interface OHLCVCandle {
 
 /**
  * Get OHLCV data for a specific exchange and market
- * @param exchange - Exchange ID (e.g., 'binance', 'okx')
+ * @param exchangeType - Exchange type key (e.g., 'binance', 'okx')
  * @param market - Market symbol (e.g., 'BTC/USDT', 'ETH/USDT')
  * @param startTime - Start time in milliseconds since epoch
  * @param endTime - End time in milliseconds since epoch
@@ -1422,7 +1457,7 @@ export interface OHLCVCandle {
  * @returns Array of OHLCV candles
  */
 export async function getOHLCV(
-  exchange: string,
+  exchangeType: string,
   market: string,
   startTime: number,
   endTime: number,
@@ -1430,7 +1465,7 @@ export async function getOHLCV(
   onMiss: 'warmup' | 'none' = 'warmup'
 ): Promise<OHLCVCandle[]> {
   const params = new URLSearchParams({
-    ex: exchange.toLowerCase(),
+    ex: exchangeType.toLowerCase(),
     market: market,
     tf: timeframe,
     start: startTime.toString(),

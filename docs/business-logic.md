@@ -4,7 +4,7 @@
 - First, create an new trading of type paper under the authenticated user with a unique name to avoid a clash.
   - In the creation process, the portal gets the exchange information from tiris-bot API `/exchange/paper` endpoint for users to select.
   - The creation process will not look up the backend for exchange bindings because the exchange bindings is all for real trading.
-  - The chosen exchange ID, along with other exchange information, will be stored in the trading info field for later reference.
+  - The chosen exchange type, along with other exchange information, will be stored in the trading info field for later reference.
 - Second, create two sub accounts, one for stock(hardcoded as ETH for now) and one for balance(hardcoded as USDT for now), under the trading created.
 - Then create a trading log of depositing the initial funds for the sub-account of balance (10,000 for now).
 

@@ -54,6 +54,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
   const [paperExchanges, setPaperExchanges] = useState<ExchangeConfigResponse[]>([]);
   const [selectedPaperExchange, setSelectedPaperExchange] = useState<ExchangeConfigResponse | null>(null);
 
+  const getExchangeOptionValue = (exchange: ExchangeConfigResponse): string => exchange.type;
+
   const generateDefaultName = (type: string): string => {
     const now = new Date();
     const month = now.getMonth() + 1;
@@ -273,7 +275,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
             ...requestData.info,
             strategy_name: selectedStrategy,
             // Store exchange information from tiris-bot API
-            exchange_id: selectedPaperExchange?.id,
+            exchange_type: selectedPaperExchange?.type,
             exchange_name: selectedPaperExchange?.name,
             exchange_ccxt_id: selectedPaperExchange?.ccxt_id,
             exchange_sandbox: selectedPaperExchange?.sandbox,
@@ -429,8 +431,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                   required
                 >
                   <option value="">{t('trading.create.selectExchange')}</option>
-                  {exchangeBindings.map((binding) => (
-                    <option key={binding.id} value={binding.id}>
+                  {exchangeBindings.map((binding, index) => (
+                    <option key={binding.id || `exchange-binding-${index}`} value={binding.id}>
                       {binding.name}
                     </option>
                   ))}
@@ -477,8 +479,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                     required
                   >
                     <option value="">{t('trading.botParams.selectStrategy')}</option>
-                    {strategies.map((strategy) => (
-                      <option key={strategy} value={strategy}>
+                    {strategies.map((strategy, index) => (
+                      <option key={`${strategy}-${index}`} value={strategy}>
                         {strategy}
                       </option>
                     ))}
@@ -564,9 +566,9 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                 ) : (
                   <select
                     id="paper_exchange"
-                    value={selectedPaperExchange?.id || ''}
+                    value={selectedPaperExchange ? getExchangeOptionValue(selectedPaperExchange) : ''}
                     onChange={(e) => {
-                      const exchange = paperExchanges.find(ex => ex.id === e.target.value);
+                      const exchange = paperExchanges.find(ex => getExchangeOptionValue(ex) === e.target.value);
                       setSelectedPaperExchange(exchange || null);
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
@@ -574,8 +576,11 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                   >
                     <option value="">{t('trading.create.selectExchange')}</option>
                     {paperExchanges.map((exchange) => (
-                      <option key={exchange.id} value={exchange.id}>
-                        {exchange.name}
+                      <option
+                        key={exchange.type}
+                        value={getExchangeOptionValue(exchange)}
+                      >
+                        {exchange.name ? ` ${exchange.name}` : ''}
                       </option>
                     ))}
                   </select>
@@ -601,8 +606,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                     required
                   >
                     <option value="">{t('trading.botParams.selectStrategy')}</option>
-                    {strategies.map((strategy) => (
-                      <option key={strategy} value={strategy}>
+                    {strategies.map((strategy, index) => (
+                      <option key={`${strategy}-${index}`} value={strategy}>
                         {strategy}
                       </option>
                     ))}
