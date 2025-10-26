@@ -182,7 +182,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
 
   const applyScaleVisibility = (visibility = seriesVisibilityStateRef.current) => {
-    const priceVisible = visibility.price;
+    const priceVisible = true; // Always show the right Y-axis for price
+    const candleVisible = visibility.price; // Show candlesticks and volume based on price toggle
     const positionVisible = visibility.position;
 
     rightPriceScaleRef.current?.applyOptions({
@@ -193,13 +194,13 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       },
     });
 
-    volumeSeriesRef.current?.applyOptions({ visible: priceVisible });
+    volumeSeriesRef.current?.applyOptions({ visible: candleVisible });
     const volumeMargins = positionVisible
       ? { top: 0.72, bottom: 0.18 }
       : { top: 0.78, bottom: 0.02 };
 
     volumePriceScaleRef.current?.applyOptions({
-      visible: priceVisible,
+      visible: candleVisible, // Show volume scale only when candlesticks are visible
       scaleMargins: volumeMargins,
       borderColor: '#d1d4dc',
     });
@@ -338,7 +339,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       });
 
       rightPriceScaleRef.current = chart.priceScale('right');
-      rightPriceScaleRef.current.applyOptions({ visible: seriesVisibilityStateRef.current.price });
+      rightPriceScaleRef.current.applyOptions({ visible: true }); // Always show the right Y-axis for price
 
       const timeScale = chart.timeScale();
       const handleVisibleRangeChange = (newRange: LogicalRange | null) => {
@@ -444,7 +445,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         scaleMargins: seriesVisibilityStateRef.current.position
           ? { top: 0.72, bottom: 0.18 }
           : { top: 0.78, bottom: 0.02 },
-        visible: seriesVisibilityStateRef.current.price,
+        visible: seriesVisibilityStateRef.current.price, // Show volume scale only when candlesticks are visible
         borderColor: '#d1d4dc',
       });
 

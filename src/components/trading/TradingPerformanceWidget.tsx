@@ -1162,10 +1162,30 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
               ].map((item) => (
                 <button
                   key={item.key}
-                  onClick={() => setSeriesVisibility(prev => ({
-                    ...prev,
-                    [item.key]: !prev[item.key],
-                  }))}
+                  onClick={() => setSeriesVisibility(prev => {
+                    // Make benchmark and price mutually exclusive
+                    if (item.key === 'benchmark' && prev.benchmark === false) {
+                      // Turning benchmark ON, turn price OFF
+                      return {
+                        ...prev,
+                        benchmark: true,
+                        price: false,
+                      };
+                    } else if (item.key === 'price' && prev.price === false) {
+                      // Turning price ON, turn benchmark OFF
+                      return {
+                        ...prev,
+                        price: true,
+                        benchmark: false,
+                      };
+                    } else {
+                      // For other buttons or toggling off, just toggle normally
+                      return {
+                        ...prev,
+                        [item.key]: !prev[item.key],
+                      };
+                    }
+                  })}
                   className={`flex items-center gap-1 rounded-md border px-3 py-1 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                     seriesVisibility[item.key]
                       ? 'bg-white border-gray-300 text-gray-700 focus:ring-blue-200'
