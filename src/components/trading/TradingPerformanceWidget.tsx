@@ -1257,7 +1257,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   } ${isRefetchingData ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {tf}
+                  {t(`trading.timeframeButtons.${tf}`, tf)}
                 </button>
               ))}
             </div>
