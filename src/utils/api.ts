@@ -639,6 +639,20 @@ export async function createTrading(request: CreateTradingRequest): Promise<Trad
   return result;
 }
 
+export interface UpdateTradingRequest {
+  name?: string;
+  description?: string;
+  info?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export async function updateTrading(tradingId: string, request: UpdateTradingRequest): Promise<Trading> {
+  return apiRequest<Trading>(`/tradings/${tradingId}`, {
+    method: 'PUT',
+    body: JSON.stringify(request),
+  });
+}
+
 // Helper function to extract exchange credentials from binding
 function extractExchangeCredentials(binding?: ExchangeBinding | null): { apiKey: string | null; apiSecret: string | null } {
   if (!binding) {

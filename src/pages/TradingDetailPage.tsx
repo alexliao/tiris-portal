@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading, deleteTrading } from '../utils/api';
+import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading, deleteTrading, updateTrading } from '../utils/api';
 import { AlertCircle, Play, Square, Loader2, Copy, Check, Trash2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import EditableText from '../components/common/EditableText';
 import { THEME_COLORS, getTradingTheme, getTradingIcon } from '../config/theme';
 
 const extractExchangeCredentials = (binding?: ExchangeBinding | null) => {
@@ -104,7 +105,6 @@ export const TradingDetailPage: React.FC = () => {
 
     return clampedSeconds * 1000; // Convert to milliseconds
   };
-
 
   // Extract trading data fetching logic into reusable function
   const fetchTradingData = async (isInitialLoad = false) => {
@@ -775,6 +775,16 @@ export const TradingDetailPage: React.FC = () => {
     }
   };
 
+  const handleTitleSave = async (nextName: string) => {
+    if (!trading) {
+      return nextName;
+    }
+
+    const updatedTrading = await updateTrading(trading.id, { name: nextName });
+    setTrading(prev => (prev ? { ...prev, name: updatedTrading.name } : updatedTrading));
+    return updatedTrading.name;
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -925,13 +935,28 @@ export const TradingDetailPage: React.FC = () => {
                   {getTypeIcon(trading.type)}
                 </Link>
                 <div className="ml-4">
-                  <h1 className="text-2xl font-bold text-white">{trading.name}</h1>
-                  <div className="flex items-center space-x-4 text-sm text-white/80">
+                  <EditableText
+                    value={trading.name}
+                    onSave={handleTitleSave}
+                    disabled={!isAuthenticated}
+                    className="flex items-center gap-2"
+                    textClassName="max-w-xl truncate text-2xl font-bold text-white"
+                    inputClassName="text-2xl font-bold text-white placeholder-white/60"
+                    editButtonClassName="text-white/80 hover:text-white focus:outline-none hover:bg-white/20 rounded-md"
+                    actionButtonClassName="bg-white/20 text-white hover:bg-white/30 focus:outline-none"
+                    labels={{
+                      edit: t('common.edit') || 'Edit',
+                      save: t('common.save') || 'Save',
+                      cancel: t('common.cancel') || 'Cancel',
+                    }}
+                    as="h1"
+                  />
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/80">
                     <div className="flex items-center gap-2">
                       <span>ID: {trading.id.substring(0, 8)}...</span>
                       <button
                         onClick={handleCopyTradingId}
-                        className="p-1 rounded hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                        className="p-1 rounded hover:bg-white/20 text-white/80 transition-colors hover:text-white"
                         title={t('trading.detail.copyId')}
                       >
                         {copiedId ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
