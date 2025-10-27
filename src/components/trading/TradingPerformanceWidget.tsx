@@ -1194,11 +1194,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 >
                   {item.key === 'signals' ? (
                     <svg
-                      className="inline-block h-3 w-3"
+                      className="inline-block h-5 w-5"
                       viewBox="0 0 12 12"
-                      fill={seriesVisibility[item.key] ? item.color : '#D1D5DB'}
                     >
-                      <polygon points="6,1 11,11 1,11" />
+                      {/* Blue dot for buy signals */}
+                      <circle cx="3" cy="6" r="2.5" fill={seriesVisibility[item.key] ? '#3B82F6' : '#D1D5DB'} />
+                      {/* Red dot for sell signals */}
+                      <circle cx="9" cy="6" r="2.5" fill={seriesVisibility[item.key] ? '#EF4444' : '#D1D5DB'} />
                     </svg>
                   ) : item.key === 'price' ? (
                     <svg
@@ -1207,11 +1209,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                       fill="currentColor"
                     >
                       {/* Green candlestick (left) */}
-                      <line x1="3" y1="2" x2="3" y2="10" stroke="#10B981" strokeWidth="1.2" />
-                      <rect x="1.5" y="5" width="3" height="3" fill="#10B981" />
+                      <line x1="3" y1="1" x2="3" y2="10" stroke="#10B981" strokeWidth="1.2" />
+                      <rect x="1" y="3" width="4" height="5" fill="#10B981" />
                       {/* Red candlestick (right) */}
                       <line x1="9" y1="1" x2="9" y2="10" stroke="#EF4444" strokeWidth="1.2" />
-                      <rect x="7.5" y="3" width="3" height="4" fill="#EF4444" />
+                      <rect x="7" y="3" width="4" height="4" fill="#EF4444" />
                     </svg>
                   ) : (
                     <svg

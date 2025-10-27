@@ -136,12 +136,12 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const signalMarkerStyles: Record<TradingEventType, { color: string; shape: 'arrowUp' | 'arrowDown' | 'circle' | 'square'; position: 'aboveBar' | 'belowBar' | 'inBar'; }> = {
     buy: {
       color: '#3B82F6',
-      shape: 'arrowUp',
+      shape: 'circle',
       position: 'inBar',
     },
     sell: {
       color: '#EF4444',
-      shape: 'arrowDown',
+      shape: 'circle',
       position: 'inBar',
     },
     stop_loss: {

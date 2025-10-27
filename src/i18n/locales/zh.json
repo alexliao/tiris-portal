@@ -391,7 +391,7 @@
         "close": "收",
         "volume": "量",
         "position": "仓位",
-        "roi": "收益率",
+        "roi": "资产收益率",
         "portfolio": "资产",
         "benchmark": "基准收益率"
       }
@@ -404,9 +404,9 @@
       "missingSubAccounts": "缺少必需的子账户。找到 {{count}} 个子账户，但需要同时有股票和余额账户。",
       "invalidEquityCurveFormat": "从API收到的权益曲线数据格式无效。预期的是包含data_points数组的新格式。",
       "loadingDataLabel": "正在获取最新市场数据",
-      "equityLabel": "收益率",
-      "benchmarkLabel": "基准",
-      "signalsLabel": "信号",
+      "equityLabel": "资产收益率",
+      "benchmarkLabel": "基准收益率",
+      "signalsLabel": "买卖",
       "priceLabel": "ETH价格",
       "positionLabel": "仓位",
       "apiCredentialsRequired": "运行实盘交易机器人需要交易所API凭证。请更新您的交易所绑定。",
