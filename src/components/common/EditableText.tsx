@@ -18,6 +18,8 @@ export interface EditableTextLabels {
   cancel?: string;
 }
 
+type IntrinsicElementName = keyof React.JSX.IntrinsicElements & string;
+
 export interface EditableTextProps {
   value: string;
   onSave?: EditableTextSaveHandler;
@@ -29,7 +31,7 @@ export interface EditableTextProps {
   editButtonClassName?: string;
   actionButtonClassName?: string;
   labels?: EditableTextLabels;
-  as?: keyof JSX.IntrinsicElements;
+  as?: IntrinsicElementName;
   name?: string;
 }
 
@@ -97,7 +99,7 @@ const EditableText: React.FC<EditableTextProps> = ({
     }
   }, [draft, isEditing]);
 
-  const Element = as;
+  const Element = (as ?? 'span') as IntrinsicElementName;
 
   const handleStartEditing = () => {
     if (disabled) {
