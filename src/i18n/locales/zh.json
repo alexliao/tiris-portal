@@ -344,10 +344,14 @@
     },
     "metrics": {
       "totalROI": "总收益率",
+      "benchmarkROI": "基准收益率",
+      "excessROI": "超额收益率",
       "winRate": "胜率",
       "sharpeRatio": "夏普比率",
       "maxDrawdown": "最大回撤",
-      "totalTrades": "总交易数"
+      "totalTrades": "总交易数",
+      "groupAccount": "账户",
+      "groupTradingStatus": "交易状态"
     },
     "chart": {
       "showTradingSignals": "显示交易信号",

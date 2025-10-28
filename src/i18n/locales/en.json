@@ -347,10 +347,14 @@
     },
     "metrics": {
       "totalROI": "Total ROI",
-      "winRate": "Win Rate", 
+      "benchmarkROI": "Benchmark",
+      "excessROI": "Excess ROI",
+      "winRate": "Win Rate",
       "sharpeRatio": "Sharpe Ratio",
       "maxDrawdown": "Max Drawdown",
-      "totalTrades": "Total Trades"
+      "totalTrades": "Total Trades",
+      "groupAccount": "Account",
+      "groupTradingStatus": "Trading Status"
     },
     "chart": {
       "showTradingSignals": "Show Trading Signals",

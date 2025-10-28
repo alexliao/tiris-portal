@@ -38,6 +38,8 @@ export interface TradingCandlestickPoint {
 
 export interface TradingMetrics {
   totalROI: number;
+  benchmarkROI?: number;
+  excessROI?: number;
   winRate: number;
   sharpeRatio: number;
   maxDrawdown: number;
