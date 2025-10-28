@@ -40,6 +40,7 @@ const CHART_RIGHT_MARGIN = 0;
 
 const MIN_WARMUP_RETRY_MS = 1_500;
 const DEFAULT_WARMUP_RETRY_MS = 2_000;
+const EQUITY_CURVE_FETCH_INTERVAL_MS = 5_000; // 5 seconds
 
 const getWarmupStateFromCurve = (
   curve?: EquityCurveNewData | null
@@ -1003,15 +1004,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       return;
     }
 
-    const timeframeMs = timeframeToMilliseconds(selectedTimeframe);
-    const intervalMs = Math.min(
-      Math.max(Math.floor(timeframeMs / 2), 15_000),
-      5 * 60 * 1000
-    );
-
     incrementalUpdateTimerRef.current = setInterval(() => {
       fetchIncrementalUpdates();
-    }, intervalMs);
+    }, EQUITY_CURVE_FETCH_INTERVAL_MS);
 
     return () => {
       if (incrementalUpdateTimerRef.current) {
