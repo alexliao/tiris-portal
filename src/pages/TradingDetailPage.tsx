@@ -925,8 +925,8 @@ export const TradingDetailPage: React.FC = () => {
           className="shadow-sm text-white"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start">
                 <Link
                   to={`/tradings/${trading.type}`}
                   className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors"
@@ -934,23 +934,25 @@ export const TradingDetailPage: React.FC = () => {
                 >
                   {getTypeIcon(trading.type)}
                 </Link>
-                <div className="ml-4">
-                  <EditableText
-                    value={trading.name}
-                    onSave={handleTitleSave}
-                    disabled={!isAuthenticated}
-                    className="flex items-center gap-2"
-                    textClassName="max-w-xl truncate text-2xl font-bold text-white"
-                    inputClassName="text-2xl font-bold text-white placeholder-white/60"
-                    editButtonClassName="text-white/80 hover:text-white focus:outline-none hover:bg-white/20 rounded-md"
-                    actionButtonClassName="bg-white/20 text-white hover:bg-white/30 focus:outline-none"
-                    labels={{
-                      edit: t('common.edit') || 'Edit',
-                      save: t('common.save') || 'Save',
-                      cancel: t('common.cancel') || 'Cancel',
-                    }}
-                    as="h1"
-                  />
+                <div className="ml-4 flex-1">
+                  <div className="flex items-center gap-2">
+                    <EditableText
+                      value={trading.name}
+                      onSave={handleTitleSave}
+                      disabled={!isAuthenticated}
+                      className="flex items-center gap-2"
+                      textClassName="max-w-xs sm:max-w-xl truncate text-lg sm:text-2xl font-bold text-white"
+                      inputClassName="text-lg sm:text-2xl font-bold text-white placeholder-white/60"
+                      editButtonClassName="text-white/80 hover:text-white focus:outline-none hover:bg-white/20 rounded-md"
+                      actionButtonClassName="bg-white/20 text-white hover:bg-white/30 focus:outline-none"
+                      labels={{
+                        edit: t('common.edit') || 'Edit',
+                        save: t('common.save') || 'Save',
+                        cancel: t('common.cancel') || 'Cancel',
+                      }}
+                      as="h1"
+                    />
+                  </div>
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/80">
                     <div className="flex items-center gap-2">
                       <span>ID: {trading.id.substring(0, 8)}...</span>
@@ -962,16 +964,22 @@ export const TradingDetailPage: React.FC = () => {
                         {copiedId ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
-                    {bot && (
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${bot.alive ? 'bg-green-500/30 text-white ring-1 ring-white/30' : 'bg-white/20 text-white/80'
-                        }`}>
-                        {t('trading.detail.bot')} {bot.alive ? t('common.online') : t('common.offline')}
+                    {((trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name) || exchangeBinding ? (
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80">
+                        {(trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name
+                          ? trading.info.exchange_name
+                          : exchangeBinding?.name}
+                      </span>
+                    ) : null}
+                    {(bot?.record.spec.params?.timeframe || trading.info?.timeframe) && (
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80">
+                        {bot?.record.spec.params?.timeframe || trading.info?.timeframe}
                       </span>
                     )}
                   </div>
                 </div>
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex items-start space-x-3">
                 {/* Loading indicator during refresh */}
                 {isRefreshing && (
                   <div className="flex items-center">
@@ -979,9 +987,41 @@ export const TradingDetailPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Bot Controls - Only show for authenticated users */}
+                {/* Delete Button */}
                 {isAuthenticated && (
-                  <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleDeleteClick}
+                    className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                    title={t('common.delete')}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Trading Info */}
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+            <div className="flex flex-col">
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+                {(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) && (
+                  <div>
+                    <div className="text-sm font-medium text-gray-600">{t('trading.detail.initialFunds')}</div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      {Math.floor(typeof trading.info.initial_funds === 'number' ? trading.info.initial_funds : Number(trading.info.initial_balance || 0)).toLocaleString()} {String(trading.info?.quote_currency || 'USDT')}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.created')}</div>
+                  <div className="text-sm font-semibold text-gray-900">{new Date(trading.created_at).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+                {/* Bot Controls - Same Row */}
+                {isAuthenticated && (
+                  <div className="flex items-end justify-end">
                     {bot && bot.record.enabled && bot.alive ? (
                       <button
                         onClick={handleStopBot}
@@ -999,7 +1039,7 @@ export const TradingDetailPage: React.FC = () => {
                       <button
                         onClick={() => handleStartBot()}
                         disabled={botLoading}
-                        className="inline-flex items-center px-3 py-2 bg-white/20 text-white rounded-md hover:bg-white/30 disabled:opacity-50 transition-colors ring-1 ring-white/30"
+                        className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
                       >
                         {botLoading ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1009,55 +1049,8 @@ export const TradingDetailPage: React.FC = () => {
                         {t('trading.detail.startBot')}
                       </button>
                     )}
-
-                    {/* Delete Button */}
-                    <button
-                      onClick={handleDeleteClick}
-                      className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
-                      title={t('common.delete')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Trading Info */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">{t('trading.detail.overview')}</h2>
-            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
-              <div>
-                <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.strategy')}</div>
-                <div className="text-sm text-gray-900">{String(bot?.record.spec.params?.strategy_name || trading.info?.strategy_name || trading.info?.strategy || t('trading.tradingDetail.notAvailable'))}</div>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-gray-600">{t('trading.detail.timeframe')}</div>
-                <div className="text-sm text-gray-900">{String(bot?.record.spec.params?.timeframe || trading.info?.timeframe || t('trading.tradingDetail.notAvailable'))}</div>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-gray-600">{t('trading.detail.exchangeBinding')}</div>
-                <div className="text-sm text-gray-900">
-                  {/* For paper/backtest trading, use the stored exchange_name from info field */}
-                  {(trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name
-                    ? String(trading.info.exchange_name)
-                    : exchangeBinding ? exchangeBinding.name : t('trading.tradingDetail.loading')}
-                </div>
-              </div>
-              {(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) && (
-                <div>
-                  <div className="text-sm font-medium text-gray-600">{t('trading.detail.initialFunds')}</div>
-                  <div className="text-sm text-gray-900">
-                    {Math.floor(typeof trading.info.initial_funds === 'number' ? trading.info.initial_funds : Number(trading.info.initial_balance || 0)).toLocaleString()} {String(trading.info?.quote_currency || 'USDT')}
-                  </div>
-                </div>
-              )}
-              <div>
-                <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.created')}</div>
-                <div className="text-sm text-gray-900">{new Date(trading.created_at).toLocaleDateString()}</div>
               </div>
             </div>
           </div>

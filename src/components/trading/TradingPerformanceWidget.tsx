@@ -1124,7 +1124,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     <div className={className}>
       {/* Metrics Cards - Group 1: Account */}
       <div className="mb-6">
-        <h3 className="text-lg font-['Bebas_Neue'] font-bold text-gray-800 mb-3">{t('trading.metrics.groupAccount', 'Account')}</h3>
         <div className="flex flex-wrap items-center gap-2 md:gap-3 lg:gap-4">
           {/* Total Value */}
           <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[150px]">
@@ -1171,8 +1170,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       {/* Metrics Cards - Group 2: Trading Status */}
       <div className="mb-8">
-        <h3 className="text-lg font-['Bebas_Neue'] font-bold text-gray-800 mb-3">{t('trading.metrics.groupTradingStatus', 'Trading Status')}</h3>
-
         {/* First Row: Total ROI - Benchmark = Excess ROI */}
         <div className="flex flex-wrap items-center gap-2 md:gap-3 lg:gap-4 mb-4">
           {/* Total ROI */}
