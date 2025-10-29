@@ -10,6 +10,8 @@ import ConfirmDialog from '../components/common/ConfirmDialog';
 import { THEME_COLORS } from '../config/theme';
 import { getExchangeTypeName } from '../utils/exchangeNames';
 
+const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
+
 export const ExchangesPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -281,20 +283,30 @@ export const ExchangesPage: React.FC = () => {
                   className="bg-white rounded-lg shadow hover:shadow-xl transition-shadow border border-gray-200 overflow-hidden"
                 >
                   {/* Card Header */}
-                  <div 
-                    style={{ 
-                      background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})` 
+                  <div
+                    style={{
+                      background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
                     }}
                     className="p-4"
                   >
                     <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-white truncate">
-                          {exchange.name}
-                        </h3>
-                        <p className="text-white/80 text-sm mt-1">
-                          {getExchangeTypeName(exchange.exchange_type)}
-                        </p>
+                      <div className="flex items-center flex-1 min-w-0 gap-3">
+                        <img
+                          src={`${ICON_SERVICE_BASE_URL}/icons/${exchange.exchange_type}.png`}
+                          alt={exchange.exchange_type}
+                          className="w-10 h-10 rounded-lg flex-shrink-0"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold text-white truncate">
+                            {exchange.name}
+                          </h3>
+                          <p className="text-white/80 text-sm mt-1">
+                            {getExchangeTypeName(exchange.exchange_type)}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1 ml-2">
                         <button

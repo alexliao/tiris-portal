@@ -12,6 +12,8 @@ import UnderConstruction from '../components/common/UnderConstruction';
 import { THEME_COLORS } from '../config/theme';
 import TradingCardMetrics from '../components/trading/TradingCardMetrics';
 
+const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
+
 export const TradingsListPage: React.FC = () => {
   const { t } = useTranslation();
   const { type } = useParams<{ type: string }>();
@@ -333,7 +335,17 @@ export const TradingsListPage: React.FC = () => {
                           </h3>
                           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                             {(((trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name as string) || trading.exchange_binding?.name) && (
-                              <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/90">
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/90 gap-1.5">
+                                {((trading.type === 'paper' || trading.type === 'backtest') ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string })?.exchange_type : trading.exchange_binding?.exchange_type) && (
+                                  <img
+                                    src={`${ICON_SERVICE_BASE_URL}/icons/${(trading.type === 'paper' || trading.type === 'backtest') ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string })?.exchange_type : trading.exchange_binding?.exchange_type}.png`}
+                                    alt={(trading.type === 'paper' || trading.type === 'backtest') ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string })?.exchange_type : trading.exchange_binding?.exchange_type}
+                                    className="w-4 h-4 rounded"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                  />
+                                )}
                                 {(trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name
                                   ? (trading.info.exchange_name as string)
                                   : trading.exchange_binding?.name}

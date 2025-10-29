@@ -11,6 +11,8 @@ import ConfirmDialog from '../components/common/ConfirmDialog';
 import EditableText from '../components/common/EditableText';
 import { THEME_COLORS, getTradingTheme, getTradingIcon } from '../config/theme';
 
+const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
+
 const extractExchangeCredentials = (binding?: ExchangeBinding | null) => {
   if (!binding) {
     return { apiKey: null as string | null, apiSecret: null as string | null };
@@ -965,7 +967,17 @@ export const TradingDetailPage: React.FC = () => {
                       </button>
                     </div>
                     {((trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name) || exchangeBinding ? (
-                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80">
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80 gap-1.5">
+                        {((trading.type === 'paper' || trading.type === 'backtest') ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string })?.exchange_type : exchangeBinding?.exchange_type) && (
+                          <img
+                            src={`${ICON_SERVICE_BASE_URL}/icons/${(trading.type === 'paper' || trading.type === 'backtest') ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string })?.exchange_type : exchangeBinding?.exchange_type}.png`}
+                            alt={(trading.type === 'paper' || trading.type === 'backtest') ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string })?.exchange_type : exchangeBinding?.exchange_type}
+                            className="w-4 h-4 rounded"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        )}
                         {(trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name
                           ? String(trading.info.exchange_name)
                           : exchangeBinding?.name}
