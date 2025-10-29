@@ -74,12 +74,6 @@ export const TradingsListPage: React.FC = () => {
     return bots.find(b => b.record.spec.trading.id === trading.id) || null;
   };
 
-  // Helper function to get strategy name from bot data
-  const getStrategyForTrading = (trading: Trading): string => {
-    const bot = bots.find(b => b.record.spec.trading.id === trading.id);
-    return String(bot?.record.spec.params?.strategy_name || trading.info?.strategy || t('trading.tradingDetail.notAvailable'));
-  };
-
   const handleCreateTrading = () => {
     // Show "under construction" message for backtest trading
     if (type === 'backtest') {
@@ -317,7 +311,6 @@ export const TradingsListPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTradings.map((trading) => {
                 const bot = getBotForTrading(trading);
-                const strategy = getStrategyForTrading(trading);
 
                 return (
                   <div
@@ -326,9 +319,9 @@ export const TradingsListPage: React.FC = () => {
                     className="bg-white rounded-lg shadow hover:shadow-xl transition-shadow cursor-pointer border border-gray-200 overflow-hidden"
                   >
                     {/* Card Header */}
-                    <div 
-                      style={{ 
-                        background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})` 
+                    <div
+                      style={{
+                        background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
                       }}
                       className="p-4"
                     >
@@ -337,13 +330,31 @@ export const TradingsListPage: React.FC = () => {
                           <h3 className="text-lg font-semibold text-white truncate">
                             {trading.name}
                           </h3>
-                          <p className="text-white/80 text-xs mt-1">
-                            ID: {trading.id.substring(0, 8)}...
-                          </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                            {(((trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name as string) || trading.exchange_binding?.name) && (
+                              <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/90">
+                                {(trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name
+                                  ? (trading.info.exchange_name as string)
+                                  : trading.exchange_binding?.name}
+                              </span>
+                            )}
+                            {(bot?.record.spec.params?.timeframe || trading.info?.timeframe) && (
+                              <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/90">
+                                {String(bot?.record.spec.params?.timeframe || trading.info?.timeframe)}
+                              </span>
+                            )}
+                            {bot && (
+                              <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                bot.alive ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-900'
+                              }`}>
+                                {bot.alive ? t('dashboard.botStatus.online') : t('dashboard.botStatus.offline')}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <button
                           onClick={(e) => handleDeleteClick(trading, e)}
-                          className="ml-2 p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                          className="ml-2 p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors flex-shrink-0"
                           title={t('common.delete')}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -351,37 +362,6 @@ export const TradingsListPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Card Body */}
-                    <div className="p-4">
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">{t('dashboard.tableHeaders.strategy')}</p>
-                          <p className="text-sm font-medium text-gray-900">{strategy}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">{t('dashboard.tableHeaders.botStatus')}</p>
-                          {!bot ? (
-                            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                              {t('dashboard.botStatus.noBot')}
-                            </span>
-                          ) : (
-                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                              bot.alive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {bot.alive ? t('dashboard.botStatus.online') : t('dashboard.botStatus.offline')}
-                            </span>
-                          )}
-                        </div>
-
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">{t('dashboard.tableHeaders.created')}</p>
-                          <p className="text-sm text-gray-900">
-                            {new Date(trading.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 );
               })}

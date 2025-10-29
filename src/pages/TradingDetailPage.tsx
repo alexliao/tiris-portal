@@ -967,13 +967,13 @@ export const TradingDetailPage: React.FC = () => {
                     {((trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name) || exchangeBinding ? (
                       <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80">
                         {(trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name
-                          ? trading.info.exchange_name
+                          ? String(trading.info.exchange_name)
                           : exchangeBinding?.name}
                       </span>
                     ) : null}
                     {(bot?.record.spec.params?.timeframe || trading.info?.timeframe) && (
                       <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80">
-                        {bot?.record.spec.params?.timeframe || trading.info?.timeframe}
+                        {String(bot?.record.spec.params?.timeframe || trading.info?.timeframe)}
                       </span>
                     )}
                   </div>
