@@ -7,7 +7,7 @@ import { Plus, Trash2, Edit2, AlertCircle } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import ConfirmDialog from '../components/common/ConfirmDialog';
-import { THEME_COLORS } from '../config/theme';
+import { THEME_COLORS, getTradingIcon } from '../config/theme';
 import { getExchangeTypeName } from '../utils/exchangeNames';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
@@ -300,11 +300,11 @@ export const ExchangesPage: React.FC = () => {
                           }}
                         />
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-white truncate">
-                            {exchange.name}
-                          </h3>
-                          <p className="text-white/80 text-sm mt-1">
+                          <h3 className="text-medium font-semibold text-white truncate">
                             {getExchangeTypeName(exchange.exchange_type)}
+                          </h3>
+                          <p className="text-white/80 text-xs mt-1">
+                            {new Date(exchange.created_at).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
@@ -334,30 +334,40 @@ export const ExchangesPage: React.FC = () => {
                   </div>
 
                   {/* Card Body */}
-                  <div className="p-4">
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">{t('exchanges.status')}</p>
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          exchange.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {exchange.status}
-                        </span>
-                      </div>
+                  <div className="p-4 flex flex-col items-center justify-center">
+                    <div className="text-center w-full">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                        {exchange.name}
+                      </h4>
 
                       {exchange.info?.description && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">{t('exchanges.connectionDescription')}</p>
+                        <div className="mb-4">
                           <p className="text-sm text-gray-900">{exchange.info.description}</p>
                         </div>
                       )}
 
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">{t('dashboard.tableHeaders.created')}</p>
-                        <p className="text-sm text-gray-900">
-                          {new Date(exchange.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
+                      {/* Trading List */}
+                      {tradings.filter(t => t.exchange_binding_id === exchange.id || t.exchange_binding?.id === exchange.id).length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 w-full">
+                          <div className="space-y-2">
+                            {tradings
+                              .filter(t => t.exchange_binding_id === exchange.id || t.exchange_binding?.id === exchange.id)
+                              .map((trading) => {
+                                const TradingIcon = getTradingIcon(trading.type);
+                                return (
+                                  <Link
+                                    key={trading.id}
+                                    to={`/trading/${trading.id}`}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors group"
+                                  >
+                                    <TradingIcon className="w-4 h-4 text-gray-600 group-hover:text-gray-900 flex-shrink-0" />
+                                    <span className="group-hover:text-gray-900 font-medium">{trading.name}</span>
+                                  </Link>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
