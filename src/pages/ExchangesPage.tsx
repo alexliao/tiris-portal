@@ -140,8 +140,6 @@ export const ExchangesPage: React.FC = () => {
 
   // Calculate statistics
   const totalExchanges = exchanges.length;
-  const activeExchanges = exchanges.filter(e => e.status === 'active').length;
-  const inactiveExchanges = exchanges.filter(e => e.status !== 'active').length;
 
   if (authLoading) {
     return (
@@ -178,32 +176,22 @@ export const ExchangesPage: React.FC = () => {
           className="text-white shadow-lg"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex items-center mb-6">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors cursor-pointer"
-                title={t('common.backToDashboard')}
-              >
-                <Icon className="w-8 h-8" />
-              </button>
-              <div className="ml-4">
-                <h1 className="text-2xl font-bold">{t('exchanges.title')}</h1>
-                <p className="text-white/90 mt-1">{t('exchanges.pageDescription')}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors cursor-pointer"
+                  title={t('common.backToDashboard')}
+                >
+                  <Icon className="w-8 h-8" />
+                </button>
+                <div className="ml-4">
+                  <h1 className="text-2xl font-bold">{t('exchanges.title')}</h1>
+                  <p className="text-white/90 mt-1">{t('exchanges.pageDescription')}</p>
+                </div>
               </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <p className="text-white/80 text-sm">{t('exchanges.totalExchanges')}</p>
-                <p className="text-3xl font-bold mt-1">{totalExchanges}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <p className="text-white/80 text-sm">{t('exchanges.activeConnections')}</p>
-                <p className="text-3xl font-bold mt-1">{activeExchanges}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                <p className="text-white/80 text-sm">{t('exchanges.inactiveConnections')}</p>
-                <p className="text-3xl font-bold mt-1">{inactiveExchanges}</p>
+              <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
+                <span className="text-xl font-semibold">{totalExchanges}</span>
               </div>
             </div>
           </div>
@@ -211,10 +199,7 @@ export const ExchangesPage: React.FC = () => {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Actions Bar */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {t('exchanges.allExchangeConnections')}
-            </h2>
+          <div className="flex items-center justify-end mb-6">
             <button
               onClick={handleCreateExchange}
               style={{

@@ -245,10 +245,6 @@ export const DashboardPage: React.FC = () => {
                     <p className="text-3xl font-bold text-gray-900">{getExchangeStats().total}</p>
                     <p className="text-xs text-gray-500 mt-1">{t('dashboard.totalExchanges')}</p>
                   </div>
-                  <div className="text-right">
-                    <p style={{ color: THEME_COLORS.exchanges.primary }} className="text-3xl font-bold">{getExchangeStats().active}</p>
-                    <p className="text-xs text-gray-500 mt-1">{t('dashboard.activeConnections')}</p>
-                  </div>
                 </div>
               </div>
             </div>
