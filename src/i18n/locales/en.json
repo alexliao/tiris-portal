@@ -328,6 +328,11 @@
       "insufficientFunds": "Insufficient funds. Available balance ({{balance}} {{currency}}) is less than the minimum required ({{minimum}} {{currency}}).",
       "minimumFundsRequired": "Initial funds must be at least {{minimum}} {{currency}}."
     },
+    "defaultName": {
+      "backtest": "Backtest {{timestamp}}",
+      "paper": "Paper {{timestamp}}",
+      "real": "Real {{timestamp}}"
+    },
     "botParams": {
       "title": "Bot Parameters",
       "description": "Select strategy and exchange for your trading bot.",

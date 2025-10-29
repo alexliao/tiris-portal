@@ -63,7 +63,6 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
 
-    const typeName = t(`trading.type.${type}`);
     const timestamp = t('trading.create.defaultNameTimestamp', {
       month,
       day,
@@ -71,7 +70,9 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
       minutes
     });
 
-    return `${typeName} ${timestamp}`;
+    return t(`trading.defaultName.${type}`, {
+      timestamp
+    });
   };
 
   useEffect(() => {

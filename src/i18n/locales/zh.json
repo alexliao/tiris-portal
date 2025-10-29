@@ -325,6 +325,11 @@
       "insufficientFunds": "资金不足。可用余额（{{balance}} {{currency}}）低于最低要求（{{minimum}} {{currency}}）。",
       "minimumFundsRequired": "初始资金必须至少为 {{minimum}} {{currency}}。"
     },
+    "defaultName": {
+      "backtest": "回测 {{timestamp}}",
+      "paper": "模拟 {{timestamp}}",
+      "real": "实盘 {{timestamp}}"
+    },
     "botParams": {
       "title": "机器人参数",
       "description": "为您的交易机器人选择策略和交易所类型。",
