@@ -44,7 +44,7 @@
       "ethReturn": "基准收益率"
     },
     "metrics": {
-      "totalROI": "总投资回报率",
+      "totalROI": "总收益率",
       "winRate": "胜率",
       "sharpeRatio": "夏普比率",
       "maxDrawdown": "最大回撤",

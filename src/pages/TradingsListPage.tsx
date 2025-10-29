@@ -10,6 +10,7 @@ import CreateTradingModal from '../components/trading/CreateTradingModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import UnderConstruction from '../components/common/UnderConstruction';
 import { THEME_COLORS } from '../config/theme';
+import TradingCardMetrics from '../components/trading/TradingCardMetrics';
 
 export const TradingsListPage: React.FC = () => {
   const { t } = useTranslation();
@@ -362,6 +363,8 @@ export const TradingsListPage: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Card Body - Metrics */}
+                    <TradingCardMetrics trading={trading} />
                   </div>
                 );
               })}
