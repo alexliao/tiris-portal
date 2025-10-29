@@ -980,13 +980,6 @@ export const TradingDetailPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-start space-x-3">
-                {/* Loading indicator during refresh */}
-                {isRefreshing && (
-                  <div className="flex items-center">
-                    <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  </div>
-                )}
-
                 {/* Delete Button */}
                 {isAuthenticated && (
                   <button
@@ -1021,7 +1014,7 @@ export const TradingDetailPage: React.FC = () => {
                 </div>
                 {/* Bot Controls - Same Row */}
                 {isAuthenticated && (
-                  <div className="flex items-end justify-end">
+                  <div className="flex items-end justify-end gap-2">
                     {bot && bot.record.enabled && bot.alive ? (
                       <button
                         onClick={handleStopBot}
@@ -1036,18 +1029,25 @@ export const TradingDetailPage: React.FC = () => {
                         {t('trading.detail.stopBot')}
                       </button>
                     ) : (
-                      <button
-                        onClick={() => handleStartBot()}
-                        disabled={botLoading}
-                        className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                      >
-                        {botLoading ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Play className="w-4 h-4 mr-2" />
+                      <>
+                        {isRefreshing && (
+                          <div className="flex items-center">
+                            <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
+                          </div>
                         )}
-                        {t('trading.detail.startBot')}
-                      </button>
+                        <button
+                          onClick={() => handleStartBot()}
+                          disabled={botLoading}
+                          className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                          {botLoading ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Play className="w-4 h-4 mr-2" />
+                          )}
+                          {t('trading.detail.startBot')}
+                        </button>
+                      </>
                     )}
                   </div>
                 )}
