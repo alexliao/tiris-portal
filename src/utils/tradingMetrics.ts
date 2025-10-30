@@ -1,4 +1,5 @@
 import { getEquityCurve, type Trading } from './api';
+import { resolveEffectiveStockPrice } from './portfolioMetrics';
 
 /**
  * Ultra-lightweight trading metrics that only require the latest data point
@@ -35,9 +36,17 @@ export async function fetchLightweightMetrics(
   trading: Trading,
   stockSymbol: string = 'BTC',
   quoteSymbol: string = 'USDT',
-  timeframe: string = '1d'
+  timeframe: string = '1d',
+  options: {
+    stockBalance?: number;
+    quoteBalance?: number;
+    requireAuth?: boolean;
+    exchangeType?: string;
+  } = {}
 ): Promise<LightweightTradingMetrics> {
   const initialFunds = (trading.info?.initial_funds as number | undefined) ?? 0;
+  const resolvedRequireAuth =
+    options.requireAuth ?? (trading.type !== 'paper' && trading.type !== 'backtest');
 
   try {
     // Fetch only 1 recent timeframe - minimal data transfer (~500 bytes)
@@ -47,7 +56,8 @@ export async function fetchLightweightMetrics(
       1, // Only get the latest point
       stockSymbol,
       quoteSymbol,
-      true
+      resolvedRequireAuth,
+      options.exchangeType
     );
 
     // Get the latest data point
@@ -68,19 +78,55 @@ export async function fetchLightweightMetrics(
       };
     }
 
-    // Calculate metrics from the single latest point
-    const currentEquity = latestPoint.equity ?? initialFunds;
+    const resolvedStockBalance =
+      typeof options.stockBalance === 'number' && Number.isFinite(options.stockBalance)
+        ? options.stockBalance
+        : typeof latestPoint.stock_balance === 'number' && Number.isFinite(latestPoint.stock_balance)
+          ? latestPoint.stock_balance
+          : 0;
+
+    const resolvedQuoteBalance =
+      typeof options.quoteBalance === 'number' && Number.isFinite(options.quoteBalance)
+        ? options.quoteBalance
+        : typeof latestPoint.quote_balance === 'number' && Number.isFinite(latestPoint.quote_balance)
+          ? latestPoint.quote_balance
+          : 0;
+
+    const stockPrice = resolveEffectiveStockPrice({
+      candlestickData: undefined,
+      fallbackPrice: equityCurveData.baseline_price,
+      equityCurve: {
+        ...equityCurveData,
+        data_points: [latestPoint],
+      },
+    });
+
+    const fallbackEquity =
+      typeof latestPoint.equity === 'number' && Number.isFinite(latestPoint.equity)
+        ? latestPoint.equity
+        : initialFunds;
+
+    const currentEquity =
+      typeof stockPrice === 'number'
+        ? resolvedQuoteBalance + resolvedStockBalance * stockPrice
+        : fallbackEquity;
+
     const unrealizedPnL = currentEquity - initialFunds;
     const currentROI = initialFunds > 0 ? (unrealizedPnL / initialFunds) * 100 : 0;
+
+    const benchmarkReturn =
+      typeof latestPoint.benchmark_return === 'number' && Number.isFinite(latestPoint.benchmark_return)
+        ? latestPoint.benchmark_return * 100
+        : null;
 
     return {
       currentEquity,
       currentROI,
       unrealizedPnL,
-      quoteBalance: latestPoint.quote_balance ?? 0,
-      stockBalance: latestPoint.stock_balance,
-      stockPrice: latestPoint.stock_price,
-      benchmarkReturn: latestPoint.benchmark_return ?? null,
+      quoteBalance: resolvedQuoteBalance,
+      stockBalance: resolvedStockBalance,
+      stockPrice: typeof stockPrice === 'number' ? stockPrice : null,
+      benchmarkReturn,
       isLoading: false,
       error: null,
     };

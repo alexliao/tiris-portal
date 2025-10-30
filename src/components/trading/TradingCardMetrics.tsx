@@ -40,7 +40,33 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
         const stockSymbol = stockSubAccount?.symbol || 'ETH';
         const quoteSymbol = quoteSubAccount?.symbol || 'USDT';
 
-        const result = await fetchLightweightMetrics(trading, stockSymbol, quoteSymbol, '1d');
+        const stockBal = typeof stockSubAccount?.balance === 'number'
+          ? stockSubAccount.balance
+          : stockSubAccount?.balance
+            ? parseFloat(stockSubAccount.balance) || 0
+            : 0;
+
+        const quoteBal = typeof quoteSubAccount?.balance === 'number'
+          ? quoteSubAccount.balance
+          : quoteSubAccount?.balance
+            ? parseFloat(quoteSubAccount.balance) || 0
+            : 0;
+
+        const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
+        const exchangeType = trading.exchange_binding?.exchange_type;
+
+        const result = await fetchLightweightMetrics(
+          trading,
+          stockSymbol,
+          quoteSymbol,
+          '1m',
+          {
+            stockBalance: stockBal,
+            quoteBalance: quoteBal,
+            requireAuth,
+            exchangeType,
+          }
+        );
 
         if (isMounted) {
           setMetrics(result);

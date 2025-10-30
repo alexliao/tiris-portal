@@ -17,6 +17,7 @@ import {
   type TradingMetrics,
   type TradingCandlestickPoint,
 } from '../../utils/chartData';
+import { getFirstValidStockPrice, resolveEffectiveStockPrice } from '../../utils/portfolioMetrics';
 import CandlestickChart from './CandlestickChart';
 import { useToast } from '../../hooks/useToast';
 
@@ -358,6 +359,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
   // Per-timeframe data cache to store data loaded for each timeframe
   const timeframeDataCacheRef = useRef<TimeframeDataCache>({});
+  const initialStockPriceRef = useRef<number | undefined>(undefined);
   const tradingLogsRef = useRef<TradingLog[]>([]);
   const lastTradingLogTimestampRef = useRef<number | undefined>(undefined);
   const incrementalUpdateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -480,6 +482,20 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       );
 
       setInitialBalance(resolvedInitialBalance);
+
+      if (initialStockPriceRef.current === undefined) {
+        const initialPriceCandidate =
+          typeof baselinePrice === 'number' && Number.isFinite(baselinePrice) && baselinePrice > 0
+            ? baselinePrice
+            : getFirstValidStockPrice(normalizedEquityCurve);
+        if (
+          typeof initialPriceCandidate === 'number' &&
+          Number.isFinite(initialPriceCandidate) &&
+          initialPriceCandidate > 0
+        ) {
+          initialStockPriceRef.current = initialPriceCandidate;
+        }
+      }
 
       const normalizedCandles = normalizeCandlesticks(candlestickData);
       if (normalizedCandles.length > 0) {
@@ -807,6 +823,20 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       setInitialBalance(resolvedInitialBalance);
 
+      if (initialStockPriceRef.current === undefined) {
+        const initialPriceCandidate =
+          typeof baselinePrice === 'number' && Number.isFinite(baselinePrice) && baselinePrice > 0
+            ? baselinePrice
+            : getFirstValidStockPrice(updatedEquityCurve);
+        if (
+          typeof initialPriceCandidate === 'number' &&
+          Number.isFinite(initialPriceCandidate) &&
+          initialPriceCandidate > 0
+        ) {
+          initialStockPriceRef.current = initialPriceCandidate;
+        }
+      }
+
       const normalizedCandles = normalizeCandlesticks(candlestickData);
 
       if (normalizedCandles.length > 0) {
@@ -1034,19 +1064,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const filteredData = chartState.data;
   const visibleBenchmarkData = chartState.benchmarkData;
 
-  // Calculate benchmark ROI from the latest benchmark data point
-  const benchmarkROI = (() => {
-    if (visibleBenchmarkData.length === 0 || !chartState.baselinePrice) {
-      return 0;
-    }
-    const latestBenchmark = visibleBenchmarkData[visibleBenchmarkData.length - 1];
-    const benchmarkValue = latestBenchmark.benchmarkPrice ?? 0;
-    if (benchmarkValue && chartState.baselinePrice > 0) {
-      return ((benchmarkValue - chartState.baselinePrice) / chartState.baselinePrice) * 100;
-    }
-    return 0;
-  })();
-
   // Handle timeframe selection
   const handleTimeframeChange = (timeframe: Timeframe) => {
     setSelectedTimeframe(timeframe);
@@ -1065,6 +1082,100 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       maximumFractionDigits: decimalPlaces,
     }).format(parseFloat(value.toFixed(decimalPlaces)));
   };
+
+  const preferredPriceTimeframes: Timeframe[] = ['1m', '1h', '4h', '8h', '1d', '1w'];
+  let cachedEffectivePrice: number | undefined;
+
+  for (const timeframe of preferredPriceTimeframes) {
+    const cacheEntry = timeframeDataCacheRef.current[timeframe];
+    if (!cacheEntry) {
+      continue;
+    }
+
+    const candidatePrice = resolveEffectiveStockPrice({
+      candlestickData: cacheEntry.candlestickData,
+      fallbackPrice: cacheEntry.baselinePrice,
+      equityCurve: cacheEntry.equityCurve,
+    });
+
+    if (typeof candidatePrice === 'number' && Number.isFinite(candidatePrice) && candidatePrice > 0) {
+      cachedEffectivePrice = candidatePrice;
+      break;
+    }
+  }
+
+  const fallbackBenchmarkPrice =
+    filteredData.length > 0 ? filteredData[filteredData.length - 1]?.benchmarkPrice : undefined;
+
+  const normalizedBaselinePrice =
+    typeof chartState.baselinePrice === 'number' && Number.isFinite(chartState.baselinePrice)
+      ? chartState.baselinePrice
+      : undefined;
+
+  const effectiveStockPrice = resolveEffectiveStockPrice({
+    candlestickData: chartState.candlestickData,
+    fallbackPrice: typeof cachedEffectivePrice === 'number' ? cachedEffectivePrice : fallbackBenchmarkPrice,
+    equityCurve: timeframeDataCacheRef.current[selectedTimeframe]?.equityCurve,
+  }) ?? normalizedBaselinePrice ?? cachedEffectivePrice;
+
+  const normalizedQuoteBalance = Number.isFinite(quoteBalance) ? quoteBalance : 0;
+  const normalizedStockBalance = Number.isFinite(stockBalance) ? stockBalance : 0;
+  const normalizedInitialBalance =
+    typeof initialBalance === 'number' && Number.isFinite(initialBalance) && initialBalance > 0
+      ? initialBalance
+      : undefined;
+  const initialStockPrice =
+    typeof initialStockPriceRef.current === 'number' &&
+    Number.isFinite(initialStockPriceRef.current) &&
+    initialStockPriceRef.current > 0
+      ? initialStockPriceRef.current
+      : normalizedBaselinePrice;
+
+  const derivedPortfolioValue = (() => {
+    if (typeof effectiveStockPrice === 'number' && Number.isFinite(effectiveStockPrice)) {
+      return normalizedQuoteBalance + normalizedStockBalance * effectiveStockPrice;
+    }
+
+    const latestNetValue =
+      filteredData.length > 0 ? filteredData[filteredData.length - 1]?.netValue : undefined;
+
+    if (typeof latestNetValue === 'number' && Number.isFinite(latestNetValue)) {
+      return latestNetValue;
+    }
+
+    return normalizedQuoteBalance;
+  })();
+
+  const fallbackTotalROI = typeof chartState.metrics.totalROI === 'number' ? chartState.metrics.totalROI : 0;
+  const derivedTotalROI = normalizedInitialBalance
+    ? ((derivedPortfolioValue - normalizedInitialBalance) / normalizedInitialBalance) * 100
+    : fallbackTotalROI;
+
+  const fallbackBenchmarkPercentage = (() => {
+    const lastBenchmarkPoint =
+      visibleBenchmarkData.length > 0 ? visibleBenchmarkData[visibleBenchmarkData.length - 1] : undefined;
+    if (lastBenchmarkPoint && typeof lastBenchmarkPoint.benchmark === 'number') {
+      return lastBenchmarkPoint.benchmark;
+    }
+    const lastFilteredBenchmark =
+      filteredData.length > 0 ? filteredData[filteredData.length - 1]?.benchmark : undefined;
+    return typeof lastFilteredBenchmark === 'number' ? lastFilteredBenchmark : 0;
+  })();
+
+  const derivedBenchmarkROI = (() => {
+    if (
+      typeof initialStockPrice === 'number' &&
+      Number.isFinite(initialStockPrice) &&
+      initialStockPrice > 0 &&
+      typeof effectiveStockPrice === 'number' &&
+      Number.isFinite(effectiveStockPrice)
+    ) {
+      return ((effectiveStockPrice / initialStockPrice) - 1) * 100;
+    }
+    return fallbackBenchmarkPercentage;
+  })();
+
+  const derivedExcessROI = derivedTotalROI - derivedBenchmarkROI;
 
   // Loading state
   if (loading) {
@@ -1128,7 +1239,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           {/* Total Value */}
           <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[150px]">
             <div className="text-2xl font-['Bebas_Neue'] font-bold text-gray-700">
-              ${formatSignificantDigits(filteredData[filteredData.length - 1]?.netValue ?? 0, 4)}
+              ${formatSignificantDigits(derivedPortfolioValue, 4)}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.chart.portfolioValue')}</div>
           </div>
@@ -1139,7 +1250,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           {/* Quote Sub-Account */}
           <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[150px]">
             <div className="text-2xl font-['Bebas_Neue'] font-bold text-blue-600">
-              ${formatSignificantDigits(quoteBalance, 4)}
+              ${formatSignificantDigits(normalizedQuoteBalance, 4)}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{quoteSymbol}</div>
           </div>
@@ -1150,7 +1261,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           {/* Stock Sub-Account */}
           <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[150px]">
             <div className="text-2xl font-['Bebas_Neue'] font-bold text-indigo-600">
-              {formatSignificantDigits(stockBalance, 4)}
+              {formatSignificantDigits(normalizedStockBalance, 4)}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{stockSymbol}</div>
           </div>
@@ -1161,7 +1272,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           {/* Stock Price */}
           <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[150px]">
             <div className="text-2xl font-['Bebas_Neue'] font-bold text-emerald-600">
-              ${formatSignificantDigits(chartState.candlestickData.length > 0 ? chartState.candlestickData[chartState.candlestickData.length - 1].close : 0, 4)}
+              ${formatSignificantDigits(
+                typeof effectiveStockPrice === 'number' && Number.isFinite(effectiveStockPrice)
+                  ? effectiveStockPrice
+                  : 0,
+                4
+              )}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.chart.ethPrice', `${stockSymbol} Price`)}</div>
           </div>
@@ -1175,7 +1291,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           {/* Total ROI */}
           <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[140px]">
             <div className="text-2xl font-['Bebas_Neue'] font-bold text-green-600">
-              {formatPercentage(chartState.metrics.totalROI ?? 0)}
+              {formatPercentage(derivedTotalROI)}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.totalROI')}</div>
           </div>
@@ -1186,7 +1302,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           {/* Benchmark ROI */}
           <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[140px]">
             <div className="text-2xl font-['Bebas_Neue'] font-bold text-amber-600">
-              {formatPercentage(benchmarkROI)}
+              {formatPercentage(derivedBenchmarkROI)}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.benchmarkROI', 'Benchmark')}</div>
           </div>
@@ -1197,7 +1313,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           {/* Excess ROI */}
           <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[140px]">
             <div className="text-2xl font-['Bebas_Neue'] font-bold text-teal-600">
-              {formatPercentage((chartState.metrics.totalROI ?? 0) - benchmarkROI)}
+              {formatPercentage(derivedExcessROI)}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.excessROI', 'Excess ROI')}</div>
           </div>
