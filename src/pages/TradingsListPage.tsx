@@ -84,6 +84,12 @@ export const TradingsListPage: React.FC = () => {
       return;
     }
 
+    // Navigate to wizard for paper trading
+    if (type === 'paper') {
+      navigate('/paper-trading/create');
+      return;
+    }
+
     setIsCreateModalOpen(true);
   };
 

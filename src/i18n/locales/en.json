@@ -164,7 +164,10 @@
     "backToDashboard": "Back to Trading Center",
     "signInToView": "Sign in to view",
     "signIn": "Sign in",
-    "closeButton": "Close"
+    "closeButton": "Close",
+    "back": "Back",
+    "previous": "Previous",
+    "next": "Next"
   },
   "dashboard": {
     "title": "Trading Center",
@@ -317,6 +320,10 @@
       "paperInfo": "This will create a paper trading with a 10,000 USDT initial balance and automatically set up the trading account.",
       "failedToLoadBindings": "Failed to load exchange bindings: {{error}}",
       "failedToCreate": "Failed to create trading: {{error}}",
+      "failedToLoadData": "Failed to load required data: {{error}}",
+      "failedToLoadExchanges": "Failed to load exchanges: {{error}}",
+      "exchangeRequired": "Please select an exchange",
+      "frequencyRequired": "Please select a trading frequency",
       "selectStrategyError": "Please select a strategy for the trading",
       "defaultNameTimestamp": "{{month}}/{{day}} {{hours}}:{{minutes}}",
       "noExchangeConnections": "No exchange connections found. Please add an exchange connection first in the",
@@ -452,6 +459,46 @@
       "1h": "1h",
       "8h": "8h",
       "1d": "1d"
+    },
+    "wizard": {
+      "title": "Create Paper Trading",
+      "subtitle": "Follow the steps below to set up your paper trading",
+      "create": "Create Trading",
+      "step1": {
+        "label": "Naming",
+        "title": "Trading Details",
+        "description": "Give your paper trading a name",
+        "nameLabel": "Trading Name",
+        "namePlaceholder": "Enter a name for your trading",
+        "nameHelp": "This will help you identify your trading in the list",
+        "editableHint": "You can edit this name if needed",
+        "paperInfoTitle": "About Paper Trading",
+        "paperInfo": "This will create a paper trading with a 10,000 USDT initial balance and automatically set up the trading account."
+      },
+      "step2": {
+        "label": "Exchange",
+        "title": "Select Exchange",
+        "description": "Choose the exchange you want to trade on",
+        "sandboxBadge": "Sandbox",
+        "feeLabel": "Fee",
+        "noExchanges": "No exchanges available"
+      },
+      "step3": {
+        "label": "Frequency",
+        "title": "Choose Trading Frequency",
+        "description": "Select how often your trading strategy will check for signals",
+        "strategyLabel": "Strategy Name",
+        "5mLabel": "5-Minute",
+        "5mDescription": "Fast-paced trading for demo and learning",
+        "5mDetail1": "High frequency trading signals",
+        "5mDetail2": "Perfect for learning and demonstration",
+        "5mDetail3": "Uses TirisML.5m strategy",
+        "8hLabel": "8-Hour",
+        "8hDescription": "Medium-term strategy for stable returns",
+        "8hDetail1": "Tested and profitable strategy",
+        "8hDetail2": "Optimal for most trading conditions",
+        "8hDetail3": "Uses TirisML strategy"
+      }
     }
   },
   "footer": {

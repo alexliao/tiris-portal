@@ -8,6 +8,7 @@ import DashboardPage from './pages/DashboardPage';
 import TradingsListPage from './pages/TradingsListPage';
 import TradingDetailPage from './pages/TradingDetailPage';
 import ExchangesPage from './pages/ExchangesPage';
+import PaperTradingWizardPage from './pages/PaperTradingWizardPage';
 import { OAuthCallback } from './pages/auth/OAuthCallback';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/tradings/:type" element={<TradingsListPage />} />
             <Route path="/trading/:id" element={<TradingDetailPage />} />
+            <Route path="/paper-trading/create" element={<PaperTradingWizardPage />} />
             <Route path="/exchanges" element={<ExchangesPage />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
           </Routes>

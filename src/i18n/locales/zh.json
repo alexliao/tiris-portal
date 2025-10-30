@@ -162,7 +162,12 @@
     "toggleMobileMenu": "切换移动菜单",
     "tabs": "标签页",
     "backToDashboard": "返回交易中心",
-    "closeButton": "关闭"
+    "closeButton": "关闭",
+    "back": "返回",
+    "previous": "上一步",
+    "next": "下一步",
+    "signInToView": "登录以查看",
+    "signIn": "登录"
   },
   "dashboard": {
     "title": "交易中心",
@@ -314,6 +319,10 @@
       "paperInfo": "这将创建一个模拟交易，初始余额为10,000 USDT，并自动设置交易账户。",
       "failedToLoadBindings": "加载交易所绑定失败：{{error}}",
       "failedToCreate": "创建交易失败：{{error}}",
+      "failedToLoadData": "加载所需数据失败：{{error}}",
+      "failedToLoadExchanges": "加载交易所失败：{{error}}",
+      "exchangeRequired": "请选择交易所",
+      "frequencyRequired": "请选择交易频率",
       "selectStrategyError": "请为交易选择策略",
       "defaultNameTimestamp": "{{month}}月{{day}}日 {{hours}}:{{minutes}}",
       "noExchangeConnections": "未找到交易所连接。请先在",
@@ -449,6 +458,46 @@
       "1h": "1小时",
       "8h": "8小时",
       "1d": "1天"
+    },
+    "wizard": {
+      "title": "创建模拟交易",
+      "subtitle": "按照以下步骤设置您的模拟交易",
+      "create": "创建交易",
+      "step1": {
+        "label": "命名",
+        "title": "交易详情",
+        "description": "给您的模拟交易命名",
+        "nameLabel": "交易名称",
+        "namePlaceholder": "输入交易名称",
+        "nameHelp": "这将帮助您在列表中识别您的交易",
+        "editableHint": "您可以在需要时编辑此名称",
+        "paperInfoTitle": "关于模拟交易",
+        "paperInfo": "这将创建一个初始余额为 10,000 USDT 的模拟交易，并自动设置交易账户。"
+      },
+      "step2": {
+        "label": "交易所",
+        "title": "选择交易所",
+        "description": "选择您要交易的交易所",
+        "sandboxBadge": "沙箱",
+        "feeLabel": "手续费",
+        "noExchanges": "没有可用的交易所"
+      },
+      "step3": {
+        "label": "频率",
+        "title": "选择交易频率",
+        "description": "选择交易策略多久检查一次交易信号",
+        "strategyLabel": "策略名称",
+        "5mLabel": "5分钟",
+        "5mDescription": "快速交易适合演示和学习",
+        "5mDetail1": "高频交易信号",
+        "5mDetail2": "完美用于学习和演示",
+        "5mDetail3": "使用 TirisML.5m 策略",
+        "8hLabel": "8小时",
+        "8hDescription": "中期策略以获得稳定回报",
+        "8hDetail1": "经过测试和验证的盈利策略",
+        "8hDetail2": "适用于大多数交易条件",
+        "8hDetail3": "使用 TirisML 策略"
+      }
     }
   },
   "footer": {
