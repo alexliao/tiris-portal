@@ -1009,16 +1009,26 @@ export const TradingDetailPage: React.FC = () => {
               <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 ${(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
                 {(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) && (
                   <div>
-                    <div className="text-xs md:text-sm font-medium text-gray-600">{t('trading.detail.initialFunds')}</div>
-                    <div className="text-sm md:text-base font-semibold text-gray-900">
-                      {Math.floor(typeof trading.info.initial_funds === 'number' ? trading.info.initial_funds : Number(trading.info.initial_balance || 0)).toLocaleString()} {String(trading.info?.quote_currency || 'USDT')}
+                    <div className="flex mb-2">
+                      <span className="text-xs md:text-sm font-medium text-gray-600">{t('trading.detail.initialFunds')}:&nbsp;</span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        ${Math.floor(typeof trading.info.initial_funds === 'number' ? trading.info.initial_funds : Number(trading.info.initial_balance || 0)).toLocaleString()}
+                      </span>
                     </div>
+                    {trading.info?.baseline_price !== undefined && (
+                      <div className="flex mb-2">
+                        <span className="text-xs md:text-sm font-medium text-gray-600">{t('trading.detail.initialPrice')}:&nbsp;</span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          ${Number(trading.info.baseline_price).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="flex lg:flex-col items-center lg:items-start justify-between lg:justify-start gap-2">
                   <div>
-                    <div className="text-xs md:text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.created')}</div>
-                    <div className="text-sm md:text-base font-semibold text-gray-900">{new Date(trading.created_at).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                    <span className="text-xs md:text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.created')}:&nbsp;</span>
+                    <span className="text-sm font-semibold text-gray-900">{new Date(trading.created_at).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                   {/* Bot Controls - Mobile Only */}
                   {isAuthenticated && (

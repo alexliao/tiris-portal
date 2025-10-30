@@ -278,6 +278,7 @@
       "exchangeBinding": "Exchange",
       "exchangeType": "Exchange Type",
       "initialFunds": "Initial Funds",
+      "initialPrice": "Initial Price",
       "performanceChart": "Performance Chart",
       "noDataAvailable": "No performance data available",
       "stopBot": "Stop Bot",
