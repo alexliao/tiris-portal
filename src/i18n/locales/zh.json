@@ -465,19 +465,19 @@
       "create": "创建交易",
       "step1": {
         "label": "命名",
-        "title": "交易详情",
+        "title": "交易说明",
         "description": "给您的模拟交易命名",
         "nameLabel": "交易名称",
         "namePlaceholder": "输入交易名称",
-        "nameHelp": "这将帮助您在列表中识别您的交易",
-        "editableHint": "您可以在需要时编辑此名称",
+        "nameHelp": "这将帮助您在交易列表中快速识别这个交易",
+        "editableHint": "您可以在任何时候编辑此名称",
         "paperInfoTitle": "关于模拟交易",
-        "paperInfo": "这将创建一个初始余额为 10,000 USDT 的模拟交易，并自动设置交易账户。"
+        "paperInfo": "这将创建一个初始余额为 10,000 USDT 的模拟交易。您可以创建多个模拟交易，也可以随时删除它们，不会有任何损失。"
       },
       "step2": {
         "label": "交易所",
         "title": "选择交易所",
-        "description": "选择您要交易的交易所",
+        "description": "不同的交易所手续费不同，成交量不同，但是价格走势基本相同。长期来看手续费对于收益的影响很大。",
         "sandboxBadge": "沙箱",
         "feeLabel": "手续费",
         "noExchanges": "没有可用的交易所"
@@ -485,18 +485,18 @@
       "step3": {
         "label": "频率",
         "title": "选择交易频率",
-        "description": "选择交易策略多久检查一次交易信号",
+        "description": "建议先选择5分钟频率，熟悉界面和操作，然后再选择8小时频率进行真实策略模拟",
         "strategyLabel": "策略名称",
         "5mLabel": "5分钟",
         "5mDescription": "快速交易适合演示和学习",
-        "5mDetail1": "高频交易信号",
-        "5mDetail2": "完美用于学习和演示",
-        "5mDetail3": "使用 TirisML.5m 策略",
+        "5mDetail1": "便于快速看到买卖操作的过程，了解界面的使用",
+        "5mDetail2": "由于交易频率太高，手续费将会远远超过可能的盈利",
+        "5mDetail3": "不可用于真实交易",
         "8hLabel": "8小时",
-        "8hDescription": "中期策略以获得稳定回报",
-        "8hDetail1": "经过测试和验证的盈利策略",
-        "8hDetail2": "适用于大多数交易条件",
-        "8hDetail3": "使用 TirisML 策略"
+        "8hDescription": "真实交易策略采用的频率",
+        "8hDetail1": "经过大量历史数据回测验证确保收益最大化",
+        "8hDetail2": "适用于大多数市场条件",
+        "8hDetail3": "和实盘交易使用相同的策略"
       }
     }
   },

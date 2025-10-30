@@ -63,7 +63,7 @@ export const Step1: React.FC<Step1Props> = ({
                 {t('trading.wizard.step1.paperInfoTitle')}
               </h3>
               <p className="text-sm text-blue-800">
-                {t('trading.create.paperInfo')}
+                {t('trading.wizard.step1.paperInfo')}
               </p>
             </div>
           </div>

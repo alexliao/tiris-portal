@@ -162,12 +162,12 @@
     "toggleMobileMenu": "Toggle mobile menu",
     "tabs": "Tabs",
     "backToDashboard": "Back to Trading Center",
-    "signInToView": "Sign in to view",
-    "signIn": "Sign in",
     "closeButton": "Close",
     "back": "Back",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "signInToView": "Sign in to view",
+    "signIn": "Sign in"
   },
   "dashboard": {
     "title": "Trading Center",
@@ -466,19 +466,19 @@
       "create": "Create Trading",
       "step1": {
         "label": "Naming",
-        "title": "Trading Details",
+        "title": "Trading Instructions",
         "description": "Give your paper trading a name",
         "nameLabel": "Trading Name",
-        "namePlaceholder": "Enter a name for your trading",
-        "nameHelp": "This will help you identify your trading in the list",
-        "editableHint": "You can edit this name if needed",
+        "namePlaceholder": "Enter trading name",
+        "nameHelp": "This will help you quickly identify this trading in the trading list",
+        "editableHint": "You can edit this name at any time",
         "paperInfoTitle": "About Paper Trading",
-        "paperInfo": "This will create a paper trading with a 10,000 USDT initial balance and automatically set up the trading account."
+        "paperInfo": "This will create a paper trading with a 10,000 USDT initial balance. You can create multiple paper tradings and delete them at any time without any loss."
       },
       "step2": {
         "label": "Exchange",
         "title": "Select Exchange",
-        "description": "Choose the exchange you want to trade on",
+        "description": "Different exchanges have different fees and trading volumes, but similar price trends. Over the long term, fees have a significant impact on profitability.",
         "sandboxBadge": "Sandbox",
         "feeLabel": "Fee",
         "noExchanges": "No exchanges available"
@@ -486,18 +486,18 @@
       "step3": {
         "label": "Frequency",
         "title": "Choose Trading Frequency",
-        "description": "Select how often your trading strategy will check for signals",
+        "description": "It is recommended to start with 5-minute frequency to familiarize yourself with the interface and operations, then select 8-hour frequency for real strategy simulation",
         "strategyLabel": "Strategy Name",
-        "5mLabel": "5-Minute",
-        "5mDescription": "Fast-paced trading for demo and learning",
-        "5mDetail1": "High frequency trading signals",
-        "5mDetail2": "Perfect for learning and demonstration",
-        "5mDetail3": "Uses TirisML.5m strategy",
-        "8hLabel": "8-Hour",
-        "8hDescription": "Medium-term strategy for stable returns",
-        "8hDetail1": "Tested and profitable strategy",
-        "8hDetail2": "Optimal for most trading conditions",
-        "8hDetail3": "Uses TirisML strategy"
+        "5mLabel": "5 Minutes",
+        "5mDescription": "Fast trading suitable for demo and learning",
+        "5mDetail1": "Easy to see the buy/sell process quickly and learn how to use the interface",
+        "5mDetail2": "Due to high trading frequency, transaction fees will far exceed potential profits",
+        "5mDetail3": "Not suitable for real trading",
+        "8hLabel": "8 Hours",
+        "8hDescription": "The frequency used by the real trading strategy",
+        "8hDetail1": "Verified through extensive historical backtesting to ensure maximum profitability",
+        "8hDetail2": "Suitable for most market conditions",
+        "8hDetail3": "Uses the same strategy as real trading"
       }
     }
   },

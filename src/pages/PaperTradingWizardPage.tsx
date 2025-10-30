@@ -27,7 +27,7 @@ export const PaperTradingWizardPage: React.FC = () => {
   // Form data
   const [tradingName, setTradingName] = useState('');
   const [selectedExchange, setSelectedExchange] = useState<ExchangeConfigResponse | null>(null);
-  const [selectedFrequency, setSelectedFrequency] = useState<'5m' | '8h'>('8h');
+  const [selectedFrequency, setSelectedFrequency] = useState<'5m' | '8h'>('5m');
 
   // Available data
   const [paperExchanges, setPaperExchanges] = useState<ExchangeConfigResponse[]>([]);
