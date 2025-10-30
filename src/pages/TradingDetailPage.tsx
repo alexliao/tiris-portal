@@ -927,35 +927,43 @@ export const TradingDetailPage: React.FC = () => {
           className="shadow-sm text-white"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start">
-                <Link
-                  to={`/tradings/${trading.type}`}
-                  className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors"
-                  title={t('trading.detail.backToList')}
-                >
-                  {getTypeIcon(trading.type)}
-                </Link>
-                <div className="ml-4 flex-1">
-                  <div className="flex items-center gap-2">
-                    <EditableText
-                      value={trading.name}
-                      onSave={handleTitleSave}
-                      disabled={!isAuthenticated}
-                      className="flex items-center gap-2"
-                      textClassName="max-w-xs sm:max-w-xl truncate text-lg sm:text-2xl font-bold text-white"
-                      inputClassName="text-lg sm:text-2xl font-bold text-white placeholder-white/60"
-                      editButtonClassName="text-white/80 hover:text-white focus:outline-none hover:bg-white/20 rounded-md"
-                      actionButtonClassName="bg-white/20 text-white hover:bg-white/30 focus:outline-none"
-                      labels={{
-                        edit: t('common.edit') || 'Edit',
-                        save: t('common.save') || 'Save',
-                        cancel: t('common.cancel') || 'Cancel',
-                      }}
-                      as="h1"
-                    />
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/80">
+            <div className="flex items-start">
+              <Link
+                to={`/tradings/${trading.type}`}
+                className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors"
+                title={t('trading.detail.backToList')}
+              >
+                {getTypeIcon(trading.type)}
+              </Link>
+              <div className="ml-4 flex-1">
+                <div className="flex items-center gap-2">
+                  <EditableText
+                    value={trading.name}
+                    onSave={handleTitleSave}
+                    disabled={!isAuthenticated}
+                    className="flex-1 min-w-0"
+                    textClassName="truncate text-lg sm:text-2xl font-bold text-white"
+                    inputClassName="text-lg sm:text-2xl font-bold text-white placeholder-white/60"
+                    editButtonClassName="text-white/80 hover:text-white focus:outline-none hover:bg-white/20 rounded-md"
+                    actionButtonClassName="bg-white/20 text-white hover:bg-white/30 focus:outline-none"
+                    labels={{
+                      edit: t('common.edit') || 'Edit',
+                      save: t('common.save') || 'Save',
+                      cancel: t('common.cancel') || 'Cancel',
+                    }}
+                    as="h1"
+                  />
+                  {isAuthenticated && (
+                    <button
+                      onClick={handleDeleteClick}
+                      className="ml-auto shrink-0 p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                      title={t('common.delete')}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/80">
                     <div className="flex items-center gap-2">
                       <span>ID: {trading.id.substring(0, 8)}...</span>
                       <button
@@ -989,19 +997,6 @@ export const TradingDetailPage: React.FC = () => {
                       </span>
                     )}
                   </div>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                {/* Delete Button */}
-                {isAuthenticated && (
-                  <button
-                    onClick={handleDeleteClick}
-                    className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
-                    title={t('common.delete')}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -1009,29 +1004,70 @@ export const TradingDetailPage: React.FC = () => {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Trading Info */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+          <div className="bg-white rounded-lg shadow-sm p-3 md:p-6 mb-8">
             <div className="flex flex-col">
-              <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 ${(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
                 {(trading.info?.initial_funds !== undefined || trading.info?.initial_balance !== undefined) && (
                   <div>
-                    <div className="text-sm font-medium text-gray-600">{t('trading.detail.initialFunds')}</div>
-                    <div className="text-sm font-semibold text-gray-900">
+                    <div className="text-xs md:text-sm font-medium text-gray-600">{t('trading.detail.initialFunds')}</div>
+                    <div className="text-sm md:text-base font-semibold text-gray-900">
                       {Math.floor(typeof trading.info.initial_funds === 'number' ? trading.info.initial_funds : Number(trading.info.initial_balance || 0)).toLocaleString()} {String(trading.info?.quote_currency || 'USDT')}
                     </div>
                   </div>
                 )}
-                <div>
-                  <div className="text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.created')}</div>
-                  <div className="text-sm font-semibold text-gray-900">{new Date(trading.created_at).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                <div className="flex lg:flex-col items-center lg:items-start justify-between lg:justify-start gap-2">
+                  <div>
+                    <div className="text-xs md:text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.created')}</div>
+                    <div className="text-sm md:text-base font-semibold text-gray-900">{new Date(trading.created_at).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                  </div>
+                  {/* Bot Controls - Mobile Only */}
+                  {isAuthenticated && (
+                    <div className="flex lg:hidden items-center gap-2">
+                      {bot && bot.record.enabled && bot.alive ? (
+                        <button
+                          onClick={handleStopBot}
+                          disabled={botLoading}
+                          className="inline-flex items-center px-2 py-1 md:px-3 md:py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                        >
+                          {botLoading ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Square className="w-4 h-4 mr-2" />
+                          )}
+                          {t('trading.detail.stopBot')}
+                        </button>
+                      ) : (
+                        <>
+                          {isRefreshing && (
+                            <div className="flex items-center">
+                              <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
+                            </div>
+                          )}
+                          <button
+                            onClick={() => handleStartBot()}
+                            disabled={botLoading}
+                            className="inline-flex items-center px-2 py-1 md:px-3 md:py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                          >
+                            {botLoading ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Play className="w-4 h-4 mr-2" />
+                            )}
+                            {t('trading.detail.startBot')}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {/* Bot Controls - Same Row */}
+                {/* Bot Controls for Desktop - Right Aligned */}
                 {isAuthenticated && (
-                  <div className="flex items-end justify-end gap-2">
+                  <div className="hidden lg:flex items-center justify-end gap-2">
                     {bot && bot.record.enabled && bot.alive ? (
                       <button
                         onClick={handleStopBot}
                         disabled={botLoading}
-                        className="inline-flex items-center px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors"
+                        className="inline-flex items-center px-2 py-1 md:px-3 md:py-2 text-xs md:text-sm bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                       >
                         {botLoading ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1050,7 +1086,7 @@ export const TradingDetailPage: React.FC = () => {
                         <button
                           onClick={() => handleStartBot()}
                           disabled={botLoading}
-                          className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                          className="inline-flex items-center px-2 py-1 md:px-3 md:py-2 text-xs md:text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                         >
                           {botLoading ? (
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
