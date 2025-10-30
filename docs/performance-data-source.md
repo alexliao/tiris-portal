@@ -47,7 +47,7 @@ The problem was **NOT** missing trading logs, but rather:
 The data is actually consistent and correct:
 - Trading logs exist for the full backtesting period including predictions
 - Transactions only exist when actual trades were executed
-- The chart displays the correct correlation between events and portfolio changes
+- The chart displays the correct correlation between events and assets changes
 
 ## Sample Data Points
 **Trading Event Example (March 27, 2024):**
@@ -63,4 +63,4 @@ Amount: 25543.90685124, Balance: 2.58018438
 ```
 
 ## Conclusion
-The data source is functioning correctly. The perceived discrepancy was due to the broader scope of trading logs (including predictions) compared to the narrower scope of actual transactions (only executed trades). The performance chart successfully correlates both datasets to display accurate portfolio performance over time.
+The data source is functioning correctly. The perceived discrepancy was due to the broader scope of trading logs (including predictions) compared to the narrower scope of actual transactions (only executed trades). The performance chart successfully correlates both datasets to display accurate assets performance over time.

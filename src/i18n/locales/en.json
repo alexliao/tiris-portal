@@ -36,10 +36,10 @@
     "loading": "Loading live trading data...",
     "noData": "No trading data available at this time.",
     "chart": {
-      "title": "PORTFOLIO RETURN RATE vs BENCHMARK RETURN RATE",
+      "title": "ASSETS RETURN RATE vs BENCHMARK RETURN RATE",
       "toggleShow": "Show Trading Signals",
       "toggleHide": "Hide Trading Signals",
-      "portfolioValue": "Portfolio Value",
+      "assetsValue": "Assets Value",
       "return": "Return Rate",
       "ethReturn": "Benchmark Return Rate"
     },
@@ -51,7 +51,7 @@
       "totalTrades": "Total Trades"
     },
     "legend": {
-      "portfolioReturn": "Portfolio Return Rate (Area)",
+      "assetsReturn": "Assets Return Rate (Area)",
       "ethBenchmark": "Benchmark Return Rate (Line)",
       "zeroLine": "Zero Line",
       "buySignals": "Buy",
@@ -59,8 +59,8 @@
     },
     "tooltip": {
       "time": "Time",
-      "portfolioValue": "Portfolio Value",
-      "portfolioReturn": "Portfolio Return Rate",
+      "assetsValue": "Assets Value",
+      "assetsReturn": "Assets Return Rate",
       "ethBenchmark": "Benchmark Return Rate",
       "excessReturn": "Excess Return Rate",
       "buy": "BUY",
@@ -364,8 +364,8 @@
     "chart": {
       "showTradingSignals": "Show Trading Signals",
       "hideTradingSignals": "Hide Trading Signals",
-      "portfolioValue": "Portfolio Value",
-      "portfolioReturn": "Portfolio Return",
+      "assetsValue": "Assets Value",
+      "assetsReturn": "Assets Return",
       "ethBenchmark": "Benchmark Return Rate",
       "ethReturn": "Benchmark Return Rate",
       "excessReturn": "Excess Return",
@@ -404,7 +404,7 @@
         "volume": "Volume",
         "position": "Position",
         "roi": "ROI",
-        "portfolio": "Portfolio",
+        "assets": "Assets",
         "benchmark": "Benchmark"
       }
     },

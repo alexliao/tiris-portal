@@ -139,7 +139,7 @@ Tiris Portal serves as the frontend gateway to a comprehensive quantitative trad
 - Real exchange integration and live trading
 - WeChat authentication (Google OAuth only for MVP)
 - Mobile applications (web responsive only)
-- Advanced portfolio management features
+- Advanced assets management features
 - Social features or community elements
 - Multiple trading strategies (focus on one proven strategy)
 - Advanced charting and technical analysis tools
@@ -164,7 +164,7 @@ Authentication and onboarding phase will be successful when:
 - **Live Trading Integration:** Connect to major cryptocurrency exchanges (Binance, Kraken, Coinbase) for real trading
 - **Multi-Strategy Platform:** Expand beyond single strategy to offer multiple proven trading algorithms
 - **WeChat Authentication:** Add WeChat OAuth for broader market access
-- **Enhanced Analytics:** Advanced performance reporting and portfolio tracking
+- **Enhanced Analytics:** Advanced performance reporting and assets tracking
 - **Mobile Applications:** Native iOS and Android apps for on-the-go monitoring
 
 ### Long-term Vision

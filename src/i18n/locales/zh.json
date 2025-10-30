@@ -39,7 +39,7 @@
       "title": "资产收益率 vs 基准收益率",
       "toggleShow": "显示交易信号",
       "toggleHide": "隐藏交易信号",
-      "portfolioValue": "资产价值",
+      "assetsValue": "资产价值",
       "return": "收益率",
       "ethReturn": "基准收益率"
     },
@@ -51,7 +51,7 @@
       "totalTrades": "总交易次数"
     },
     "legend": {
-      "portfolioReturn": "资产收益率（面积图）",
+      "assetsReturn": "资产收益率（面积图）",
       "ethBenchmark": "基准收益率（线图）",
       "zeroLine": "零线",
       "buySignals": "买入",
@@ -59,8 +59,8 @@
     },
     "tooltip": {
       "time": "时间",
-      "portfolioValue": "资产价值",
-      "portfolioReturn": "资产收益率",
+      "assetsValue": "资产价值",
+      "assetsReturn": "资产收益率",
       "ethBenchmark": "基准收益率",
       "excessReturn": "超额收益率",
       "buy": "买入",
@@ -361,8 +361,8 @@
     "chart": {
       "showTradingSignals": "显示交易信号",
       "hideTradingSignals": "隐藏交易信号",
-      "portfolioValue": "资产价值",
-      "portfolioReturn": "资产收益率",
+      "assetsValue": "资产价值",
+      "assetsReturn": "资产收益率",
       "ethBenchmark": "基准收益率",
       "ethReturn": "基准收益率",
       "excessReturn": "超额收益",
@@ -401,7 +401,7 @@
         "volume": "量",
         "position": "仓位",
         "roi": "资产收益率",
-        "portfolio": "资产",
+        "assets": "资产",
         "benchmark": "基准收益率"
       }
     },

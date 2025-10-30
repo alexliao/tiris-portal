@@ -121,13 +121,13 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
   return (
     <div className="p-6">
       <div className="grid grid-cols-2 gap-6">
-        {/* Current Portfolio Value */}
+        {/* Current Assets Value */}
         {metrics.currentEquity !== null && (
           <div className="text-left">
             <p className="text-2xl font-bold text-gray-900 mb-2">
               {formatCurrency(metrics.currentEquity, '$', 0)}
             </p>
-            <p className="text-xs text-gray-500 font-medium">{t('performance.chart.portfolioValue')}</p>
+            <p className="text-xs text-gray-500 font-medium">{t('performance.chart.assetsValue')}</p>
           </div>
         )}
 

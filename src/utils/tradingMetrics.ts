@@ -1,5 +1,5 @@
 import { getEquityCurve, type Trading } from './api';
-import { resolveEffectiveStockPrice } from './portfolioMetrics';
+import { resolveEffectiveStockPrice } from './assetsMetrics';
 
 /**
  * Ultra-lightweight trading metrics that only require the latest data point
@@ -29,7 +29,7 @@ export interface LightweightTradingMetrics {
  *
  * @example
  * const metrics = await fetchLightweightMetrics(trading, 'ETH', 'USDT');
- * console.log(`Portfolio Value: $${metrics.currentEquity}`);
+ * console.log(`Assets Value: $${metrics.currentEquity}`);
  * console.log(`ROI: ${metrics.currentROI.toFixed(2)}%`);
  */
 export async function fetchLightweightMetrics(

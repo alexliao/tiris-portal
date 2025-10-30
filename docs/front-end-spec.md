@@ -17,8 +17,8 @@ This document defines the user experience goals, information architecture, user 
 - **Demographics:** Ages 25-55, middle to upper-middle class with discretionary investment capital, college-educated but not in technical fields
 - **Tech Comfort:** Comfortable with apps and websites but intimidated by programming or complex financial interfaces
 - **Current Behavior:** Interested in cryptocurrency investment, currently using simple buy-and-hold strategies, researches online but struggles with technical complexity
-- **Pain Points:** Wants sophisticated trading strategies without learning programming, needs confidence through education before investing, requires transparency in how investments are managed
-- **Goals:** Generate passive income through automated trading, learn about quantitative strategies risk-free, maintain control and visibility over investments
+- **Pain Points:** Wants sophisticated trading strategies without learning programming, needs confidence through education before investing, requires transparency in how assets are managed
+- **Goals:** Generate passive income through automated trading, learn about quantitative strategies risk-free, maintain control and visibility over assets
 
 ### Usability Goals
 
@@ -143,9 +143,9 @@ graph TD
     C --> E[See Backtesting Results]
     E --> F[Sign In via Google OAuth]
     F --> G[Welcome & Paper Trading Introduction]
-    
+
     D --> G
-    G --> H[Select Virtual Portfolio Amount]
+    G --> H[Select Virtual Assets Amount]
     H --> I[Review Current Market Conditions]
     I --> J[See ML Algorithm Recommendation]
     
@@ -153,9 +153,9 @@ graph TD
     K -->|No| L[View Educational Tooltip]
     L --> J
     K -->|Yes| M[Execute Virtual Trade]
-    
+
     M --> N[See Trade Confirmation]
-    N --> O[View Updated Portfolio]
+    N --> O[View Updated Assets]
     O --> P[Explanation of ML Decision]
     P --> Q[Success: Ready for Next Trade]
 ```
@@ -194,13 +194,13 @@ graph TD
 **Purpose:** Provide risk-free learning environment where users build confidence in ML strategies
 
 **Key Elements:**
-- Virtual portfolio balance with clear "This is Practice Money" indicators
+- Virtual assets balance with clear "This is Practice Money" indicators
 - Current market conditions panel with educational context
 - ML recommendation panel with confidence level and "Why?" explanation
 - Simple Execute/Learn More action buttons
 - Progress tracker showing paper trading milestones
 
-**Interaction Notes:** Every ML recommendation includes expandable explanation. Trade execution triggers celebratory micro-interactions for successful learning moments. Portfolio updates should be visually satisfying to encourage continued engagement.
+**Interaction Notes:** Every ML recommendation includes expandable explanation. Trade execution triggers celebratory micro-interactions for successful learning moments. Assets updates should be visually satisfying to encourage continued engagement.
 
 **Design File Reference:** [Future Figma frame link]
 
@@ -226,12 +226,12 @@ graph TD
 
 #### Component 1: TradingCard
 
-**Purpose:** Consistent container for all financial data displays (portfolio values, performance metrics, trade confirmations)
+**Purpose:** Consistent container for all financial data displays (assets values, performance metrics, trade confirmations)
 
-**Variants:** 
+**Variants:**
 - Default: Standard financial data display
 - Success: Profitable trades or positive performance
-- Warning: Risk alerts or important notices  
+- Warning: Risk alerts or important notices
 - Error: Losses or critical issues
 
 **States:** Default, hover, loading, disabled
@@ -256,9 +256,9 @@ graph TD
 **Purpose:** Reusable financial data visualization maintaining consistent styling and interaction patterns
 
 **Variants:**
-- LineChart: Portfolio value over time, performance trends
+- LineChart: Assets value over time, performance trends
 - BarChart: Comparative performance, monthly returns
-- DonutChart: Portfolio allocation, risk distribution
+- DonutChart: Assets allocation, risk distribution
 
 **States:** Loading, interactive, static (for screenshots/reports)
 
@@ -404,8 +404,8 @@ graph TD
 - Desktop: Full horizontal navigation with dropdown menus for sub-sections
 - Wide: Additional quick-access shortcuts and breadcrumb navigation
 
-**Content Priority:** 
-- Mobile: Portfolio value and current ML recommendation take priority, secondary metrics accessible via tabs
+**Content Priority:**
+- Mobile: Assets value and current ML recommendation take priority, secondary metrics accessible via tabs
 - Tablet: Balance between current status and historical performance in split view
 - Desktop: Full dashboard with real-time updates and comprehensive analytics
 - Wide: Enhanced with additional educational content panels and detailed market context
@@ -429,7 +429,7 @@ graph TD
 
 ### Key Animations
 
-- **Portfolio Value Updates:** Smooth number counting animation when values change (Duration: 800ms, Easing: ease-out) - helps users track gains/losses
+- **Assets Value Updates:** Smooth number counting animation when values change (Duration: 800ms, Easing: ease-out) - helps users track gains/losses
 - **ML Recommendation Reveal:** Gentle slide-in with confidence indicator animation (Duration: 400ms, Easing: ease-in-out) - builds anticipation for algorithm insights
 - **Trade Execution Success:** Subtle green pulse animation with checkmark (Duration: 600ms, Easing: bounce) - provides satisfying confirmation feedback
 - **Chart Data Loading:** Progressive line drawing animation for performance charts (Duration: 1200ms, Easing: ease-in-out) - makes data feel more trustworthy and engaging
@@ -453,7 +453,7 @@ graph TD
 - **Component Lazy Loading:** Dashboard widgets load on-demand as users scroll or navigate, maintaining fast initial page load
 - **Skeleton Loading States:** All financial data displays show skeleton placeholders during loading, preventing layout shifts and maintaining perceived performance
 - **Intelligent Caching:** ML recommendations and backtesting results cache intelligently to reduce API calls while ensuring data freshness
-- **Critical Path Prioritization:** Essential trading information (current portfolio value, ML recommendations) loads first, with secondary analytics loading progressively
+- **Critical Path Prioritization:** Essential trading information (current assets value, ML recommendations) loads first, with secondary analytics loading progressively
 
 ## Exact Implementation Specifications
 

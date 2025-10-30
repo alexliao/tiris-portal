@@ -174,7 +174,7 @@ const mergedBenchmarkData = [...previous.benchmarkData, ...newBenchmarkData];
 **Why this matters**:
 - Benchmark data contains the ETH price and benchmark return for tooltip display
 - Without benchmark data, new appended points have no tooltip information
-- Tooltips use both `data` and `benchmarkData` to show portfolio + benchmark info
+- Tooltips use both `data` and `benchmarkData` to show assets + benchmark info
 - Now all new appended points are immediately hoverable with full tooltip info
 
 ## Data Flow Diagram

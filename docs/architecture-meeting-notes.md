@@ -82,7 +82,7 @@
 
 **Fascinating Potential:**
 - 60fps+ performance for real-time trading data
-- 3D visualizations of portfolio performance and ML model decisions
+- 3D visualizations of assets performance and ML model decisions
 - Unity ML-Agents could visualize strategy decision-making processes
 - Natural gamification for "paper trading" experience
 - Particle systems perfect for market data flow visualization

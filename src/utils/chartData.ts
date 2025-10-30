@@ -198,8 +198,8 @@ export function transformNewEquityCurveToChartData(
   }
 
   // ROI baseline comes directly from the backend-provided initial funds.
-  const initialPortfolioValue: number = equityCurve.initial_funds ?? 0;
-  if (!Number.isFinite(initialPortfolioValue) || initialPortfolioValue <= 0) {
+  const initialAssetsValue: number = equityCurve.initial_funds ?? 0;
+  if (!Number.isFinite(initialAssetsValue) || initialAssetsValue <= 0) {
     throw new Error('Equity curve is missing a valid initial_funds value.');
   }
   const baselinePrice =
@@ -210,7 +210,7 @@ export function transformNewEquityCurveToChartData(
   // Transform equity curve data points to chart data
   const candlestickData: TradingCandlestickPoint[] = [];
 
-  let lastEquityValue = initialPortfolioValue;
+  let lastEquityValue = initialAssetsValue;
   let lastBenchmarkReturn = 0;
   let lastStockPrice: number | undefined = baselinePrice;
   let lastPosition = 0;
@@ -254,8 +254,8 @@ export function transformNewEquityCurveToChartData(
       lastPosition = stockBalanceValue;
     }
 
-    const roiRaw = initialPortfolioValue > 0
-      ? ((lastEquityValue - initialPortfolioValue) / initialPortfolioValue) * 100
+    const roiRaw = initialAssetsValue > 0
+      ? ((lastEquityValue - initialAssetsValue) / initialAssetsValue) * 100
       : 0;
     const roi = Math.round(roiRaw * 100) / 100;
     const netValue = Math.round(lastEquityValue * 100) / 100;
@@ -331,9 +331,9 @@ export function transformNewEquityCurveToChartData(
   }
 
   // Calculate metrics using the new chart data
-  const metrics = calculateMetricsFromNewData(chartData, tradingLogs, initialPortfolioValue);
+  const metrics = calculateMetricsFromNewData(chartData, tradingLogs, initialAssetsValue);
 
-  return { data: chartData, metrics, candlestickData, initialBalance: initialPortfolioValue, baselinePrice };
+  return { data: chartData, metrics, candlestickData, initialBalance: initialAssetsValue, baselinePrice };
 }
 
 function normalizeOhlcv(
@@ -581,7 +581,7 @@ export function transformTransactionsToChartData(
   // Group transactions by date and sub_account_id to track balances
   const accountBalances = new Map<string, Map<string, number>>(); // date -> { sub_account_id -> balance }
 
-  // Process transactions to build daily portfolio snapshots
+  // Process transactions to build daily assets snapshots
   sortedTransactions.forEach(transaction => {
     const date = transaction.event_time.split('T')[0];
     const subAccountId = transaction.sub_account_id;
@@ -595,67 +595,67 @@ export function transformTransactionsToChartData(
     accountBalances.get(date)!.set(subAccountId, balance);
   });
 
-  // Calculate portfolio value progression using a simpler approach
-  // Based on the API data structure, let's calculate total portfolio value by combining USDT and ETH values
-  
+  // Calculate assets value progression using a simpler approach
+  // Based on the API data structure, let's calculate total assets value by combining USDT and ETH values
+
   const chartData: TradingDataPoint[] = [];
-  
+
   // Get unique dates from transactions
   const uniqueDates = [...new Set(sortedTransactions.map(tx => tx.event_time.split('T')[0]))].sort();
-  
-  const initialPortfolioValue = 10000; // Standard starting amount
-  
+
+  const initialAssetsValue = 10000; // Standard starting amount
+
   uniqueDates.forEach(date => {
     // Get all transactions for this date
     const dayTransactions = sortedTransactions.filter(tx => tx.event_time.startsWith(date));
-    
+
     if (dayTransactions.length === 0) return;
-    
-    // Calculate total portfolio value for this date
+
+    // Calculate total assets value for this date
     // We need to get both USDT balance and ETH balance, then convert ETH to USDT value
-    
+
     let usdtBalance = 0;
     let ethBalance = 0;
     let ethPrice = 0;
     let latestTimestamp = '';
-    
+
     // Process all transactions for this date to get final balances
     dayTransactions.forEach(tx => {
       const price = parseFloat(tx.price);
       const balance = parseFloat(tx.closing_balance);
-      
+
       // Track the latest timestamp for this date
       if (tx.event_time > latestTimestamp) {
         latestTimestamp = tx.event_time;
       }
-      
+
       if (tx.quote_symbol === 'USDT') {
         // This transaction affected USDT balance
-        if ((tx.direction === 'credit' && tx.reason === 'short') || 
+        if ((tx.direction === 'credit' && tx.reason === 'short') ||
             (tx.direction === 'debit' && tx.reason === 'long')) {
           usdtBalance = balance; // USDT account balance
           ethPrice = price; // ETH price for conversion
         }
-        // This transaction affected ETH balance  
-        if ((tx.direction === 'credit' && tx.reason === 'long') || 
+        // This transaction affected ETH balance
+        if ((tx.direction === 'credit' && tx.reason === 'long') ||
             (tx.direction === 'debit' && tx.reason === 'short')) {
           ethBalance = balance; // ETH account balance
           ethPrice = price; // ETH price for conversion
         }
       }
     });
-    
-    // Calculate total portfolio value: USDT + (ETH * ETH_Price)
+
+    // Calculate total assets value: USDT + (ETH * ETH_Price)
     const ethValueInUSDT = ethBalance * ethPrice;
-    const totalPortfolioValue = usdtBalance + ethValueInUSDT;
-    
-    const roi = ((totalPortfolioValue - initialPortfolioValue) / initialPortfolioValue) * 100;
+    const totalAssetsValue = usdtBalance + ethValueInUSDT;
+
+    const roi = ((totalAssetsValue - initialAssetsValue) / initialAssetsValue) * 100;
 
     chartData.push({
       date,
       timestamp: latestTimestamp,
       timestampNum: new Date(latestTimestamp).getTime(),
-      netValue: Math.round(totalPortfolioValue * 100) / 100,
+      netValue: Math.round(totalAssetsValue * 100) / 100,
       roi: Math.round(roi * 100) / 100,
       benchmarkPrice: ethPrice, // Use current ETH price from transactions
       position: Math.round(ethBalance * 10000) / 10000, // ETH position with 4 decimal precision
@@ -693,7 +693,7 @@ export function transformTransactionsToChartData(
   }
 
   // Calculate metrics
-  const metrics = calculateMetrics(chartData, tradingLogs, initialPortfolioValue, 0);
+  const metrics = calculateMetrics(chartData, tradingLogs, initialAssetsValue, 0);
 
   return { data: chartData, metrics };
 }

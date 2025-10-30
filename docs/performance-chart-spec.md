@@ -2,15 +2,15 @@
 
 ## Overview
 
-The performance chart provides a comprehensive visualization of trading performance with synchronized multi-chart display. It shows portfolio returns, market prices, position holdings, and trading signals across multiple timeframes.
+The performance chart provides a comprehensive visualization of trading performance with synchronized multi-chart display. It shows assets returns, market prices, position holdings, and trading signals across multiple timeframes.
 
 ## Architecture
 
 The performance chart consists of three stacked sub-charts/series:
 
 ### 1. Return Chart
-Displays portfolio performance with multiple layers:
-- **Equity Curve (Green Area)**: Portfolio return percentage (ROI %) over time
+Displays assets performance with multiple layers:
+- **Equity Curve (Green Area)**: Assets return percentage (ROI %) over time
 - **Benchmark Curve (Amber Dashed Line)**: Market benchmark return for comparison
 - **Trading Signals (long/short/stop_loss/debit/withdraw)**: Visual markers for executed trades on the chart
   - **Long/Buy**: Blue upward arrow marker aligned with the benchmark curve
@@ -72,7 +72,7 @@ Trading signals are matched to equity curve data points using dynamic time windo
 ## Performance Metrics Display
 
 The chart displays key performance metrics:
-- **ROI (Return on Investment)**: Total portfolio return percentage
+- **ROI (Return on Investment)**: Total assets return percentage
 - **Win Rate**: Percentage of profitable trades
 - **Sharpe Ratio**: Risk-adjusted return measure
 - **Max Drawdown**: Largest peak-to-trough decline

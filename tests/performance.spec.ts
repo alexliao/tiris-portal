@@ -20,13 +20,13 @@ test.describe('Performance Page', () => {
 
   test('should display chart section', async ({ page }) => {
     await page.goto('/performance');
-    
+
     // Check chart section exists
     await expect(page.locator('text=NET ASSET VALUE GROWTH')).toBeVisible();
     await expect(page.locator('text=Starting Capital: $10,000')).toBeVisible();
-    
+
     // Check chart legend is present
-    await expect(page.locator('text=Portfolio Value')).toBeVisible();
+    await expect(page.locator('text=Assets Value')).toBeVisible();
     await expect(page.locator('text=Buy Signals')).toBeVisible();
     await expect(page.locator('text=Sell Signals')).toBeVisible();
   });

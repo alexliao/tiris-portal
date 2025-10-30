@@ -77,8 +77,8 @@ test.describe('Paper Trading Bot Creation', () => {
     });
 
     // Step 10: Verify the page displays trading details (indicating successful page load after bot start)
-    const portfolioValue = page.locator('text=Portfolio Value');
-    await expect(portfolioValue).toBeVisible({ timeout: 10000 });
+    const assetsValue = page.locator('text=Assets Value');
+    await expect(assetsValue).toBeVisible({ timeout: 10000 });
 
     console.log('✅ Paper trading bot creation test passed!');
   });

@@ -17,7 +17,7 @@ import {
   type TradingMetrics,
   type TradingCandlestickPoint,
 } from '../../utils/chartData';
-import { getFirstValidStockPrice, resolveEffectiveStockPrice } from '../../utils/portfolioMetrics';
+import { getFirstValidStockPrice, resolveEffectiveStockPrice } from '../../utils/assetsMetrics';
 import CandlestickChart from './CandlestickChart';
 import { useToast } from '../../hooks/useToast';
 
@@ -1131,7 +1131,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       ? initialStockPriceRef.current
       : normalizedBaselinePrice;
 
-  const derivedPortfolioValue = (() => {
+  const derivedAssetsValue = (() => {
     if (typeof effectiveStockPrice === 'number' && Number.isFinite(effectiveStockPrice)) {
       return normalizedQuoteBalance + normalizedStockBalance * effectiveStockPrice;
     }
@@ -1148,7 +1148,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
   const fallbackTotalROI = typeof chartState.metrics.totalROI === 'number' ? chartState.metrics.totalROI : 0;
   const derivedTotalROI = normalizedInitialBalance
-    ? ((derivedPortfolioValue - normalizedInitialBalance) / normalizedInitialBalance) * 100
+    ? ((derivedAssetsValue - normalizedInitialBalance) / normalizedInitialBalance) * 100
     : fallbackTotalROI;
 
   const fallbackBenchmarkPercentage = (() => {
@@ -1237,49 +1237,57 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       <div className="mb-6">
         <div className="flex flex-wrap items-center gap-2 md:gap-3 lg:gap-4">
           {/* Total Value */}
-          <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[150px]">
-            <div className="text-2xl font-['Bebas_Neue'] font-bold text-gray-700">
-              ${formatSignificantDigits(derivedPortfolioValue, 4)}
+          <div className="bg-white p-3 rounded-lg shadow-sm flex-1 min-w-[150px]">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.chart.assetsValue')}</div>
+              <div className="text-xl font-['Bebas_Neue'] font-bold text-gray-700">
+                ${formatSignificantDigits(derivedAssetsValue, 4)}
+              </div>
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.chart.portfolioValue')}</div>
           </div>
 
           {/* Equals Sign */}
           <div className="text-2xl font-bold text-gray-400 h-full flex items-center pb-2">=</div>
 
           {/* Quote Sub-Account */}
-          <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[150px]">
-            <div className="text-2xl font-['Bebas_Neue'] font-bold text-blue-600">
-              ${formatSignificantDigits(normalizedQuoteBalance, 4)}
+          <div className="bg-white p-3 rounded-lg shadow-sm flex-1 min-w-[150px]">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-sm font-['Nunito'] text-gray-600">{quoteSymbol}</div>
+              <div className="text-xl font-['Bebas_Neue'] font-bold text-blue-600">
+                ${formatSignificantDigits(normalizedQuoteBalance, 4)}
+              </div>
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">{quoteSymbol}</div>
           </div>
 
           {/* Plus Sign */}
           <div className="text-2xl font-bold text-gray-400 h-full flex items-center pb-2">+</div>
 
           {/* Stock Sub-Account */}
-          <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[150px]">
-            <div className="text-2xl font-['Bebas_Neue'] font-bold text-indigo-600">
-              {formatSignificantDigits(normalizedStockBalance, 4)}
+          <div className="bg-white p-3 rounded-lg shadow-sm flex-1 min-w-[150px]">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-sm font-['Nunito'] text-gray-600">{stockSymbol}</div>
+              <div className="text-xl font-['Bebas_Neue'] font-bold text-indigo-600">
+                {formatSignificantDigits(normalizedStockBalance, 4)}
+              </div>
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">{stockSymbol}</div>
           </div>
 
           {/* Multiply Sign */}
           <div className="text-2xl font-bold text-gray-400 h-full flex items-center pb-2">×</div>
 
           {/* Stock Price */}
-          <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[150px]">
-            <div className="text-2xl font-['Bebas_Neue'] font-bold text-emerald-600">
-              ${formatSignificantDigits(
-                typeof effectiveStockPrice === 'number' && Number.isFinite(effectiveStockPrice)
-                  ? effectiveStockPrice
-                  : 0,
-                4
-              )}
+          <div className="bg-white p-3 rounded-lg shadow-sm flex-1 min-w-[150px]">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.chart.ethPrice', `${stockSymbol} Price`)}</div>
+              <div className="text-xl font-['Bebas_Neue'] font-bold text-emerald-600">
+                ${formatSignificantDigits(
+                  typeof effectiveStockPrice === 'number' && Number.isFinite(effectiveStockPrice)
+                    ? effectiveStockPrice
+                    : 0,
+                  4
+                )}
+              </div>
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.chart.ethPrice', `${stockSymbol} Price`)}</div>
           </div>
         </div>
       </div>
@@ -1289,65 +1297,79 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         {/* First Row: Total ROI - Benchmark = Excess ROI */}
         <div className="flex flex-wrap items-center gap-2 md:gap-3 lg:gap-4 mb-4">
           {/* Total ROI */}
-          <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[140px]">
-            <div className="text-2xl font-['Bebas_Neue'] font-bold text-green-600">
-              {formatPercentage(derivedTotalROI)}
+          <div className="bg-white p-3 rounded-lg shadow-sm flex-1 min-w-[140px]">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.totalROI')}</div>
+              <div className="text-xl font-['Bebas_Neue'] font-bold text-green-600">
+                {formatPercentage(derivedTotalROI)}
+              </div>
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.totalROI')}</div>
           </div>
 
           {/* Minus Sign */}
           <div className="text-2xl font-bold text-gray-400 h-full flex items-center pb-2">-</div>
 
           {/* Benchmark ROI */}
-          <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[140px]">
-            <div className="text-2xl font-['Bebas_Neue'] font-bold text-amber-600">
-              {formatPercentage(derivedBenchmarkROI)}
+          <div className="bg-white p-3 rounded-lg shadow-sm flex-1 min-w-[140px]">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.benchmarkROI', 'Benchmark')}</div>
+              <div className="text-xl font-['Bebas_Neue'] font-bold text-amber-600">
+                {formatPercentage(derivedBenchmarkROI)}
+              </div>
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.benchmarkROI', 'Benchmark')}</div>
           </div>
 
           {/* Equals Sign */}
           <div className="text-2xl font-bold text-gray-400 h-full flex items-center pb-2">=</div>
 
           {/* Excess ROI */}
-          <div className="bg-white p-4 rounded-lg shadow-sm flex-1 min-w-[140px]">
-            <div className="text-2xl font-['Bebas_Neue'] font-bold text-teal-600">
-              {formatPercentage(derivedExcessROI)}
+          <div className="bg-white p-3 rounded-lg shadow-sm flex-1 min-w-[140px]">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.excessROI', 'Excess ROI')}</div>
+              <div className="text-xl font-['Bebas_Neue'] font-bold text-teal-600">
+                {formatPercentage(derivedExcessROI)}
+              </div>
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.excessROI', 'Excess ROI')}</div>
           </div>
         </div>
 
         {/* Second Row: Other Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {/* Sharpe Ratio */}
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <div className="text-2xl font-['Bebas_Neue'] font-bold text-purple-600">
-              {(chartState.metrics.sharpeRatio ?? 0).toFixed(1)}
+          <div className="bg-white p-3 rounded-lg shadow-sm">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.sharpeRatio')}</div>
+              <div className="text-xl font-['Bebas_Neue'] font-bold text-purple-600">
+                {(chartState.metrics.sharpeRatio ?? 0).toFixed(1)}
+              </div>
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.sharpeRatio')}</div>
           </div>
           {/* Max Drawdown */}
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <div className="text-2xl font-['Bebas_Neue'] font-bold text-orange-600">
-              {formatPercentage(chartState.metrics.maxDrawdown ?? 0)}
+          <div className="bg-white p-3 rounded-lg shadow-sm">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.maxDrawdown')}</div>
+              <div className="text-xl font-['Bebas_Neue'] font-bold text-orange-600">
+                {formatPercentage(chartState.metrics.maxDrawdown ?? 0)}
+              </div>
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.maxDrawdown')}</div>
           </div>
           {/* Win Rate */}
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <div className="text-2xl font-['Bebas_Neue'] font-bold text-cyan-600">
-              {formatPercentage(chartState.metrics.winRate ?? 0)}
+          <div className="bg-white p-3 rounded-lg shadow-sm">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.winRate')}</div>
+              <div className="text-xl font-['Bebas_Neue'] font-bold text-cyan-600">
+                {formatPercentage(chartState.metrics.winRate ?? 0)}
+              </div>
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.winRate')}</div>
           </div>
           {/* Total Trades */}
-          <div className="bg-white p-4 rounded-lg shadow-sm">
-            <div className="text-2xl font-['Bebas_Neue'] font-bold text-rose-600">
-              {chartState.metrics.totalTrades ?? 0}
+          <div className="bg-white p-3 rounded-lg shadow-sm">
+            <div className="flex items-baseline justify-between gap-2">
+              <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.totalTrades')}</div>
+              <div className="text-xl font-['Bebas_Neue'] font-bold text-rose-600">
+                {chartState.metrics.totalTrades ?? 0}
+              </div>
             </div>
-            <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.totalTrades')}</div>
           </div>
         </div>
       </div>

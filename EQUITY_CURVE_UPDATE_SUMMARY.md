@@ -13,7 +13,7 @@ Updated the equity curve data fetching implementation to use the new backend API
   - `start_time` and `end_time`: Time range for the data
   - `data_points`: Array of equity data points with:
     - `timestamp`: ISO timestamp
-    - `equity`: Total portfolio value
+    - `equity`: Total assets value
     - `quote_balance`: Quote currency balance
     - `stock_balance`: Stock/asset balance
     - `stock_price`: Market price at that timestamp

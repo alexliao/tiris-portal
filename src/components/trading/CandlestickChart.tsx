@@ -601,7 +601,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           tooltipLines.push(`<div style="font-weight: 600; margin-bottom: 4px;">${formattedTime}</div>`);
         }
 
-        const portfolioLabel = t('trading.chart.tooltipLabels.portfolio');
+        const assetsLabel = t('trading.chart.tooltipLabels.assets');
         if (currentVisibility.equity) {
           if (roiValue !== undefined) {
             if (
@@ -609,8 +609,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
               Number.isFinite(initialBalance) &&
               initialBalance > 0
             ) {
-              const portfolioValue = initialBalance * (1 + roiValue / 100);
-              tooltipLines.push(`<div>${portfolioLabel}: $${portfolioValue.toFixed(2)}</div>`);
+              const assetsValue = initialBalance * (1 + roiValue / 100);
+              tooltipLines.push(`<div>${assetsLabel}: $${assetsValue.toFixed(2)}</div>`);
             }
           }
         }
