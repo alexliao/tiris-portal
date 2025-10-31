@@ -90,6 +90,12 @@ export const TradingsListPage: React.FC = () => {
       return;
     }
 
+    // Navigate to wizard for real trading
+    if (type === 'real') {
+      navigate('/real-trading/create');
+      return;
+    }
+
     setIsCreateModalOpen(true);
   };
 

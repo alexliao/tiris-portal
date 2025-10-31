@@ -463,6 +463,8 @@
     "wizard": {
       "title": "Create Paper Trading",
       "subtitle": "Follow the steps below to set up your paper trading",
+      "realTitle": "Create Real Trading",
+      "realSubtitle": "Follow the steps below to set up your real trading with actual funds",
       "create": "Create Trading",
       "step1": {
         "label": "Naming",
@@ -475,6 +477,17 @@
         "paperInfoTitle": "About Paper Trading",
         "paperInfo": "This will create a paper trading with a 10,000 USDT initial balance. You can create multiple paper tradings and delete them at any time without any loss."
       },
+      "realStep1": {
+        "label": "Naming",
+        "title": "Trading Instructions",
+        "description": "Give your real trading a name",
+        "nameLabel": "Trading Name",
+        "namePlaceholder": "Enter trading name",
+        "nameHelp": "This will help you quickly identify this trading in the trading list",
+        "editableHint": "You can edit this name at any time",
+        "realInfoTitle": "About Real Trading",
+        "realInfo": "Real trading uses actual funds from your exchange account. Please ensure you have sufficient funds available and understand the risks involved."
+      },
       "step2": {
         "label": "Exchange",
         "title": "Select Exchange",
@@ -482,6 +495,14 @@
         "sandboxBadge": "Sandbox",
         "feeLabel": "Fee",
         "noExchanges": "No exchanges available"
+      },
+      "realStep2": {
+        "label": "Exchange",
+        "title": "Select Exchange Connection",
+        "description": "Choose which exchange connection to use for your real trading. Make sure the exchange has sufficient funds available. Fees for real trading are typically uncertain and determined by the exchange in real time based on your trading volume.",
+        "exchangeType": "Exchange Type",
+        "noBindings": "No exchange connections found. Please add an exchange connection first.",
+        "addExchange": "Add Exchange Connection"
       },
       "step3": {
         "label": "Frequency",
@@ -498,6 +519,16 @@
         "8hDetail1": "Verified through extensive historical backtesting to ensure maximum profitability",
         "8hDetail2": "Suitable for most market conditions",
         "8hDetail3": "Uses the same strategy as real trading"
+      },
+      "realStep3": {
+        "label": "Funds",
+        "title": "Allocate Funds",
+        "description": "Select which stablecoin to use for trading and allocate the initial funds amount for this trading",
+        "currencyLabel": "Stablecoin",
+        "fundsLabel": "Initial Funds",
+        "available": "Available Balance",
+        "allocated": "Allocated Amount",
+        "info": "You can allocate funds from your exchange account to multiple real tradings. Once a real trading is created, the allocated initial funds cannot be changed. However, once you delete a real trading, the allocated funds will be released and can be reallocated to other real tradings."
       }
     }
   },

@@ -462,6 +462,8 @@
     "wizard": {
       "title": "创建模拟交易",
       "subtitle": "按照以下步骤设置您的模拟交易",
+      "realTitle": "创建实盘交易",
+      "realSubtitle": "按照以下步骤用真实资金设置您的实盘交易",
       "create": "创建交易",
       "step1": {
         "label": "命名",
@@ -474,6 +476,17 @@
         "paperInfoTitle": "关于模拟交易",
         "paperInfo": "这将创建一个初始余额为 10,000 USDT 的模拟交易。您可以创建多个模拟交易，也可以随时删除它们，不会有任何损失。"
       },
+      "realStep1": {
+        "label": "命名",
+        "title": "交易说明",
+        "description": "给您的实盘交易命名",
+        "nameLabel": "交易名称",
+        "namePlaceholder": "输入交易名称",
+        "nameHelp": "这将帮助您在交易列表中快速识别这个交易",
+        "editableHint": "您可以在任何时候编辑此名称",
+        "realInfoTitle": "关于实盘交易",
+        "realInfo": "实盘交易使用您交易所账户中的真实资金。请确保您有足够的可用资金，并了解涉及的风险。"
+      },
       "step2": {
         "label": "交易所",
         "title": "选择交易所",
@@ -481,6 +494,14 @@
         "sandboxBadge": "沙箱",
         "feeLabel": "手续费",
         "noExchanges": "没有可用的交易所"
+      },
+      "realStep2": {
+        "label": "交易所",
+        "title": "选择交易所连接",
+        "description": "选择要用于实盘交易的交易所连接。确保该交易所有足够的可用资金。实盘交易的手续费往往并不确定，由交易所根据您的交易量实时决定。",
+        "exchangeType": "交易所类型",
+        "noBindings": "未找到交易所连接。请先添加一个交易所连接。",
+        "addExchange": "添加交易所连接"
       },
       "step3": {
         "label": "频率",
@@ -497,6 +518,16 @@
         "8hDetail1": "经过大量历史数据回测验证确保收益最大化",
         "8hDetail2": "适用于大多数市场条件",
         "8hDetail3": "和实盘交易使用相同的策略"
+      },
+      "realStep3": {
+        "label": "资金",
+        "title": "分配资金",
+        "description": "选择使用哪种稳定币进行交易，并分配本交易使用的初始资金金额",
+        "currencyLabel": "稳定币",
+        "fundsLabel": "初始资金",
+        "available": "可用余额",
+        "allocated": "分配金额",
+        "info": "您可以把您在交易所账户中的资金分配给多个实盘交易。实盘创建以后将不能改变分配的初始资金。但是删除实盘交易后，分配的资金将会被释放，可以重新分配给其他实盘交易。"
       }
     }
   },

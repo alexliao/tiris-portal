@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getExchangeBindings, createExchangeBinding, deleteExchangeBinding, updateExchangeBinding, getTradings, getRealExchanges, type ExchangeBinding, type CreateExchangeBindingRequest, type UpdateExchangeBindingRequest, type Trading, type ExchangeConfigResponse, ApiError } from '../utils/api';
-import { Plus, Trash2, Edit2, AlertCircle } from 'lucide-react';
+import { Plus, AlertCircle } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import ExchangeBindingCard from '../components/trading/ExchangeBindingCard';
 import { THEME_COLORS, getTradingIcon } from '../config/theme';
 import { getExchangeTypeName } from '../utils/exchangeNames';
 
@@ -262,101 +263,42 @@ export const ExchangesPage: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {exchanges.map((exchange) => (
-                <div
-                  key={exchange.id}
-                  className="bg-white rounded-lg shadow hover:shadow-xl transition-shadow border border-gray-200 overflow-hidden"
-                >
-                  {/* Card Header */}
-                  <div
-                    style={{
-                      background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
-                    }}
-                    className="p-4"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center flex-1 min-w-0 gap-3">
-                        <img
-                          src={`${ICON_SERVICE_BASE_URL}/icons/${exchange.exchange_type}.png`}
-                          alt={exchange.exchange_type}
-                          className="w-10 h-10 rounded-lg flex-shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-medium font-semibold text-white truncate">
-                            {getExchangeTypeName(exchange.exchange_type)}
-                          </h3>
-                          <p className="text-white/80 text-xs mt-1">
-                            {new Date(exchange.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 ml-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditExchange(exchange);
-                          }}
-                          className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
-                          title={t('exchanges.edit')}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(exchange);
-                          }}
-                          className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
-                          title={t('common.delete')}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+              {exchanges.map((exchange) => {
+                const relatedTradings = tradings.filter(t => t.exchange_binding_id === exchange.id || t.exchange_binding?.id === exchange.id);
 
-                  {/* Card Body */}
-                  <div className="p-4 flex flex-col items-center justify-center">
-                    <div className="text-center w-full">
-                      <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                        {exchange.name}
-                      </h4>
-
-                      {exchange.info?.description && (
-                        <div className="mb-4">
-                          <p className="text-sm text-gray-900">{exchange.info.description}</p>
+                return (
+                  <ExchangeBindingCard
+                    key={exchange.id}
+                    exchange={exchange}
+                    mode="edit"
+                    iconServiceBaseUrl={ICON_SERVICE_BASE_URL}
+                    displayName={getExchangeTypeName}
+                    headerSubtitle={new Date(exchange.created_at).toLocaleDateString()}
+                    description={exchange.info?.description ? <p className="text-sm text-gray-900">{exchange.info.description}</p> : undefined}
+                    tradings={
+                      relatedTradings.length > 0 ? (
+                        <div className="space-y-2">
+                          {relatedTradings.map((trading) => {
+                            const TradingIcon = getTradingIcon(trading.type);
+                            return (
+                              <Link
+                                key={trading.id}
+                                to={`/trading/${trading.id}`}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors group"
+                              >
+                                <TradingIcon className="w-4 h-4 text-gray-600 group-hover:text-gray-900 flex-shrink-0" />
+                                <span className="group-hover:text-gray-900 font-medium">{trading.name}</span>
+                              </Link>
+                            );
+                          })}
                         </div>
-                      )}
-
-                      {/* Trading List */}
-                      {tradings.filter(t => t.exchange_binding_id === exchange.id || t.exchange_binding?.id === exchange.id).length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-gray-200 w-full">
-                          <div className="space-y-2">
-                            {tradings
-                              .filter(t => t.exchange_binding_id === exchange.id || t.exchange_binding?.id === exchange.id)
-                              .map((trading) => {
-                                const TradingIcon = getTradingIcon(trading.type);
-                                return (
-                                  <Link
-                                    key={trading.id}
-                                    to={`/trading/${trading.id}`}
-                                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors group"
-                                  >
-                                    <TradingIcon className="w-4 h-4 text-gray-600 group-hover:text-gray-900 flex-shrink-0" />
-                                    <span className="group-hover:text-gray-900 font-medium">{trading.name}</span>
-                                  </Link>
-                                );
-                              })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      ) : undefined
+                    }
+                    onEdit={handleEditExchange}
+                    onDelete={handleDeleteClick}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

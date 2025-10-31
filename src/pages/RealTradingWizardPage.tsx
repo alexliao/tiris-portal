@@ -2,19 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { createPaperTrading, type CreateTradingRequest, ApiError, getPaperExchanges, type ExchangeConfigResponse } from '../utils/api';
+import { createRealTrading, type CreateTradingRequest, ApiError, getExchangeBindings, fetchExchangeBalanceForBinding, type ExchangeBinding } from '../utils/api';
 import { AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { THEME_COLORS } from '../config/theme';
-import Step1 from '../components/trading/wizard/Step1';
-import Step2 from '../components/trading/wizard/Step2';
-import Step3 from '../components/trading/wizard/Step3';
-import WizardStepIndicator from '../components/trading/wizard/WizardStepIndicator';
+import RealStep1 from '../components/trading/wizard/RealStep1';
+import RealStep2 from '../components/trading/wizard/RealStep2';
+import RealStep3 from '../components/trading/wizard/RealStep3';
+import RealWizardStepIndicator from '../components/trading/wizard/RealWizardStepIndicator';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
-export const PaperTradingWizardPage: React.FC = () => {
+export const RealTradingWizardPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -23,16 +23,19 @@ export const PaperTradingWizardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
 
   // Form data
   const [tradingName, setTradingName] = useState('');
-  const [selectedExchange, setSelectedExchange] = useState<ExchangeConfigResponse | null>(null);
-  const [selectedFrequency, setSelectedFrequency] = useState<'5m' | '8h'>('5m');
+  const [selectedExchangeBinding, setSelectedExchangeBinding] = useState<ExchangeBinding | null>(null);
+  const [quoteCurrency, setQuoteCurrency] = useState<'USDT' | 'USDC'>('USDT');
+  const [initialFunds, setInitialFunds] = useState<number>(0);
+  const [maxBalance, setMaxBalance] = useState<number>(0);
 
   // Available data
-  const [paperExchanges, setPaperExchanges] = useState<ExchangeConfigResponse[]>([]);
+  const [exchangeBindings, setExchangeBindings] = useState<ExchangeBinding[]>([]);
 
-  const colors = THEME_COLORS.paper;
+  const colors = THEME_COLORS.real;
   const Icon = colors.icon;
 
   // Generate default trading name with timestamp
@@ -59,23 +62,30 @@ export const PaperTradingWizardPage: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
       // Set default trading name with timestamp
-      setTradingName(generateDefaultName('paper'));
+      setTradingName(generateDefaultName('real'));
       fetchInitialData();
     }
   }, [isAuthenticated, authLoading]);
+
+  // Fetch exchange balance when exchange binding or quote currency changes
+  useEffect(() => {
+    if (selectedExchangeBinding && currentStep === 3) {
+      fetchExchangeBalance(selectedExchangeBinding.id, quoteCurrency);
+    }
+  }, [selectedExchangeBinding, quoteCurrency, currentStep]);
 
   const fetchInitialData = async () => {
     try {
       setIsLoadingData(true);
       setError(null);
 
-      // Fetch paper exchanges from tiris-bot API
-      const exchanges = await getPaperExchanges();
-      setPaperExchanges(exchanges);
+      // Fetch user's exchange bindings
+      const bindings = await getExchangeBindings();
+      setExchangeBindings(bindings);
 
-      // Auto-select first exchange if available
-      if (exchanges.length > 0) {
-        setSelectedExchange(exchanges[0]);
+      // Auto-select first binding if available
+      if (bindings.length > 0) {
+        setSelectedExchangeBinding(bindings[0]);
       }
     } catch (err) {
       console.error('Failed to fetch initial data:', err);
@@ -86,6 +96,31 @@ export const PaperTradingWizardPage: React.FC = () => {
       }
     } finally {
       setIsLoadingData(false);
+    }
+  };
+
+  const fetchExchangeBalance = async (exchangeBindingId: string, currency: 'USDT' | 'USDC') => {
+    try {
+      setIsLoadingBalance(true);
+      setError(null);
+
+      const accountData = await fetchExchangeBalanceForBinding(exchangeBindingId, currency);
+
+      if (accountData) {
+        const roundedBalance = Math.floor(accountData.balance);
+        setMaxBalance(roundedBalance);
+        setInitialFunds(roundedBalance); // Default to max balance, rounded to integer
+      } else {
+        setMaxBalance(0);
+        setInitialFunds(0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch exchange balance:', err);
+      // Don't show error to user, just reset values
+      setMaxBalance(0);
+      setInitialFunds(0);
+    } finally {
+      setIsLoadingBalance(false);
     }
   };
 
@@ -101,16 +136,20 @@ export const PaperTradingWizardPage: React.FC = () => {
     }
 
     if (step === 2) {
-      if (!selectedExchange) {
-        setError(t('trading.create.exchangeRequired'));
+      if (!selectedExchangeBinding) {
+        setError(t('trading.create.exchangeBindingRequired'));
         return false;
       }
       return true;
     }
 
     if (step === 3) {
-      if (!selectedFrequency) {
-        setError(t('trading.create.frequencyRequired'));
+      if (maxBalance < 10) {
+        setError(t('trading.create.insufficientFunds', { balance: maxBalance, currency: quoteCurrency, minimum: 10 }));
+        return false;
+      }
+      if (initialFunds < 10) {
+        setError(t('trading.create.minimumFundsRequired', { minimum: 10, currency: quoteCurrency }));
         return false;
       }
       return true;
@@ -139,40 +178,28 @@ export const PaperTradingWizardPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      // Determine strategy name based on frequency
-      const strategyName = selectedFrequency === '5m' ? 'TirisML.5m' : 'TirisML';
-
-      // Prepare request data for paper trading
-      // Note: exchange_binding_id is omitted for paper trading per backend spec
+      // Prepare request data for real trading
       const requestData = {
         name: tradingName,
-        type: 'paper',
+        exchange_binding_id: selectedExchangeBinding!.id,
+        type: 'real',
         info: {
-          strategy_name: strategyName,
-          // Store exchange information from tiris-bot API
-          exchange_type: selectedExchange?.type,
-          exchange_name: selectedExchange?.name,
-          exchange_ccxt_id: selectedExchange?.ccxt_id,
-          exchange_sandbox: selectedExchange?.sandbox,
-          exchange_virtual_fee: selectedExchange?.virtual_exchange_fee,
-          timeframe: selectedFrequency,
+          quote_currency: quoteCurrency,
+          initial_funds: initialFunds,
         },
       } as unknown as CreateTradingRequest;
 
-      console.log('📝 [WIZARD DEBUG] Creating paper trading with:', requestData);
+      console.log('📝 [WIZARD DEBUG] Creating real trading with:', requestData);
 
-      // Use createPaperTrading which handles the business logic:
-      // - Creates trading record with exchange info from tiris-bot
-      // - Creates two sub-accounts (ETH stock, USDT balance)
-      // - Creates initial deposit trading log (10,000 USDT default)
-      const newTrading = await createPaperTrading(requestData);
+      // Use createRealTrading which handles the business logic
+      const newTrading = await createRealTrading(requestData);
 
-      console.log('✅ [WIZARD DEBUG] Paper trading created:', newTrading);
+      console.log('✅ [WIZARD DEBUG] Real trading created:', newTrading);
 
-      // Navigate back to paper trading list
-      navigate('/tradings/paper');
+      // Navigate back to real trading list
+      navigate('/tradings/real');
     } catch (err) {
-      console.error('Failed to create paper trading:', err);
+      console.error('Failed to create real trading:', err);
       let errorMessage = 'Unknown error';
       if (err instanceof ApiError) {
         errorMessage = err.message;
@@ -223,15 +250,15 @@ export const PaperTradingWizardPage: React.FC = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               <div className="flex items-center">
                 <button
-                  onClick={() => navigate('/tradings/paper')}
+                  onClick={() => navigate('/tradings/real')}
                   className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors cursor-pointer"
                   title={t('common.back')}
                 >
                   <Icon className="w-8 h-8" />
                 </button>
                 <div className="ml-4">
-                  <h1 className="text-2xl font-bold">{t('trading.wizard.title')}</h1>
-                  <p className="text-white/90 mt-1">{t('trading.wizard.subtitle')}</p>
+                  <h1 className="text-2xl font-bold">{t('trading.wizard.realTitle')}</h1>
+                  <p className="text-white/90 mt-1">{t('trading.wizard.realSubtitle')}</p>
                 </div>
               </div>
             </div>
@@ -263,20 +290,20 @@ export const PaperTradingWizardPage: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex items-center mb-6">
               <button
-                onClick={() => navigate('/tradings/paper')}
+                onClick={() => navigate('/tradings/real')}
                 className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors cursor-pointer"
                 title={t('common.back')}
               >
                 <Icon className="w-8 h-8" />
               </button>
               <div className="ml-4">
-                <h1 className="text-2xl font-bold">{t('trading.wizard.title')}</h1>
-                <p className="text-white/90 mt-1">{t('trading.wizard.subtitle')}</p>
+                <h1 className="text-2xl font-bold">{t('trading.wizard.realTitle')}</h1>
+                <p className="text-white/90 mt-1">{t('trading.wizard.realSubtitle')}</p>
               </div>
             </div>
 
             {/* Step Indicator */}
-            <WizardStepIndicator currentStep={currentStep} totalSteps={3} />
+            <RealWizardStepIndicator currentStep={currentStep} />
           </div>
         </div>
 
@@ -296,34 +323,36 @@ export const PaperTradingWizardPage: React.FC = () => {
           {/* Wizard Content */}
           <div className="w-full min-h-[500px]">
             {currentStep === 1 && (
-              <Step1
+              <RealStep1
                 tradingName={tradingName}
                 setTradingName={setTradingName}
-                tradingDescription=""
-                setTradingDescription={() => {}}
               />
             )}
 
             {currentStep === 2 && (
-              <Step2
-                exchanges={paperExchanges}
-                selectedExchange={selectedExchange}
-                setSelectedExchange={setSelectedExchange}
+              <RealStep2
+                exchangeBindings={exchangeBindings}
+                selectedExchangeBinding={selectedExchangeBinding}
+                setSelectedExchangeBinding={setSelectedExchangeBinding}
                 iconServiceBaseUrl={ICON_SERVICE_BASE_URL}
               />
             )}
 
             {currentStep === 3 && (
-              <Step3
-                selectedFrequency={selectedFrequency}
-                setSelectedFrequency={setSelectedFrequency}
+              <RealStep3
+                quoteCurrency={quoteCurrency}
+                setQuoteCurrency={setQuoteCurrency}
+                initialFunds={initialFunds}
+                setInitialFunds={setInitialFunds}
+                maxBalance={maxBalance}
+                isLoadingBalance={isLoadingBalance}
               />
             )}
 
             {/* Navigation Buttons */}
             <div className="mt-8 flex items-center justify-between gap-4">
               <button
-                onClick={currentStep === 1 ? () => navigate('/tradings/paper') : handlePreviousStep}
+                onClick={currentStep === 1 ? () => navigate('/tradings/real') : handlePreviousStep}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
               >
                 {currentStep === 1 ? (
@@ -379,4 +408,4 @@ export const PaperTradingWizardPage: React.FC = () => {
   );
 };
 
-export default PaperTradingWizardPage;
+export default RealTradingWizardPage;

@@ -1,20 +1,19 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-interface WizardStepIndicatorProps {
+interface RealWizardStepIndicatorProps {
   currentStep: number;
-  totalSteps?: number;
 }
 
-export const WizardStepIndicator: React.FC<WizardStepIndicatorProps> = ({
+export const RealWizardStepIndicator: React.FC<RealWizardStepIndicatorProps> = ({
   currentStep,
 }) => {
   const { t } = useTranslation();
 
   const steps = [
-    { number: 1, label: t('trading.wizard.step1.label') || 'Trading Details' },
-    { number: 2, label: t('trading.wizard.step2.label') || 'Select Exchange' },
-    { number: 3, label: t('trading.wizard.step3.label') || 'Choose Frequency' },
+    { number: 1, label: t('trading.wizard.realStep1.label') || 'Trading Details' },
+    { number: 2, label: t('trading.wizard.realStep2.label') || 'Select Exchange' },
+    { number: 3, label: t('trading.wizard.realStep3.label') || 'Allocate Funds' },
   ];
 
   return (
@@ -53,4 +52,4 @@ export const WizardStepIndicator: React.FC<WizardStepIndicatorProps> = ({
   );
 };
 
-export default WizardStepIndicator;
+export default RealWizardStepIndicator;
