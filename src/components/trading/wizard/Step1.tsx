@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Info } from 'lucide-react';
 
@@ -14,15 +14,6 @@ export const Step1: React.FC<Step1Props> = ({
   setTradingName,
 }) => {
   const { t } = useTranslation();
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    // Focus the input and select all text when component mounts
-    if (inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, []);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -41,7 +32,6 @@ export const Step1: React.FC<Step1Props> = ({
             <span className="text-red-500 ml-1">*</span>
           </label>
           <input
-            ref={inputRef}
             id="tradingName"
             type="text"
             value={tradingName}
