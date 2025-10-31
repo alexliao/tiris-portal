@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, deleteTrading, type Trading, ApiError, getBots, type Bot } from '../utils/api';
-import { AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Plus, Trash2, Zap } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import CreateTradingModal from '../components/trading/CreateTradingModal';
@@ -363,9 +363,12 @@ export const TradingsListPage: React.FC = () => {
                                   : trading.exchange_binding?.name}
                               </span>
                             )}
-                            {(bot?.record.spec.params?.timeframe || trading.info?.timeframe) && (
-                              <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/90">
-                                {String(bot?.record.spec.params?.timeframe || trading.info?.timeframe)}
+                            {(bot?.record.spec.params?.timeframe || trading.info?.timeframe) === '5m' && (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/90 cursor-help"
+                                title={t('trading.badges.minuteLevelTooltip')}
+                              >
+                                <Zap className="w-3.5 h-3.5" />
                               </span>
                             )}
                             {bot && (

@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading, deleteTrading, updateTrading } from '../utils/api';
-import { AlertCircle, Play, Square, Loader2, Copy, Check, Trash2 } from 'lucide-react';
+import { AlertCircle, Play, Square, Loader2, Copy, Check, Trash2, Zap } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
@@ -991,9 +991,12 @@ export const TradingDetailPage: React.FC = () => {
                           : exchangeBinding?.name}
                       </span>
                     ) : null}
-                    {(bot?.record.spec.params?.timeframe || trading.info?.timeframe) && (
-                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80">
-                        {String(bot?.record.spec.params?.timeframe || trading.info?.timeframe)}
+                    {(bot?.record.spec.params?.timeframe || trading.info?.timeframe) === '5m' && (
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80 cursor-help"
+                        title={t('trading.badges.minuteLevelTooltip')}
+                      >
+                        <Zap className="w-3.5 h-3.5" />
                       </span>
                     )}
                   </div>

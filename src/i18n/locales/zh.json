@@ -490,6 +490,9 @@
       "8h": "8小时",
       "1d": "1天"
     },
+    "badges": {
+      "minuteLevelTooltip": "这是一个分钟级别的交易用于演示"
+    },
     "wizard": {
       "title": "创建模拟交易",
       "subtitle": "按照以下步骤设置您的模拟交易",

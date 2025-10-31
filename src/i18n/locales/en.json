@@ -491,6 +491,9 @@
       "8h": "8h",
       "1d": "1d"
     },
+    "badges": {
+      "minuteLevelTooltip": "It's a minute-level trading for demonstration"
+    },
     "wizard": {
       "title": "Create Paper Trading",
       "subtitle": "Follow the steps below to set up your paper trading",
