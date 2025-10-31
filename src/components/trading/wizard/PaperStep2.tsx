@@ -3,14 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { Check } from 'lucide-react';
 import type { ExchangeConfigResponse } from '../../../utils/api';
 
-interface Step2Props {
+interface PaperStep2Props {
   exchanges: ExchangeConfigResponse[];
   selectedExchange: ExchangeConfigResponse | null;
   setSelectedExchange: (exchange: ExchangeConfigResponse) => void;
   iconServiceBaseUrl: string;
 }
 
-export const Step2: React.FC<Step2Props> = ({
+export const PaperStep2: React.FC<PaperStep2Props> = ({
   exchanges,
   selectedExchange,
   setSelectedExchange,
@@ -95,4 +95,4 @@ export const Step2: React.FC<Step2Props> = ({
   );
 };
 
-export default Step2;
+export default PaperStep2;

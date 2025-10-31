@@ -2,12 +2,12 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Zap, TrendingUp } from 'lucide-react';
 
-interface Step3Props {
+interface PaperStep3Props {
   selectedFrequency: '5m' | '8h';
   setSelectedFrequency: (frequency: '5m' | '8h') => void;
 }
 
-export const Step3: React.FC<Step3Props> = ({
+export const PaperStep3: React.FC<PaperStep3Props> = ({
   selectedFrequency,
   setSelectedFrequency,
 }) => {
@@ -104,4 +104,4 @@ export const Step3: React.FC<Step3Props> = ({
   );
 };
 
-export default Step3;
+export default PaperStep3;

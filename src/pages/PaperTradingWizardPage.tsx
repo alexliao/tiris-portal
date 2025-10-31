@@ -7,10 +7,10 @@ import { AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { THEME_COLORS } from '../config/theme';
-import Step1 from '../components/trading/wizard/Step1';
-import Step2 from '../components/trading/wizard/Step2';
-import Step3 from '../components/trading/wizard/Step3';
-import WizardStepIndicator from '../components/trading/wizard/WizardStepIndicator';
+import PaperStep1 from '../components/trading/wizard/PaperStep1';
+import PaperStep2 from '../components/trading/wizard/PaperStep2';
+import PaperStep3 from '../components/trading/wizard/PaperStep3';
+import PaperWizardStepIndicator from '../components/trading/wizard/PaperWizardStepIndicator';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
@@ -276,7 +276,7 @@ export const PaperTradingWizardPage: React.FC = () => {
             </div>
 
             {/* Step Indicator */}
-            <WizardStepIndicator currentStep={currentStep} totalSteps={3} />
+            <PaperWizardStepIndicator currentStep={currentStep} totalSteps={3} />
           </div>
         </div>
 
@@ -296,7 +296,7 @@ export const PaperTradingWizardPage: React.FC = () => {
           {/* Wizard Content */}
           <div className="w-full min-h-[500px]">
             {currentStep === 1 && (
-              <Step1
+              <PaperStep1
                 tradingName={tradingName}
                 setTradingName={setTradingName}
                 tradingDescription=""
@@ -305,7 +305,7 @@ export const PaperTradingWizardPage: React.FC = () => {
             )}
 
             {currentStep === 2 && (
-              <Step2
+              <PaperStep2
                 exchanges={paperExchanges}
                 selectedExchange={selectedExchange}
                 setSelectedExchange={setSelectedExchange}
@@ -314,7 +314,7 @@ export const PaperTradingWizardPage: React.FC = () => {
             )}
 
             {currentStep === 3 && (
-              <Step3
+              <PaperStep3
                 selectedFrequency={selectedFrequency}
                 setSelectedFrequency={setSelectedFrequency}
               />

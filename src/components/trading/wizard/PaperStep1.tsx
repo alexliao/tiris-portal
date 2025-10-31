@@ -2,14 +2,14 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Info } from 'lucide-react';
 
-interface Step1Props {
+interface PaperStep1Props {
   tradingName: string;
   setTradingName: (value: string) => void;
   tradingDescription: string;
   setTradingDescription: (value: string) => void;
 }
 
-export const Step1: React.FC<Step1Props> = ({
+export const PaperStep1: React.FC<PaperStep1Props> = ({
   tradingName,
   setTradingName,
 }) => {
@@ -63,4 +63,4 @@ export const Step1: React.FC<Step1Props> = ({
   );
 };
 
-export default Step1;
+export default PaperStep1;

@@ -1,12 +1,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-interface WizardStepIndicatorProps {
+interface PaperWizardStepIndicatorProps {
   currentStep: number;
   totalSteps?: number;
 }
 
-export const WizardStepIndicator: React.FC<WizardStepIndicatorProps> = ({
+export const PaperWizardStepIndicator: React.FC<PaperWizardStepIndicatorProps> = ({
   currentStep,
 }) => {
   const { t } = useTranslation();
@@ -53,4 +53,4 @@ export const WizardStepIndicator: React.FC<WizardStepIndicatorProps> = ({
   );
 };
 
-export default WizardStepIndicator;
+export default PaperWizardStepIndicator;
