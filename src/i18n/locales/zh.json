@@ -506,18 +506,18 @@
       "paperStep3": {
         "label": "频率",
         "title": "选择交易频率",
-        "description": "建议先选择5分钟频率，熟悉界面和操作，然后再选择8小时频率进行真实策略模拟",
+        "description": "建议先选择分钟级频率，熟悉界面和操作，然后再选择小时级频率模拟真实交易",
         "strategyLabel": "策略名称",
-        "5mLabel": "5分钟",
-        "5mDescription": "快速交易适合演示和学习",
+        "5mLabel": "分钟级",
+        "5mDescription": "数分钟进行一次交易",
         "5mDetail1": "便于快速看到买卖操作的过程，了解界面的使用",
         "5mDetail2": "由于交易频率太高，手续费将会远远超过可能的盈利",
         "5mDetail3": "不可用于真实交易",
-        "8hLabel": "8小时",
-        "8hDescription": "真实交易策略采用的频率",
+        "8hLabel": "小时级",
+        "8hDescription": "数小时进行一次交易",
         "8hDetail1": "经过大量历史数据回测验证确保收益最大化",
         "8hDetail2": "适用于大多数市场条件",
-        "8hDetail3": "和实盘交易使用相同的策略"
+        "8hDetail3": "和实盘交易使用相同的频率"
       },
       "realStep3": {
         "label": "资金",

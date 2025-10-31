@@ -507,18 +507,18 @@
       "paperStep3": {
         "label": "Frequency",
         "title": "Choose Trading Frequency",
-        "description": "It is recommended to start with 5-minute frequency to familiarize yourself with the interface and operations, then select 8-hour frequency for real strategy simulation",
+        "description": "It is recommended to start with minute-level frequency to familiarize yourself with the interface and operations, then select hour-level frequency for real trading simulation",
         "strategyLabel": "Strategy Name",
-        "5mLabel": "5 Minutes",
-        "5mDescription": "Fast trading suitable for demo and learning",
+        "5mLabel": "Minute-level",
+        "5mDescription": "Trading occurs every several minutes",
         "5mDetail1": "Easy to see the buy/sell process quickly and learn how to use the interface",
         "5mDetail2": "Due to high trading frequency, transaction fees will far exceed potential profits",
         "5mDetail3": "Not suitable for real trading",
-        "8hLabel": "8 Hours",
-        "8hDescription": "The frequency used by the real trading strategy",
+        "8hLabel": "Hour-level",
+        "8hDescription": "Trading occurs every several hours",
         "8hDetail1": "Verified through extensive historical backtesting to ensure maximum profitability",
         "8hDetail2": "Suitable for most market conditions",
-        "8hDetail3": "Uses the same strategy as real trading"
+        "8hDetail3": "Uses the same frequency as real trading"
       },
       "realStep3": {
         "label": "Funds",
