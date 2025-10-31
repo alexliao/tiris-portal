@@ -72,8 +72,8 @@ export const ExchangesPage: React.FC = () => {
   }, [isAuthenticated, authLoading]);
 
   const handleCreateExchange = () => {
-    setEditingExchange(null);
-    setIsCreateModalOpen(true);
+    // Navigate to the exchange binding wizard instead of opening modal
+    navigate('/exchanges/create');
   };
 
   const handleEditExchange = (exchange: ExchangeBinding) => {

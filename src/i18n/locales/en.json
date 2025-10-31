@@ -221,7 +221,7 @@
     "noExchanges": "No exchanges connected",
     "noExchangesDescription": "Add your first exchange connection to start live trading",
     "defaultName": "{{exchange}} account",
-    "name": "Exchange Name",
+    "name": "Connection Name",
     "namePlaceholder": "e.g., My Binance Account",
     "nameRequired": "Exchange name is required",
     "exchange": "Exchange",
@@ -263,7 +263,38 @@
     "loadAvailableExchangesError": "Failed to load available exchanges",
     "leaveEmptyToKeepCurrent": "leave empty to keep current",
     "loadingExchanges": "Loading exchanges...",
-    "noExchangesAvailable": "No exchanges available"
+    "noExchangesAvailable": "No exchanges available",
+    "wizard": {
+      "title": "Create Exchange Connection",
+      "subtitle": "Follow the steps below to connect your exchange account",
+      "step1": {
+        "label": "Select Exchange",
+        "title": "Select Exchange Type",
+        "description": "Choose which exchange you want to connect. You can connect to multiple exchanges to diversify your trading.",
+        "exchangeRequired": "Please select an exchange type",
+        "sandboxBadge": "Sandbox",
+        "noExchanges": "No exchanges available"
+      },
+      "step2": {
+        "label": "API Credentials",
+        "title": "Enter API Credentials",
+        "description": "Enter your {{exchange}} API credentials. You can find these in your {{exchange}} account settings.",
+        "apiKeyHelp": "Your API key is used to authenticate with {{exchange}}",
+        "apiSecretHelp": "Your API secret is used to sign requests. Keep it secure and never share it.",
+        "passphraseHelp": "Some exchanges (like OKX) require an additional passphrase",
+        "securityTitle": "Security Notice",
+        "securityInfo": "We never store your full API secret. Your API credentials are only used to authenticate requests to your exchange. You can revoke these credentials at any time from your exchange account settings."
+      },
+      "step3": {
+        "label": "Connection Details",
+        "title": "Connection Details",
+        "description": "Give your exchange connection a name and optionally add a description to help you identify it later.",
+        "nameHelp": "This will help you identify this connection when creating trading strategies",
+        "descriptionHelp": "Add notes about this connection, such as which account it represents or its purpose",
+        "infoTitle": "About Your Connection",
+        "info": "Once created, you can use this exchange connection for multiple trading strategies. You can edit the connection name and description at any time, but the API credentials cannot be changed after creation. If you need to update credentials, you'll need to create a new connection."
+      }
+    }
   },
   "trading": {
     "detail": {

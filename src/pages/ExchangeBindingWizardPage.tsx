@@ -1,0 +1,365 @@
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { createExchangeBinding, getRealExchanges, type ExchangeConfigResponse, ApiError } from '../utils/api';
+import { AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import Navigation from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
+import { THEME_COLORS } from '../config/theme';
+import ExchangeStep1 from '../components/trading/wizard/ExchangeStep1';
+import ExchangeStep2 from '../components/trading/wizard/ExchangeStep2';
+import ExchangeStep3 from '../components/trading/wizard/ExchangeStep3';
+import ExchangeWizardStepIndicator from '../components/trading/wizard/ExchangeWizardStepIndicator';
+
+const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
+
+export const ExchangeBindingWizardPage: React.FC = () => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  // Form data
+  const [selectedExchange, setSelectedExchange] = useState<ExchangeConfigResponse | null>(null);
+  const [apiKey, setApiKey] = useState('');
+  const [apiSecret, setApiSecret] = useState('');
+  const [passphrase, setPassphrase] = useState('');
+  const [connectionName, setConnectionName] = useState('');
+  const [description, setDescription] = useState('');
+
+  // Available data
+  const [exchanges, setExchanges] = useState<ExchangeConfigResponse[]>([]);
+
+  const colors = THEME_COLORS.exchanges;
+  const Icon = colors.icon;
+
+  // Initialize form data on component mount
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      fetchInitialData();
+    }
+  }, [isAuthenticated, authLoading]);
+
+  const fetchInitialData = async () => {
+    try {
+      setIsLoadingData(true);
+      setError(null);
+
+      // Fetch real exchanges from tiris-bot API
+      const exchangesData = await getRealExchanges();
+      setExchanges(exchangesData);
+
+      // Auto-select first exchange if available
+      if (exchangesData.length > 0) {
+        setSelectedExchange(exchangesData[0]);
+        // Set default connection name
+        setConnectionName(t('exchanges.defaultName', { exchange: exchangesData[0].name }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch initial data:', err);
+      if (err instanceof ApiError) {
+        setError(t('exchanges.loadAvailableExchangesError', { error: err.message }));
+      } else {
+        setError(t('exchanges.loadAvailableExchangesError'));
+      }
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  const validateStep = (step: number): boolean => {
+    setError(null);
+
+    if (step === 1) {
+      if (!selectedExchange) {
+        setError(t('exchanges.wizard.step1.exchangeRequired'));
+        return false;
+      }
+      return true;
+    }
+
+    if (step === 2) {
+      if (!apiKey.trim()) {
+        setError(t('exchanges.apiKeyRequired'));
+        return false;
+      }
+      if (!apiSecret.trim()) {
+        setError(t('exchanges.apiSecretRequired'));
+        return false;
+      }
+      return true;
+    }
+
+    if (step === 3) {
+      if (!connectionName.trim()) {
+        setError(t('exchanges.nameRequired'));
+        return false;
+      }
+      return true;
+    }
+
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePreviousStep = () => {
+    setError(null);
+    setCurrentStep(currentStep - 1);
+  };
+
+  const handleSubmit = async () => {
+    if (!validateStep(currentStep)) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Prepare request data
+      const trimmedPassphrase = passphrase.trim();
+      const request = {
+        name: connectionName,
+        exchange_type: selectedExchange!.type,
+        api_key: apiKey,
+        api_secret: apiSecret,
+        info: {
+          testnet: false,
+          description: description,
+          ...(trimmedPassphrase ? { passphrase: trimmedPassphrase } : {}),
+        },
+      };
+
+      console.log('📝 [EXCHANGE WIZARD DEBUG] Creating exchange binding with:', request);
+
+      // Create the exchange binding
+      await createExchangeBinding(request);
+
+      console.log('✅ [EXCHANGE WIZARD DEBUG] Exchange binding created successfully');
+
+      // Navigate back to exchanges list
+      navigate('/exchanges');
+    } catch (err) {
+      console.error('Failed to create exchange binding:', err);
+      let errorMessage = 'Unknown error';
+      if (err instanceof ApiError) {
+        errorMessage = err.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      setError(t('exchanges.createFailed', { error: errorMessage }));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.accessDenied')}</h1>
+          <p className="text-gray-600 mb-4">{t('dashboard.needSignIn')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoadingData) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="pt-20">
+          <div
+            style={{
+              background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+            }}
+            className="text-white shadow-lg"
+          >
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="flex items-center">
+                <button
+                  onClick={() => navigate('/exchanges')}
+                  className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors cursor-pointer"
+                  title={t('common.back')}
+                >
+                  <Icon className="w-8 h-8" />
+                </button>
+                <div className="ml-4">
+                  <h1 className="text-2xl font-bold">{t('exchanges.wizard.title')}</h1>
+                  <p className="text-white/90 mt-1">{t('exchanges.wizard.subtitle')}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">{t('common.loading')}</p>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      <div className="pt-20">
+        {/* Header with Wizard Title */}
+        <div
+          style={{
+            background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+          }}
+          className="text-white shadow-lg"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex items-center mb-6">
+              <button
+                onClick={() => navigate('/exchanges')}
+                className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors cursor-pointer"
+                title={t('common.back')}
+              >
+                <Icon className="w-8 h-8" />
+              </button>
+              <div className="ml-4">
+                <h1 className="text-2xl font-bold">{t('exchanges.wizard.title')}</h1>
+                <p className="text-white/90 mt-1">{t('exchanges.wizard.subtitle')}</p>
+              </div>
+            </div>
+
+            {/* Step Indicator */}
+            <ExchangeWizardStepIndicator currentStep={currentStep} />
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 px-6 py-4 bg-red-50 border-l-4 border-red-400 rounded-lg">
+              <div className="flex">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <div className="ml-3">
+                  <p className="text-red-800">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Wizard Content */}
+          <div className="w-full min-h-[500px]">
+            {currentStep === 1 && (
+              <ExchangeStep1
+                exchanges={exchanges}
+                selectedExchange={selectedExchange}
+                setSelectedExchange={setSelectedExchange}
+                iconServiceBaseUrl={ICON_SERVICE_BASE_URL}
+              />
+            )}
+
+            {currentStep === 2 && (
+              <ExchangeStep2
+                apiKey={apiKey}
+                setApiKey={setApiKey}
+                apiSecret={apiSecret}
+                setApiSecret={setApiSecret}
+                passphrase={passphrase}
+                setPassphrase={setPassphrase}
+                exchangeName={selectedExchange?.name || ''}
+              />
+            )}
+
+            {currentStep === 3 && (
+              <ExchangeStep3
+                connectionName={connectionName}
+                setConnectionName={setConnectionName}
+                description={description}
+                setDescription={setDescription}
+              />
+            )}
+
+            {/* Navigation Buttons */}
+            <div className="mt-8 flex items-center justify-between gap-4">
+              <button
+                onClick={currentStep === 1 ? () => navigate('/exchanges') : handlePreviousStep}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                {currentStep === 1 ? (
+                  <>{t('common.cancel')}</>
+                ) : (
+                  <>
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    {t('common.previous')}
+                  </>
+                )}
+              </button>
+
+              <div className="flex-1" />
+
+              {currentStep === 3 ? (
+                <button
+                  onClick={handleSubmit}
+                  disabled={isLoading}
+                  style={{
+                    background: isLoading
+                      ? '#ccc'
+                      : `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+                  }}
+                  className="inline-flex items-center px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {t('common.creating')}
+                    </>
+                  ) : (
+                    <>{t('exchanges.createExchange')}</>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={handleNextStep}
+                  style={{
+                    background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+                  }}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white hover:opacity-90 transition-opacity"
+                >
+                  {t('common.next')}
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
+export default ExchangeBindingWizardPage;

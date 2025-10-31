@@ -8,6 +8,7 @@ import DashboardPage from './pages/DashboardPage';
 import TradingsListPage from './pages/TradingsListPage';
 import TradingDetailPage from './pages/TradingDetailPage';
 import ExchangesPage from './pages/ExchangesPage';
+import ExchangeBindingWizardPage from './pages/ExchangeBindingWizardPage';
 import PaperTradingWizardPage from './pages/PaperTradingWizardPage';
 import RealTradingWizardPage from './pages/RealTradingWizardPage';
 import { OAuthCallback } from './pages/auth/OAuthCallback';
@@ -27,6 +28,7 @@ function App() {
             <Route path="/paper-trading/create" element={<PaperTradingWizardPage />} />
             <Route path="/real-trading/create" element={<RealTradingWizardPage />} />
             <Route path="/exchanges" element={<ExchangesPage />} />
+            <Route path="/exchanges/create" element={<ExchangeBindingWizardPage />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
           </Routes>
           <ToastContainer />
