@@ -498,7 +498,7 @@
       "create": "创建交易",
       "paperStep1": {
         "label": "命名",
-        "title": "交易说明",
+        "title": "命名",
         "description": "给您的模拟交易命名",
         "nameLabel": "交易名称",
         "namePlaceholder": "输入交易名称",
@@ -509,7 +509,7 @@
       },
       "realStep1": {
         "label": "命名",
-        "title": "交易说明",
+        "title": "命名",
         "description": "给您的实盘交易命名",
         "nameLabel": "交易名称",
         "namePlaceholder": "输入交易名称",

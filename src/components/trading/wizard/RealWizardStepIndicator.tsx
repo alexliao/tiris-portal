@@ -11,9 +11,9 @@ export const RealWizardStepIndicator: React.FC<RealWizardStepIndicatorProps> = (
   const { t } = useTranslation();
 
   const steps = [
-    { number: 1, label: t('trading.wizard.realStep1.label') || 'Trading Details' },
-    { number: 2, label: t('trading.wizard.realStep2.label') || 'Select Exchange' },
-    { number: 3, label: t('trading.wizard.realStep3.label') || 'Allocate Funds' },
+    { number: 1, label: t('trading.wizard.realStep2.label') || 'Select Exchange' },
+    { number: 2, label: t('trading.wizard.realStep3.label') || 'Allocate Funds' },
+    { number: 3, label: t('trading.wizard.realStep1.label') || 'Trading Details' },
   ];
 
   return (

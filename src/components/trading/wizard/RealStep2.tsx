@@ -47,7 +47,7 @@ export const RealStep2: React.FC<RealStep2Props> = ({
         <div className="text-center py-12">
           <p className="text-gray-600 mb-4">{t('trading.wizard.realStep2.noBindings')}</p>
           <a
-            href="/exchanges"
+            href="/exchanges/create"
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
             {t('trading.wizard.realStep2.addExchange')}

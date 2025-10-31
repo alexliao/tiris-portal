@@ -499,7 +499,7 @@
       "create": "Create Trading",
       "paperStep1": {
         "label": "Naming",
-        "title": "Trading Instructions",
+        "title": "Naming",
         "description": "Give your paper trading a name",
         "nameLabel": "Trading Name",
         "namePlaceholder": "Enter trading name",
@@ -510,7 +510,7 @@
       },
       "realStep1": {
         "label": "Naming",
-        "title": "Trading Instructions",
+        "title": "Naming",
         "description": "Give your real trading a name",
         "nameLabel": "Trading Name",
         "namePlaceholder": "Enter trading name",

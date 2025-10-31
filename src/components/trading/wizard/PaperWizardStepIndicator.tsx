@@ -12,9 +12,9 @@ export const PaperWizardStepIndicator: React.FC<PaperWizardStepIndicatorProps> =
   const { t } = useTranslation();
 
   const steps = [
-    { number: 1, label: t('trading.wizard.paperStep1.label') || 'Trading Details' },
-    { number: 2, label: t('trading.wizard.paperStep2.label') || 'Select Exchange' },
-    { number: 3, label: t('trading.wizard.paperStep3.label') || 'Choose Frequency' },
+    { number: 1, label: t('trading.wizard.paperStep2.label') || 'Select Exchange' },
+    { number: 2, label: t('trading.wizard.paperStep3.label') || 'Choose Frequency' },
+    { number: 3, label: t('trading.wizard.paperStep1.label') || 'Trading Details' },
   ];
 
   return (

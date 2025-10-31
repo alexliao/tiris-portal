@@ -93,14 +93,6 @@ export const PaperTradingWizardPage: React.FC = () => {
     setError(null);
 
     if (step === 1) {
-      if (!tradingName.trim()) {
-        setError(t('trading.create.nameRequired'));
-        return false;
-      }
-      return true;
-    }
-
-    if (step === 2) {
       if (!selectedExchange) {
         setError(t('trading.create.exchangeRequired'));
         return false;
@@ -108,9 +100,17 @@ export const PaperTradingWizardPage: React.FC = () => {
       return true;
     }
 
-    if (step === 3) {
+    if (step === 2) {
       if (!selectedFrequency) {
         setError(t('trading.create.frequencyRequired'));
+        return false;
+      }
+      return true;
+    }
+
+    if (step === 3) {
+      if (!tradingName.trim()) {
+        setError(t('trading.create.nameRequired'));
         return false;
       }
       return true;
@@ -296,15 +296,6 @@ export const PaperTradingWizardPage: React.FC = () => {
           {/* Wizard Content */}
           <div className="w-full min-h-[500px]">
             {currentStep === 1 && (
-              <PaperStep1
-                tradingName={tradingName}
-                setTradingName={setTradingName}
-                tradingDescription=""
-                setTradingDescription={() => {}}
-              />
-            )}
-
-            {currentStep === 2 && (
               <PaperStep2
                 exchanges={paperExchanges}
                 selectedExchange={selectedExchange}
@@ -313,10 +304,19 @@ export const PaperTradingWizardPage: React.FC = () => {
               />
             )}
 
-            {currentStep === 3 && (
+            {currentStep === 2 && (
               <PaperStep3
                 selectedFrequency={selectedFrequency}
                 setSelectedFrequency={setSelectedFrequency}
+              />
+            )}
+
+            {currentStep === 3 && (
+              <PaperStep1
+                tradingName={tradingName}
+                setTradingName={setTradingName}
+                tradingDescription=""
+                setTradingDescription={() => {}}
               />
             )}
 

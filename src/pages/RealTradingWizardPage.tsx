@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { createRealTrading, type CreateTradingRequest, ApiError, getExchangeBindings, fetchExchangeBalanceForBinding, type ExchangeBinding } from '../utils/api';
 import { AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -18,6 +18,8 @@ export const RealTradingWizardPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const exchangeIdParam = searchParams.get('exchangeId');
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,11 +67,11 @@ export const RealTradingWizardPage: React.FC = () => {
       setTradingName(generateDefaultName('real'));
       fetchInitialData();
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading, exchangeIdParam]);
 
   // Fetch exchange balance when exchange binding or quote currency changes
   useEffect(() => {
-    if (selectedExchangeBinding && currentStep === 3) {
+    if (selectedExchangeBinding && currentStep === 2) {
       fetchExchangeBalance(selectedExchangeBinding.id, quoteCurrency);
     }
   }, [selectedExchangeBinding, quoteCurrency, currentStep]);
@@ -83,8 +85,17 @@ export const RealTradingWizardPage: React.FC = () => {
       const bindings = await getExchangeBindings();
       setExchangeBindings(bindings);
 
-      // Auto-select first binding if available
-      if (bindings.length > 0) {
+      // If an exchange ID is provided as a query parameter, pre-select it
+      if (exchangeIdParam) {
+        const selectedBinding = bindings.find(b => b.id === exchangeIdParam);
+        if (selectedBinding) {
+          setSelectedExchangeBinding(selectedBinding);
+        } else if (bindings.length > 0) {
+          // Fallback to first binding if the specified one is not found
+          setSelectedExchangeBinding(bindings[0]);
+        }
+      } else if (bindings.length > 0) {
+        // Auto-select first binding if available and no exchange ID provided
         setSelectedExchangeBinding(bindings[0]);
       }
     } catch (err) {
@@ -128,14 +139,6 @@ export const RealTradingWizardPage: React.FC = () => {
     setError(null);
 
     if (step === 1) {
-      if (!tradingName.trim()) {
-        setError(t('trading.create.nameRequired'));
-        return false;
-      }
-      return true;
-    }
-
-    if (step === 2) {
       if (!selectedExchangeBinding) {
         setError(t('trading.create.exchangeBindingRequired'));
         return false;
@@ -143,13 +146,21 @@ export const RealTradingWizardPage: React.FC = () => {
       return true;
     }
 
-    if (step === 3) {
+    if (step === 2) {
       if (maxBalance < 10) {
         setError(t('trading.create.insufficientFunds', { balance: maxBalance, currency: quoteCurrency, minimum: 10 }));
         return false;
       }
       if (initialFunds < 10) {
         setError(t('trading.create.minimumFundsRequired', { minimum: 10, currency: quoteCurrency }));
+        return false;
+      }
+      return true;
+    }
+
+    if (step === 3) {
+      if (!tradingName.trim()) {
+        setError(t('trading.create.nameRequired'));
         return false;
       }
       return true;
@@ -323,13 +334,6 @@ export const RealTradingWizardPage: React.FC = () => {
           {/* Wizard Content */}
           <div className="w-full min-h-[500px]">
             {currentStep === 1 && (
-              <RealStep1
-                tradingName={tradingName}
-                setTradingName={setTradingName}
-              />
-            )}
-
-            {currentStep === 2 && (
               <RealStep2
                 exchangeBindings={exchangeBindings}
                 selectedExchangeBinding={selectedExchangeBinding}
@@ -338,7 +342,7 @@ export const RealTradingWizardPage: React.FC = () => {
               />
             )}
 
-            {currentStep === 3 && (
+            {currentStep === 2 && (
               <RealStep3
                 quoteCurrency={quoteCurrency}
                 setQuoteCurrency={setQuoteCurrency}
@@ -346,6 +350,13 @@ export const RealTradingWizardPage: React.FC = () => {
                 setInitialFunds={setInitialFunds}
                 maxBalance={maxBalance}
                 isLoadingBalance={isLoadingBalance}
+              />
+            )}
+
+            {currentStep === 3 && (
+              <RealStep1
+                tradingName={tradingName}
+                setTradingName={setTradingName}
               />
             )}
 
