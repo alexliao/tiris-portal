@@ -271,7 +271,7 @@ export const ExchangesPage: React.FC = () => {
                     key={exchange.id}
                     type="button"
                     onClick={() => navigate(`/real-trading/create?exchangeId=${exchange.id}&step=1`)}
-                    className="w-full text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg"
+                    className="w-full text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg self-start"
                   >
                     <ExchangeBindingCard
                       exchange={exchange}
