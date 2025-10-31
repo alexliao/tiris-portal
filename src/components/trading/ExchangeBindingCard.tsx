@@ -130,9 +130,9 @@ export const ExchangeBindingCard: React.FC<ExchangeBindingCardProps> = ({
       </div>
 
       {/* Card Body */}
-      <div className="p-4 flex flex-col items-center justify-center">
-        <div className="text-center w-full">
-          <h4 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="p-4 flex flex-col items-start justify-start">
+        <div className="w-full">
+          <h4 className="text-lg font-semibold text-gray-900 mb-4 text-left">
             {exchange.name}
           </h4>
 
