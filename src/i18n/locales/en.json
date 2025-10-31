@@ -283,7 +283,7 @@
         "apiSecretHelp": "Your API secret is used to sign requests. Keep it secure and never share it.",
         "passphraseHelp": "Some exchanges (like OKX) require an additional passphrase",
         "securityTitle": "Security Notice",
-        "securityInfo": "We never store your full API secret. Your API credentials are only used to authenticate requests to your exchange. You can revoke these credentials at any time from your exchange account settings."
+        "securityInfo": "Your API credentials are only used by the trading bot to read account balances and place buy and sell orders. Tiris will not perform any other operations on your exchange account such as transfers. You can revoke these credentials at any time from your exchange account settings. Once revoked, Tiris will be unable to perform any operations on your exchange account."
       },
       "step3": {
         "label": "Connection Details",
@@ -292,7 +292,7 @@
         "nameHelp": "This will help you identify this connection when creating trading strategies",
         "descriptionHelp": "Add notes about this connection, such as which account it represents or its purpose",
         "infoTitle": "About Your Connection",
-        "info": "Once created, you can use this exchange connection for multiple trading strategies. You can edit the connection name and description at any time, but the API credentials cannot be changed after creation. If you need to update credentials, you'll need to create a new connection."
+        "info": "Once created, you can use this exchange connection for multiple real tradings. You can edit the connection name and description at any time."
       }
     }
   },
