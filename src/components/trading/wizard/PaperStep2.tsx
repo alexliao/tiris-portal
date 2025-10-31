@@ -21,10 +21,10 @@ export const PaperStep2: React.FC<PaperStep2Props> = ({
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-2xl font-bold text-gray-900 mb-2">
-        {t('trading.wizard.step2.title')}
+        {t('trading.wizard.paperStep2.title')}
       </h2>
       <p className="text-gray-600 mb-6">
-        {t('trading.wizard.step2.description')}
+        {t('trading.wizard.paperStep2.description')}
       </p>
 
       {/* Exchange Cards Grid */}
@@ -70,14 +70,14 @@ export const PaperStep2: React.FC<PaperStep2Props> = ({
                 {/* Badge for sandbox */}
                 {exchange.sandbox && (
                   <span className="inline-flex items-center px-2 py-1 mt-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                    {t('trading.wizard.step2.sandboxBadge')}
+                    {t('trading.wizard.paperStep2.sandboxBadge')}
                   </span>
                 )}
 
                 {/* Fee info if available */}
                 {exchange.virtual_exchange_fee !== undefined && (
                   <p className="text-xs text-gray-500 mt-1">
-                    {t('trading.wizard.step2.feeLabel')}: {(exchange.virtual_exchange_fee * 100).toFixed(2)}%
+                    {t('trading.wizard.paperStep2.feeLabel')}: {(exchange.virtual_exchange_fee * 100).toFixed(2)}%
                   </p>
                 )}
               </div>
@@ -88,7 +88,7 @@ export const PaperStep2: React.FC<PaperStep2Props> = ({
 
       {exchanges.length === 0 && (
         <div className="text-center py-8 text-gray-500">
-          <p>{t('trading.wizard.step2.noExchanges')}</p>
+          <p>{t('trading.wizard.paperStep2.noExchanges')}</p>
         </div>
       )}
     </div>

@@ -18,17 +18,17 @@ export const PaperStep1: React.FC<PaperStep1Props> = ({
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-2xl font-bold text-gray-900 mb-2">
-        {t('trading.wizard.step1.title')}
+        {t('trading.wizard.paperStep1.title')}
       </h2>
       <p className="text-gray-600 mb-6">
-        {t('trading.wizard.step1.description')}
+        {t('trading.wizard.paperStep1.description')}
       </p>
 
       <div className="space-y-6">
         {/* Trading Name */}
         <div>
           <label htmlFor="tradingName" className="block text-sm font-medium text-gray-900 mb-2">
-            {t('trading.wizard.step1.nameLabel')}
+            {t('trading.wizard.paperStep1.nameLabel')}
             <span className="text-red-500 ml-1">*</span>
           </label>
           <input
@@ -36,11 +36,11 @@ export const PaperStep1: React.FC<PaperStep1Props> = ({
             type="text"
             value={tradingName}
             onChange={(e) => setTradingName(e.target.value)}
-            placeholder={t('trading.wizard.step1.namePlaceholder')}
+            placeholder={t('trading.wizard.paperStep1.namePlaceholder')}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
           />
           <p className="mt-1 text-xs text-gray-500">
-            {t('trading.wizard.step1.nameHelp')} - {t('trading.wizard.step1.editableHint')}
+            {t('trading.wizard.paperStep1.nameHelp')} - {t('trading.wizard.paperStep1.editableHint')}
           </p>
         </div>
 
@@ -50,10 +50,10 @@ export const PaperStep1: React.FC<PaperStep1Props> = ({
             <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div>
               <h3 className="font-medium text-blue-900 mb-1">
-                {t('trading.wizard.step1.paperInfoTitle')}
+                {t('trading.wizard.paperStep1.paperInfoTitle')}
               </h3>
               <p className="text-sm text-blue-800">
-                {t('trading.wizard.step1.paperInfo')}
+                {t('trading.wizard.paperStep1.paperInfo')}
               </p>
             </div>
           </div>

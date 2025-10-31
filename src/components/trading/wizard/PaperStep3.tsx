@@ -16,26 +16,26 @@ export const PaperStep3: React.FC<PaperStep3Props> = ({
   const frequencyOptions = [
     {
       value: '5m' as const,
-      label: t('trading.wizard.step3.5mLabel'),
-      description: t('trading.wizard.step3.5mDescription'),
+      label: t('trading.wizard.paperStep3.5mLabel'),
+      description: t('trading.wizard.paperStep3.5mDescription'),
       icon: Zap,
       strategy: 'TirisML.5m',
       details: [
-        t('trading.wizard.step3.5mDetail1'),
-        t('trading.wizard.step3.5mDetail2'),
-        t('trading.wizard.step3.5mDetail3'),
+        t('trading.wizard.paperStep3.5mDetail1'),
+        t('trading.wizard.paperStep3.5mDetail2'),
+        t('trading.wizard.paperStep3.5mDetail3'),
       ],
     },
     {
       value: '8h' as const,
-      label: t('trading.wizard.step3.8hLabel'),
-      description: t('trading.wizard.step3.8hDescription'),
+      label: t('trading.wizard.paperStep3.8hLabel'),
+      description: t('trading.wizard.paperStep3.8hDescription'),
       icon: TrendingUp,
       strategy: 'TirisML',
       details: [
-        t('trading.wizard.step3.8hDetail1'),
-        t('trading.wizard.step3.8hDetail2'),
-        t('trading.wizard.step3.8hDetail3'),
+        t('trading.wizard.paperStep3.8hDetail1'),
+        t('trading.wizard.paperStep3.8hDetail2'),
+        t('trading.wizard.paperStep3.8hDetail3'),
       ],
     },
   ];
@@ -43,10 +43,10 @@ export const PaperStep3: React.FC<PaperStep3Props> = ({
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-2xl font-bold text-gray-900 mb-2">
-        {t('trading.wizard.step3.title')}
+        {t('trading.wizard.paperStep3.title')}
       </h2>
       <p className="text-gray-600 mb-6">
-        {t('trading.wizard.step3.description')}
+        {t('trading.wizard.paperStep3.description')}
       </p>
 
       {/* Frequency Options Grid */}

@@ -466,7 +466,7 @@
       "realTitle": "Create Real Trading",
       "realSubtitle": "Follow the steps below to set up your real trading with actual funds",
       "create": "Create Trading",
-      "step1": {
+      "paperStep1": {
         "label": "Naming",
         "title": "Trading Instructions",
         "description": "Give your paper trading a name",
@@ -488,7 +488,7 @@
         "realInfoTitle": "About Real Trading",
         "realInfo": "Real trading uses actual funds from your exchange account. Please ensure you have sufficient funds available and understand the risks involved."
       },
-      "step2": {
+      "paperStep2": {
         "label": "Exchange",
         "title": "Select Exchange",
         "description": "Different exchanges have different fees and trading volumes, but similar price trends. Over the long term, fees have a significant impact on profitability.",
@@ -504,7 +504,7 @@
         "noBindings": "No exchange connections found. Please add an exchange connection first.",
         "addExchange": "Add Exchange Connection"
       },
-      "step3": {
+      "paperStep3": {
         "label": "Frequency",
         "title": "Choose Trading Frequency",
         "description": "It is recommended to start with 5-minute frequency to familiarize yourself with the interface and operations, then select 8-hour frequency for real strategy simulation",
