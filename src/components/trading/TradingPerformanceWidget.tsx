@@ -343,7 +343,19 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('1m');
+
+  // Determine default timeframe based on trading timeframe:
+  // - If trading timeframe is 5m, use 1m as default
+  // - For all other timeframes, use 1h as default
+  const getDefaultTimeframe = (): Timeframe => {
+    const tradingTimeframe = trading.info?.timeframe;
+    if (tradingTimeframe === '5m') {
+      return '1m';
+    }
+    return '1h';
+  };
+
+  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>(getDefaultTimeframe());
   const [stockSymbol, setStockSymbol] = useState<string>('ETH');
   const [quoteSymbol, setQuoteSymbol] = useState<string>('USDT');
   const [isRefetchingData, setIsRefetchingData] = useState(false);
@@ -1480,7 +1492,19 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   </span>
                 </span>
               )}
-              {(['1m', '1h', '8h', '1d'] as Timeframe[]).map((tf) => (
+              {(() => {
+                const baseTimeframes: Timeframe[] = ['1m', '1h', '8h', '1d'];
+                const tradingTimeframe = trading.info?.timeframe;
+                // Include 5m timeframe if the trading/strategy timeframe is 5m
+                if (tradingTimeframe === '5m') {
+                  if (!baseTimeframes.includes('5m' as Timeframe)) {
+                    baseTimeframes.splice(1, 0, '5m' as Timeframe);
+                  }
+                  // Hide 1d timeframe for 5m trading
+                  return baseTimeframes.filter(tf => tf !== '1d');
+                }
+                return baseTimeframes;
+              })().map((tf) => (
                 <button
                   key={tf}
                   onClick={() => handleTimeframeChange(tf)}
