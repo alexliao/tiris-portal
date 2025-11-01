@@ -283,7 +283,14 @@
         "apiSecretHelp": "Your API secret is used to sign requests. Keep it secure and never share it.",
         "passphraseHelp": "Some exchanges (like OKX) require an additional passphrase",
         "securityTitle": "Security Notice",
-        "securityInfo": "Your API credentials are only used by the trading bot to read account balances and place buy and sell orders. Tiris will not perform any other operations on your exchange account such as transfers. You can revoke these credentials at any time from your exchange account settings. Once revoked, Tiris will be unable to perform any operations on your exchange account."
+        "securityInfo": "Your API credentials are only used by the trading bot to read account balances and place buy and sell orders. Tiris will not perform any other operations on your exchange account such as transfers. You can revoke these credentials at any time from your exchange account settings. Once revoked, Tiris will be unable to perform any operations on your exchange account.",
+        "validateCredentials": "Validate Credentials",
+        "validating": "Validating...",
+        "validationSuccess": "Credentials Validated",
+        "retryValidation": "Retry Validation",
+        "validationFailed": "Credentials validation failed. Please check your API credentials.",
+        "validationError": "An error occurred during validation. Please try again.",
+        "credentialsNotValidated": "Please validate your credentials before proceeding to the next step."
       },
       "step3": {
         "label": "Connection Details",

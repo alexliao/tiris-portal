@@ -283,7 +283,14 @@
         "apiSecretHelp": "您的 API 密钥用于对请求进行签名。请妥善保管，切勿分享。",
         "passphraseHelp": "某些交易所（如 OKX）需要额外的密码短语",
         "securityTitle": "安全声明",
-        "securityInfo": "您的 API 凭证仅用于交易机器人读取账户余额和进行买入卖出操作，Tiris不会对您的交易所账户进行其它操作比如转账等。您可以随时从交易所账户设置中撤销这些凭证，撤销后Tiris将无法对您的交易所账户进行任何操作。"
+        "securityInfo": "您的 API 凭证仅用于交易机器人读取账户余额和进行买入卖出操作，Tiris不会对您的交易所账户进行其它操作比如转账等。您可以随时从交易所账户设置中撤销这些凭证，撤销后Tiris将无法对您的交易所账户进行任何操作。",
+        "validateCredentials": "验证凭证",
+        "validating": "验证中...",
+        "validationSuccess": "凭证已验证",
+        "retryValidation": "重新验证",
+        "validationFailed": "凭证验证失败。请检查您的 API 凭证。",
+        "validationError": "验证过程中发生错误。请重试。",
+        "credentialsNotValidated": "请验证您的凭证后再进行下一步。"
       },
       "step3": {
         "label": "连接详情",

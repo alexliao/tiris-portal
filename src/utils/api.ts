@@ -1393,6 +1393,33 @@ export async function getExchangeAccount(
   return botApiRequest<ExchangeAccountResponse>(`/exchange_account?${params.toString()}`);
 }
 
+// Exchange credential validation response interface
+export interface ExchangeCredentialValidationResponse {
+  read: boolean;          // Whether credentials can read account balance data
+  trade?: boolean | null; // Whether credentials can place trades (currently always null)
+  withdraw?: boolean | null; // Whether credentials can withdraw funds (currently always null)
+}
+
+// Validate exchange credentials using tiris-bot API
+export async function validateExchangeCredentials(
+  exchangeType: string,
+  apiKey: string,
+  apiSecret: string,
+  passphrase?: string
+): Promise<ExchangeCredentialValidationResponse> {
+  const payload = {
+    exchange_type: exchangeType,
+    api_key: apiKey,
+    api_secret: apiSecret,
+    ...(passphrase ? { passphrase } : {}),
+  };
+
+  return botApiRequest<ExchangeCredentialValidationResponse>('/exchange_account/validate', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 // Get sub-accounts for a trading
 export async function getSubAccountsByTrading(tradingId: string): Promise<SubAccount[]> {
   const response = await apiRequest<{ sub_accounts: SubAccount[] }>(`/sub-accounts?trading_id=${tradingId}`);

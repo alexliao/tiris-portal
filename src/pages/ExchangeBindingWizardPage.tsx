@@ -31,6 +31,7 @@ export const ExchangeBindingWizardPage: React.FC = () => {
   const [passphrase, setPassphrase] = useState('');
   const [connectionName, setConnectionName] = useState('');
   const [description, setDescription] = useState('');
+  const [credentialsValidated, setCredentialsValidated] = useState(false);
 
   // Available data
   const [exchanges, setExchanges] = useState<ExchangeConfigResponse[]>([]);
@@ -98,6 +99,10 @@ export const ExchangeBindingWizardPage: React.FC = () => {
         setError(t('exchanges.apiSecretRequired'));
         return false;
       }
+      if (!credentialsValidated) {
+        setError(t('exchanges.wizard.step2.credentialsNotValidated'));
+        return false;
+      }
       return true;
     }
 
@@ -121,6 +126,10 @@ export const ExchangeBindingWizardPage: React.FC = () => {
   const handlePreviousStep = () => {
     setError(null);
     setCurrentStep(currentStep - 1);
+    // Reset validation status when going back from step 2
+    if (currentStep === 2) {
+      setCredentialsValidated(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -297,6 +306,8 @@ export const ExchangeBindingWizardPage: React.FC = () => {
                 passphrase={passphrase}
                 setPassphrase={setPassphrase}
                 exchangeName={selectedExchange?.name || ''}
+                exchangeType={selectedExchange?.type || ''}
+                onValidationSuccess={() => setCredentialsValidated(true)}
               />
             )}
 

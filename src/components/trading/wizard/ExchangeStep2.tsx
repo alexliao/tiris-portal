@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Info } from 'lucide-react';
+import { Info, CheckCircle, AlertCircle } from 'lucide-react';
+import { validateExchangeCredentials } from '../../../utils/api';
 
 interface ExchangeStep2Props {
   apiKey: string;
@@ -10,6 +11,8 @@ interface ExchangeStep2Props {
   passphrase: string;
   setPassphrase: (value: string) => void;
   exchangeName: string;
+  exchangeType: string;
+  onValidationSuccess?: () => void;
 }
 
 export const ExchangeStep2: React.FC<ExchangeStep2Props> = ({
@@ -20,8 +23,45 @@ export const ExchangeStep2: React.FC<ExchangeStep2Props> = ({
   passphrase,
   setPassphrase,
   exchangeName,
+  exchangeType,
+  onValidationSuccess,
 }) => {
   const { t } = useTranslation();
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationStatus, setValidationStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const handleValidateCredentials = async () => {
+    setIsValidating(true);
+    setValidationError(null);
+    setValidationStatus('idle');
+
+    try {
+      const response = await validateExchangeCredentials(
+        exchangeType,
+        apiKey,
+        apiSecret,
+        passphrase.trim() || undefined
+      );
+
+      if (response.read) {
+        setValidationStatus('success');
+        onValidationSuccess?.();
+      } else {
+        setValidationStatus('error');
+        setValidationError(t('exchanges.wizard.step2.validationFailed'));
+      }
+    } catch (error) {
+      setValidationStatus('error');
+      if (error instanceof Error) {
+        setValidationError(error.message);
+      } else {
+        setValidationError(t('exchanges.wizard.step2.validationError'));
+      }
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -88,6 +128,47 @@ export const ExchangeStep2: React.FC<ExchangeStep2Props> = ({
           <p className="mt-1 text-xs text-gray-500">
             {t('exchanges.wizard.step2.passphraseHelp')}
           </p>
+        </div>
+
+        {/* Validate Credentials Button */}
+        <div>
+          <button
+            type="button"
+            onClick={handleValidateCredentials}
+            disabled={isValidating || !apiKey.trim() || !apiSecret.trim()}
+            style={{
+              background: isValidating || !apiKey.trim() || !apiSecret.trim()
+                ? '#d1d5db'
+                : '#3F5E98'
+            }}
+            className="w-full px-4 py-2 text-white rounded-md disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center gap-2 hover:opacity-90"
+          >
+            {isValidating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                {t('exchanges.wizard.step2.validating')}
+              </>
+            ) : (
+              <>
+                {validationStatus === 'success' && (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    {t('exchanges.wizard.step2.validationSuccess')}
+                  </>
+                )}
+                {validationStatus === 'error' && (
+                  <>
+                    <AlertCircle className="w-4 h-4" />
+                    {t('exchanges.wizard.step2.retryValidation')}
+                  </>
+                )}
+                {validationStatus === 'idle' && t('exchanges.wizard.step2.validateCredentials')}
+              </>
+            )}
+          </button>
+          {validationError && (
+            <p className="mt-2 text-sm text-red-600">{validationError}</p>
+          )}
         </div>
 
         {/* Security Info */}
