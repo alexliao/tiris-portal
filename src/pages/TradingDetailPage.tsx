@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
@@ -10,6 +10,7 @@ import TradingPerformanceWidget from '../components/trading/TradingPerformanceWi
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import EditableText from '../components/common/EditableText';
 import { THEME_COLORS, getTradingTheme, getTradingIcon } from '../config/theme';
+import { createDateTimeFormatter } from '../utils/locale';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
@@ -51,7 +52,7 @@ const extractExchangeCredentials = (binding?: ExchangeBinding | null) => {
 
 export const TradingDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [trading, setTrading] = useState<Trading | null>(null);
@@ -76,6 +77,72 @@ export const TradingDetailPage: React.FC = () => {
   const [dataRefreshInterval, setDataRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const isRefreshing2 = useRef(false);
+
+  const dateTimeFormatter = useMemo(
+    () =>
+      createDateTimeFormatter(i18n.language, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+    [i18n.language]
+  );
+
+  const dateFormatter = useMemo(
+    () =>
+      createDateTimeFormatter(i18n.language, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }),
+    [i18n.language]
+  );
+
+  const formatDateTime = useCallback(
+    (value: unknown): string | null => {
+      if (!value) return null;
+
+      const date =
+        value instanceof Date
+          ? value
+          : typeof value === 'string' || typeof value === 'number'
+          ? new Date(value)
+          : null;
+
+      if (!date || Number.isNaN(date.getTime())) return null;
+
+      return dateTimeFormatter.format(date);
+    },
+    [dateTimeFormatter]
+  );
+
+  const formatDate = useCallback(
+    (value: unknown): string | null => {
+      if (!value) return null;
+
+      const date =
+        value instanceof Date
+          ? value
+          : typeof value === 'string' || typeof value === 'number'
+          ? new Date(value)
+          : null;
+
+      if (!date || Number.isNaN(date.getTime())) return null;
+
+      return dateFormatter.format(date);
+    },
+    [dateFormatter]
+  );
+
+  const createdAtDisplay = formatDateTime(trading?.created_at);
+  const backtestStartDisplay = trading?.type === 'backtest' ? formatDate(trading?.info?.start_date) : null;
+  const backtestEndDisplay = trading?.type === 'backtest' ? formatDate(trading?.info?.end_date) : null;
+  const hasBacktestRange = Boolean(backtestStartDisplay || backtestEndDisplay);
+  const backtestRangeLabel = hasBacktestRange
+    ? `${backtestStartDisplay ?? '—'} - ${backtestEndDisplay ?? '—'}`
+    : null;
 
   // Convert timeframe string to seconds
   const timeframeToSeconds = (timeframe: string): number => {
@@ -1035,11 +1102,17 @@ export const TradingDetailPage: React.FC = () => {
                     )}
                   </div>
                 )}
-                <div className="flex lg:flex-col items-center lg:items-start justify-between lg:justify-start gap-2">
-                  <div>
+                <div className="flex flex-col gap-1 w-full">
+                  <div className="flex items-center gap-1">
                     <span className="text-xs md:text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.created')}:&nbsp;</span>
-                    <span className="text-sm font-semibold text-gray-900">{new Date(trading.created_at).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="text-sm font-semibold text-gray-900">{createdAtDisplay ?? '—'}</span>
                   </div>
+                  {backtestRangeLabel && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs md:text-sm font-medium text-gray-600">{t('trading.detail.dateRange')}:&nbsp;</span>
+                      <span className="text-sm font-semibold text-gray-900">{backtestRangeLabel}</span>
+                    </div>
+                  )}
                   {/* Bot Controls - Mobile Only */}
                   {isAuthenticated && (
                     <div className="flex lg:hidden items-center gap-2">

@@ -321,6 +321,7 @@
       "exchangeType": "Exchange Type",
       "initialFunds": "Initial Funds",
       "initialPrice": "Initial Price",
+      "dateRange": "Date Range",
       "performanceChart": "Performance Chart",
       "noDataAvailable": "No performance data available",
       "stopBot": "Stop Bot",
@@ -590,9 +591,18 @@
         "endDateLabel": "End Date",
         "selectedRange": "Selected Range",
         "to": "to",
-        "dayCount": "{{count}} day(s) of historical data",
+        "dayCount": "{{count}} days",
         "dateRangeRequired": "Please select both start and end dates",
-        "invalidDateRange": "End date must be after start date"
+        "invalidDateRange": "End date must be after start date",
+        "chartTitle": "ETH/USDT Market Price",
+        "chartPriceLabel": "Price",
+        "chartDateLabel": "Date",
+        "brushInstruction": "Drag the brush above or click the buttons to select your backtest date range",
+        "presetAll": "All",
+        "presetLastYear": "Last Year",
+        "presetThisYear": "This Year",
+        "preset3Months": "3 Months",
+        "preset1Month": "1 Month"
       },
       "backtestStep3": {
         "label": "Naming",

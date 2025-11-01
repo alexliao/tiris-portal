@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Calendar } from 'lucide-react';
+import { AlertCircle, TrendingUp } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
+import { getOHLCV, type OHLCVCandle } from '../../../utils/api';
+import { resolveLocale } from '../../../utils/locale';
 
 interface BacktestStep2Props {
   startDate: Date | null;
@@ -9,196 +12,260 @@ interface BacktestStep2Props {
   setEndDate: (date: Date | null) => void;
 }
 
+interface ChartDataPoint {
+  timestamp: number;
+  price: number;
+  originalData: OHLCVCandle;
+}
+
+type LocalizedChartDataPoint = ChartDataPoint & { date: string };
+
+interface BrushChangeState {
+  startIndex?: number;
+  endIndex?: number;
+}
+
 export const BacktestStep2: React.FC<BacktestStep2Props> = ({
   startDate,
   setStartDate,
   endDate,
   setEndDate,
 }) => {
-  const { t } = useTranslation();
-  const [showStartCalendar, setShowStartCalendar] = useState(false);
-  const [showEndCalendar, setShowEndCalendar] = useState(false);
+  const { t, i18n } = useTranslation();
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [brushStartIndex, setBrushStartIndex] = useState(0);
+  const [brushEndIndex, setBrushEndIndex] = useState(100);
 
-  // Get the current year and month for calendar display
-  const getMonthDays = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
+  const resolvedLocale = useMemo(() => resolveLocale(i18n.language), [i18n.language]);
+  const dateFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(resolvedLocale, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }),
+    [resolvedLocale]
+  );
 
-    return { daysInMonth, startingDayOfWeek, year, month };
-  };
+  const localizedChartData: LocalizedChartDataPoint[] = useMemo(
+    () =>
+      chartData.map((dataPoint) => ({
+        ...dataPoint,
+        date: dateFormatter.format(new Date(dataPoint.timestamp))
+      })),
+    [chartData, dateFormatter]
+  );
 
-  const formatDate = (date: Date | null): string => {
-    if (!date) return '';
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-  };
+  // Fetch OHLCV data on component mount
+  useEffect(() => {
+    const fetchChartData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-  const handleDateInputChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    setter: (date: Date | null) => void
-  ) => {
-    const value = e.target.value;
-    if (!value) {
-      setter(null);
-      return;
-    }
-    const parts = value.split('-');
-    if (parts.length === 3) {
-      const [year, month, day] = parts.map(p => parseInt(p, 10));
-      const date = new Date(year, month - 1, day);
-      if (!isNaN(date.getTime())) {
-        setter(date);
+        // Set date range: from 2024-01-01 to now
+        const startDate2024 = new Date('2024-01-01');
+        const endDateNow = new Date();
+
+        const startTime = startDate2024.getTime();
+        const endTime = endDateNow.getTime();
+
+        // Fetch OHLCV data for ETH_USDT with 1d timeframe from binance
+        const ohlcvData = await getOHLCV(
+          'binance',
+          'ETH_USDT',
+          startTime,
+          endTime,
+          '1d',
+          'warmup'
+        );
+
+        // Transform OHLCV data to chart data
+        const transformedData: ChartDataPoint[] = ohlcvData.map((candle) => ({
+          timestamp: new Date(candle.ts).getTime(),
+          price: candle.c, // Close price
+          originalData: candle
+        }));
+
+        // Sort by timestamp
+        transformedData.sort((a, b) => a.timestamp - b.timestamp);
+
+        setChartData(transformedData);
+
+        // Set initial dates to the first and last candle if no dates are set
+        if (transformedData.length > 0) {
+          if (!startDate) {
+            setStartDate(new Date(transformedData[0].timestamp));
+          }
+          if (!endDate) {
+            setEndDate(new Date(transformedData[transformedData.length - 1].timestamp));
+          }
+          // Set initial brush to show full range
+          setBrushStartIndex(0);
+          setBrushEndIndex(transformedData.length - 1);
+        }
+      } catch (err) {
+        console.error('Failed to fetch OHLCV data:', err);
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to fetch market data. Please try again later.'
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchChartData();
+    // We intentionally run this only once on mount to bootstrap chart data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleBrushChange = (state: BrushChangeState | null) => {
+    if (state && state.startIndex !== undefined && state.endIndex !== undefined) {
+      const startIndex = Math.max(0, state.startIndex);
+      const endIndex = Math.min(chartData.length - 1, state.endIndex);
+
+      if (startIndex >= 0 && endIndex < chartData.length && startIndex <= endIndex) {
+        setBrushStartIndex(startIndex);
+        setBrushEndIndex(endIndex);
+
+        const newStartDate = new Date(chartData[startIndex].timestamp);
+        const newEndDate = new Date(chartData[endIndex].timestamp);
+
+        setStartDate(newStartDate);
+        setEndDate(newEndDate);
       }
     }
   };
 
-  const DatePicker = ({
-    date,
-    setDate,
-    showCalendar,
-    setShowCalendar,
-    minDate,
-    maxDate,
-    label
-  }: {
-    date: Date | null;
-    setDate: (date: Date | null) => void;
-    showCalendar: boolean;
-    setShowCalendar: (show: boolean) => void;
-    minDate?: Date | null;
-    maxDate?: Date | null;
-    label: string;
-  }) => {
-    const displayDate = date || new Date();
-    const { daysInMonth, startingDayOfWeek, year, month } = getMonthDays(displayDate);
-    const monthName = new Date(year, month).toLocaleDateString('en-US', { month: 'long' });
+  const setPresetDateRange = (days: number) => {
+    if (chartData.length === 0) return;
 
-    const canGoBack = !minDate || new Date(year, month, 1) > minDate;
-    const canGoForward = !maxDate || new Date(year, month + 1, 1) < maxDate;
+    const endDate = new Date(chartData[chartData.length - 1].timestamp);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - days);
 
-    const handlePrevMonth = () => {
-      const newDate = new Date(displayDate);
-      newDate.setMonth(newDate.getMonth() - 1);
-      setDate(newDate);
-    };
+    // Find the closest indices in chartData
+    let startIndex = 0;
+    const endIndex = chartData.length - 1;
 
-    const handleNextMonth = () => {
-      const newDate = new Date(displayDate);
-      newDate.setMonth(newDate.getMonth() + 1);
-      setDate(newDate);
-    };
-
-    const handleDayClick = (day: number) => {
-      const newDate = new Date(year, month, day);
-      setDate(newDate);
-      setShowCalendar(false);
-    };
-
-    const isDateDisabled = (day: number) => {
-      const checkDate = new Date(year, month, day);
-      if (minDate && checkDate < minDate) return true;
-      if (maxDate && checkDate > maxDate) return true;
-      return false;
-    };
-
-    const isDateInRange = (day: number) => {
-      const checkDate = new Date(year, month, day);
-      if (!startDate || !endDate) return false;
-      return checkDate >= startDate && checkDate <= endDate;
-    };
-
-    const days = [];
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null);
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(i);
+    for (let i = 0; i < chartData.length; i++) {
+      if (chartData[i].timestamp >= startDate.getTime()) {
+        startIndex = i;
+        break;
+      }
     }
 
-    return (
-      <div className="relative">
-        <label className="block text-sm font-medium text-gray-900 mb-2">
-          {label}
-          <span className="text-red-500 ml-1">*</span>
-        </label>
-        <div className="relative">
-          <input
-            type="date"
-            value={date ? date.toISOString().split('T')[0] : ''}
-            onChange={(e) => handleDateInputChange(e, setDate)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-tiris-primary-500 focus:border-tiris-primary-500 text-gray-900"
-          />
-          <Calendar className="absolute right-3 top-3 w-5 h-5 text-gray-400 pointer-events-none" />
-        </div>
+    // Update brush position and dates
+    setBrushStartIndex(startIndex);
+    setBrushEndIndex(endIndex);
+    setStartDate(new Date(chartData[startIndex].timestamp));
+    setEndDate(endDate);
+  };
 
-        {showCalendar && (
-          <div className="absolute top-full left-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50" style={{ minWidth: '320px' }}>
-            {/* Calendar Header */}
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={handlePrevMonth}
-                disabled={!canGoBack}
-                className="p-1 hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                ←
-              </button>
-              <div className="text-center font-semibold text-gray-900">
-                {monthName} {year}
-              </div>
-              <button
-                onClick={handleNextMonth}
-                disabled={!canGoForward}
-                className="p-1 hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                →
-              </button>
-            </div>
+  const setPresetDateRangeThisYear = () => {
+    if (chartData.length === 0) return;
 
-            {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {/* Day headers */}
-              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
-                <div key={day} className="text-center text-xs font-semibold text-gray-600 h-8 flex items-center justify-center">
-                  {day}
-                </div>
-              ))}
-              {/* Day cells */}
-              {days.map((day, index) => (
-                <button
-                  key={index}
-                  onClick={() => day && handleDayClick(day)}
-                  disabled={!day || isDateDisabled(day!)}
-                  className={`h-8 rounded text-sm font-medium transition-colors ${
-                    !day
-                      ? ''
-                      : isDateDisabled(day)
-                      ? 'text-gray-300 cursor-not-allowed'
-                      : isDateInRange(day)
-                      ? 'bg-tiris-primary-200 text-tiris-primary-900'
-                      : day === date?.getDate() && month === date?.getMonth() && year === date?.getFullYear()
-                      ? 'bg-tiris-primary-500 text-white'
-                      : 'hover:bg-gray-100 text-gray-900'
-                  }`}
-                >
-                  {day}
-                </button>
-              ))}
-            </div>
+    const now = new Date();
+    const year = now.getFullYear();
+    const startDate = new Date(year, 0, 1); // Jan 1 of current year
+    const endDate = new Date(year, 11, 31); // Dec 31 of current year
 
-            {/* Close button */}
-            <button
-              onClick={() => setShowCalendar(false)}
-              className="w-full mt-2 px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded transition-colors"
-            >
-              {t('common.done')}
-            </button>
-          </div>
-        )}
-      </div>
-    );
+    // Find the closest indices in chartData
+    let startIndex = 0;
+    let endIndex = chartData.length - 1;
+
+    for (let i = 0; i < chartData.length; i++) {
+      if (chartData[i].timestamp >= startDate.getTime()) {
+        startIndex = i;
+        break;
+      }
+    }
+
+    for (let i = chartData.length - 1; i >= 0; i--) {
+      if (chartData[i].timestamp <= endDate.getTime()) {
+        endIndex = i;
+        break;
+      }
+    }
+
+    // Update brush position and dates
+    setBrushStartIndex(startIndex);
+    setBrushEndIndex(endIndex);
+    setStartDate(new Date(chartData[startIndex].timestamp));
+    setEndDate(new Date(chartData[endIndex].timestamp));
+  };
+
+  const setPresetDateRangeLastYear = () => {
+    if (chartData.length === 0) return;
+
+    const now = new Date();
+    const lastYear = now.getFullYear() - 1;
+    const startDate = new Date(lastYear, 0, 1); // Jan 1 of last year
+    const endDate = new Date(lastYear, 11, 31); // Dec 31 of last year
+
+    // Find the closest indices in chartData
+    let startIndex = 0;
+    let endIndex = chartData.length - 1;
+
+    for (let i = 0; i < chartData.length; i++) {
+      if (chartData[i].timestamp >= startDate.getTime()) {
+        startIndex = i;
+        break;
+      }
+    }
+
+    for (let i = chartData.length - 1; i >= 0; i--) {
+      if (chartData[i].timestamp <= endDate.getTime()) {
+        endIndex = i;
+        break;
+      }
+    }
+
+    // Update brush position and dates
+    setBrushStartIndex(startIndex);
+    setBrushEndIndex(endIndex);
+    setStartDate(new Date(chartData[startIndex].timestamp));
+    setEndDate(new Date(chartData[endIndex].timestamp));
+  };
+
+  const setPresetDateRangeAll = () => {
+    if (chartData.length === 0) return;
+
+    const startDate = new Date('2024-01-01'); // Jan 1, 2024
+    const endDate = new Date(); // Today's date
+
+    // Find the closest indices in chartData
+    let startIndex = 0;
+    let endIndex = chartData.length - 1;
+
+    for (let i = 0; i < chartData.length; i++) {
+      if (chartData[i].timestamp >= startDate.getTime()) {
+        startIndex = i;
+        break;
+      }
+    }
+
+    for (let i = chartData.length - 1; i >= 0; i--) {
+      if (chartData[i].timestamp <= endDate.getTime()) {
+        endIndex = i;
+        break;
+      }
+    }
+
+    // Update brush position and dates
+    setBrushStartIndex(startIndex);
+    setBrushEndIndex(endIndex);
+    setStartDate(new Date(chartData[startIndex].timestamp));
+    setEndDate(new Date(chartData[endIndex].timestamp));
+  };
+
+  const formatDate = (date: Date | null): string => {
+    if (!date) return '';
+    return dateFormatter.format(date);
   };
 
   return (
@@ -211,50 +278,167 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
       </p>
 
       <div className="space-y-6">
-        {/* Start Date Picker */}
-        <div className="relative">
-          <button
-            onClick={() => setShowStartCalendar(!showStartCalendar)}
-            className="w-full text-left"
-          >
-            <DatePicker
-              date={startDate}
-              setDate={setStartDate}
-              showCalendar={showStartCalendar}
-              setShowCalendar={setShowStartCalendar}
-              maxDate={endDate}
-              label={t('trading.wizard.backtestStep2.startDateLabel')}
-            />
-          </button>
-        </div>
+        {/* Error Message */}
+        {error && (
+          <div className="px-6 py-4 bg-red-50 border-l-4 border-red-400 rounded-lg">
+            <div className="flex">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+              <div className="ml-3">
+                <p className="text-red-800">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
-        {/* End Date Picker */}
-        <div className="relative">
-          <button
-            onClick={() => setShowEndCalendar(!showEndCalendar)}
-            className="w-full text-left"
-          >
-            <DatePicker
-              date={endDate}
-              setDate={setEndDate}
-              showCalendar={showEndCalendar}
-              setShowCalendar={setShowEndCalendar}
-              minDate={startDate}
-              label={t('trading.wizard.backtestStep2.endDateLabel')}
-            />
-          </button>
-        </div>
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tiris-primary-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">{t('common.loading')}</p>
+            </div>
+          </div>
+        )}
 
-        {/* Date Range Summary */}
-        {startDate && endDate && (
-          <div className="bg-tiris-primary-50 border border-tiris-primary-200 rounded-lg p-4">
-            <p className="text-sm text-tiris-primary-900">
-              {t('trading.wizard.backtestStep2.selectedRange')}: <strong>{formatDate(startDate)}</strong> {' '}
-              {t('trading.wizard.backtestStep2.to')} <strong>{formatDate(endDate)}</strong>
-            </p>
-            <p className="text-xs text-tiris-primary-800 mt-2">
-              {t('trading.wizard.backtestStep2.dayCount', { count: Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) })}
-            </p>
+        {/* Chart */}
+        {!isLoading && chartData.length > 0 && (
+          <>
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <div className="flex items-center mb-4">
+                <TrendingUp className="w-5 h-5 text-tiris-primary-500 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">{t('trading.wizard.backtestStep2.chartTitle')}</h3>
+              </div>
+
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart
+                  data={localizedChartData}
+                  margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12 }}
+                    interval={Math.floor(chartData.length / 10) || 0}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    domain={['dataMin - 100', 'dataMax + 100']}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px'
+                    }}
+                    formatter={(value) => [
+                      value instanceof Number
+                        ? value.toFixed(2)
+                        : typeof value === 'number'
+                        ? value.toFixed(2)
+                        : value,
+                      t('trading.wizard.backtestStep2.chartPriceLabel')
+                    ]}
+                    labelFormatter={(label, payload) => {
+                      if (Array.isArray(payload) && payload.length > 0) {
+                        const dataPoint = payload[0]?.payload as LocalizedChartDataPoint | undefined;
+                        if (dataPoint) {
+                          return `${t('trading.wizard.backtestStep2.chartDateLabel')}: ${dateFormatter.format(
+                            new Date(dataPoint.timestamp)
+                          )}`;
+                        }
+                      }
+                      return `${t('trading.wizard.backtestStep2.chartDateLabel')}: ${label}`;
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="price"
+                    stroke="#3b82f6"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                  <Brush
+                    dataKey="date"
+                    height={40}
+                    stroke="#3b82f6"
+                    fill="#e0f2fe"
+                    travellerWidth={8}
+                    startIndex={brushStartIndex}
+                    endIndex={brushEndIndex}
+                    onChange={handleBrushChange}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+
+              <p className="text-xs text-gray-500 mt-4 text-center mb-4">
+                {t('trading.wizard.backtestStep2.brushInstruction')}
+              </p>
+
+              {/* Preset Date Range Buttons */}
+              <div className="flex gap-2 flex-wrap justify-center">
+                <button
+                  onClick={() => setPresetDateRangeAll()}
+                  className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-700 font-medium"
+                >
+                  {t('trading.wizard.backtestStep2.presetAll')}
+                </button>
+                <button
+                  onClick={() => setPresetDateRangeLastYear()}
+                  className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-700 font-medium"
+                >
+                  {t('trading.wizard.backtestStep2.presetLastYear')}
+                </button>
+                <button
+                  onClick={() => setPresetDateRangeThisYear()}
+                  className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-700 font-medium"
+                >
+                  {t('trading.wizard.backtestStep2.presetThisYear')}
+                </button>
+                <button
+                  onClick={() => setPresetDateRange(90)}
+                  className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-700 font-medium"
+                >
+                  {t('trading.wizard.backtestStep2.preset3Months')}
+                </button>
+                <button
+                  onClick={() => setPresetDateRange(30)}
+                  className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-700 font-medium"
+                >
+                  {t('trading.wizard.backtestStep2.preset1Month')}
+                </button>
+              </div>
+            </div>
+
+            {/* Date Range Summary */}
+            {startDate && endDate && (
+              <div className="bg-tiris-primary-50 border border-tiris-primary-200 rounded-lg p-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-sm text-tiris-primary-900">{t('trading.wizard.backtestStep2.selectedRange')}:</span>
+                  <span className="inline-flex items-center gap-2 px-3 py-1 bg-tiris-primary-600 text-white text-sm font-semibold rounded-full">
+                    {formatDate(startDate)}
+                  </span>
+                  <span className="text-sm text-tiris-primary-900">{t('trading.wizard.backtestStep2.to')}</span>
+                  <span className="inline-flex items-center gap-2 px-3 py-1 bg-tiris-primary-600 text-white text-sm font-semibold rounded-full">
+                    {formatDate(endDate)}
+                  </span>
+                  <span className="inline-flex items-center gap-2 px-3 py-1 bg-tiris-primary-500 text-white text-sm font-semibold rounded-full">
+                    {t('trading.wizard.backtestStep2.dayCount', {
+                      count: Math.ceil(
+                        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+                      )
+                    })}
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && chartData.length === 0 && !error && (
+          <div className="py-12 text-center">
+            <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">{t('common.noData')}</p>
           </div>
         )}
       </div>

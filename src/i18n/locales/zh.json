@@ -321,6 +321,7 @@
       "exchangeType": "交易所类型",
       "initialFunds": "初始资金",
       "initialPrice": "初始价格",
+      "dateRange": "日期范围",
       "performanceChart": "绩效图表",
       "noDataAvailable": "无绩效数据可用",
       "stopBot": "停止机器人",
@@ -589,9 +590,18 @@
         "endDateLabel": "结束日期",
         "selectedRange": "选定的范围",
         "to": "至",
-        "dayCount": "{{count}}天历史数据",
+        "dayCount": "{{count}}天",
         "dateRangeRequired": "请选择开始和结束日期",
-        "invalidDateRange": "结束日期必须在开始日期之后"
+        "invalidDateRange": "结束日期必须在开始日期之后",
+        "chartTitle": "ETH/USDT 市场价格",
+        "chartPriceLabel": "价格",
+        "chartDateLabel": "日期",
+        "brushInstruction": "拖动上方的刷子或点击按钮选择回测日期范围",
+        "presetAll": "全部",
+        "presetLastYear": "去年",
+        "presetThisYear": "今年",
+        "preset3Months": "3个月",
+        "preset1Month": "1个月"
       },
       "backtestStep3": {
         "label": "命名",
