@@ -105,7 +105,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
                 className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white hover:bg-gray-50 text-gray-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
-                  <div className="w-5 h-5 mr-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+                  <div className="w-5 h-5 mr-3 animate-spin rounded-full border-2 border-tiris-primary-600 border-t-transparent"></div>
                 ) : (
                   <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -138,7 +138,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
                     className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white hover:bg-gray-50 text-gray-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isLoading ? (
-                      <div className="w-5 h-5 mr-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+                      <div className="w-5 h-5 mr-3 animate-spin rounded-full border-2 border-tiris-primary-600 border-t-transparent"></div>
                     ) : (
                       <img
                         src="/wechat-96.png"

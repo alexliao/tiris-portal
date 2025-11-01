@@ -375,8 +375,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
 
         {/* Paper Trading Info */}
         {tradingType === 'paper' && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-            <p className="text-sm text-blue-800">
+          <div className="mb-4 p-3 bg-tiris-primary-50 border border-tiris-primary-200 rounded-md">
+            <p className="text-sm text-tiris-primary-800">
               {t('trading.create.paperInfo')}
             </p>
           </div>
@@ -406,7 +406,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
               id="name"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
               placeholder={t('trading.create.namePlaceholder')}
               required
             />
@@ -420,7 +420,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
               </label>
               {isLoadingBindings ? (
                 <div className="flex items-center py-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-tiris-primary-600 mr-2"></div>
                   <span className="text-sm text-gray-600">{t('common.loading')}</span>
                 </div>
               ) : (
@@ -428,7 +428,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                   id="exchange_binding"
                   value={formData.exchange_binding_id}
                   onChange={(e) => handleInputChange('exchange_binding_id', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
                   required
                 >
                   <option value="">{t('trading.create.selectExchange')}</option>
@@ -453,7 +453,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                   id="quote_currency"
                   value={quoteCurrency}
                   onChange={(e) => setQuoteCurrency(e.target.value as 'USDT' | 'USDC')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
                   required
                 >
                   <option value="USDT">USDT</option>
@@ -468,7 +468,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                 </label>
                 {isLoadingBotData ? (
                   <div className="flex items-center py-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-tiris-primary-600 mr-2"></div>
                     <span className="text-sm text-gray-600">{t('common.loading')}</span>
                   </div>
                 ) : (
@@ -476,7 +476,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                     id="bot_strategy_real"
                     value={selectedStrategy}
                     onChange={(e) => setSelectedStrategy(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
                     required
                   >
                     <option value="">{t('trading.botParams.selectStrategy')}</option>
@@ -496,7 +496,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                 </label>
                 {isLoadingBalance ? (
                   <div className="flex items-center py-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-tiris-primary-600 mr-2"></div>
                     <span className="text-sm text-gray-600">{t('trading.create.loadingBalance')}</span>
                   </div>
                 ) : (
@@ -520,7 +520,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                         min="0"
                         max={maxBalance}
                         step="1"
-                        className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
                         required
                       />
                       <span className="text-sm text-gray-600">
@@ -535,11 +535,11 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                         min="0"
                         max={maxBalance}
                         step={Math.max(1, Math.floor(maxBalance * 0.1))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-tiris-primary-600"
                       />
                       <div className="flex justify-between mt-1">
                         <span className="text-xs text-gray-500">0%</span>
-                        <span className="text-xs font-medium text-blue-600">
+                        <span className="text-xs font-medium text-tiris-primary-600">
                           {maxBalance > 0 ? Math.round((initialFunds / maxBalance) * 100) : 0}%
                         </span>
                         <span className="text-xs text-gray-500">100%</span>
@@ -561,7 +561,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                 </label>
                 {paperExchanges.length === 0 ? (
                   <div className="flex items-center py-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-tiris-primary-600 mr-2"></div>
                     <span className="text-sm text-gray-600">{t('common.loading')}</span>
                   </div>
                 ) : (
@@ -572,7 +572,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                       const exchange = paperExchanges.find(ex => getExchangeOptionValue(ex) === e.target.value);
                       setSelectedPaperExchange(exchange || null);
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
                     required
                   >
                     <option value="">{t('trading.create.selectExchange')}</option>
@@ -595,7 +595,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                 </label>
                 {isLoadingBotData ? (
                   <div className="flex items-center py-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-tiris-primary-600 mr-2"></div>
                     <span className="text-sm text-gray-600">{t('common.loading')}</span>
                   </div>
                 ) : (
@@ -603,7 +603,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
                     id="bot_strategy"
                     value={selectedStrategy}
                     onChange={(e) => setSelectedStrategy(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
                     required
                   >
                     <option value="">{t('trading.botParams.selectStrategy')}</option>
@@ -628,7 +628,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
               id="description"
               value={formData.info.description}
               onChange={(e) => handleInfoChange('description', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
               rows={3}
               placeholder={t('trading.create.descriptionPlaceholder')}
             />
@@ -647,14 +647,14 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tiris-primary-500"
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isLoading || isLoadingBindings || ((tradingType === 'paper' || tradingType === 'real') && isLoadingBotData)}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-white bg-tiris-primary-600 border border-transparent rounded-md hover:bg-tiris-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tiris-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? t('common.creating') : t('common.create')}
             </button>

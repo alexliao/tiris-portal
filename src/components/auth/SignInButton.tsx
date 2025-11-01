@@ -14,7 +14,7 @@ export const SignInButton: React.FC<SignInButtonProps> = ({ testId = 'signin-but
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="font-['Nunito'] font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors px-4 py-2 rounded-md"
+        className="font-['Nunito'] font-semibold text-white bg-tiris-primary-600 hover:bg-tiris-primary-700 transition-colors px-4 py-2 rounded-md"
         data-testid={testId}
       >
         {t('auth.signIn', 'Sign In')}

@@ -35,13 +35,13 @@ export const PaperStep2: React.FC<PaperStep2Props> = ({
             onClick={() => setSelectedExchange(exchange)}
             className={`relative p-6 rounded-lg border-2 transition-all text-left ${
               selectedExchange?.type === exchange.type
-                ? 'border-blue-500 bg-blue-50'
+                ? 'border-tiris-primary-500 bg-tiris-primary-50'
                 : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
             }`}
           >
             {/* Selected Indicator */}
             {selectedExchange?.type === exchange.type && (
-              <div className="absolute top-3 right-3 flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full">
+              <div className="absolute top-3 right-3 flex items-center justify-center w-6 h-6 bg-tiris-primary-500 rounded-full">
                 <Check className="w-4 h-4 text-white" />
               </div>
             )}

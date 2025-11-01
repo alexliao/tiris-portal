@@ -56,7 +56,7 @@ export const ExchangeBindingCard: React.FC<ExchangeBindingCardProps> = ({
 
   const containerBaseClasses = 'w-full m-0 p-0 rounded-lg shadow hover:shadow-xl transition-shadow border border-gray-200 overflow-hidden bg-white text-left';
   const selectableClasses = mode === 'select'
-    ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500'
+    ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-tiris-primary-500'
     : '';
 
   const content = (
@@ -101,7 +101,7 @@ export const ExchangeBindingCard: React.FC<ExchangeBindingCardProps> = ({
               // Selection Mode - Show checkmark when selected
               isSelected && (
                 <div className="flex items-center justify-center w-6 h-6 bg-white rounded-full">
-                  <Check className="w-4 h-4 text-blue-600" />
+                  <Check className="w-4 h-4 text-tiris-primary-600" />
                 </div>
               )
             ) : (

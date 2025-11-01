@@ -469,7 +469,7 @@ export const AppRouter: React.FC = () => {
   }
   
   .tiris-button-primary {
-    @apply bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md font-medium transition-colors;
+    @apply bg-tiris-primary-500 hover:bg-tiris-primary-600 text-white px-4 py-2 rounded-md font-medium transition-colors;
   }
   
   .profit-text {

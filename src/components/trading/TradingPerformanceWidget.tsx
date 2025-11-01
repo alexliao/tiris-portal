@@ -1265,7 +1265,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           <div className="bg-white p-3 rounded-lg shadow-sm flex-1 min-w-[150px]">
             <div className="flex items-baseline justify-between gap-2">
               <div className="text-sm font-['Nunito'] text-gray-600">{quoteSymbol}</div>
-              <div className="text-xl font-['Bebas_Neue'] font-bold text-blue-600">
+              <div className="text-xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
                 ${formatSignificantDigits(normalizedQuoteBalance, 4)}
               </div>
             </div>
@@ -1432,8 +1432,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   })}
                   className={`flex items-center gap-1 rounded-md border px-3 py-1 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                     seriesVisibility[item.key]
-                      ? 'bg-white border-gray-300 text-gray-700 focus:ring-blue-200'
-                      : 'bg-gray-100 border-gray-200 text-gray-400 focus:ring-blue-100'
+                      ? 'bg-white border-gray-300 text-gray-700 focus:ring-tiris-primary-200'
+                      : 'bg-gray-100 border-gray-200 text-gray-400 focus:ring-tiris-primary-100'
                   }`}
                 >
                   {item.key === 'signals' ? (
@@ -1570,7 +1570,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       {/* Performance Highlights */}
       {showHighlights && (
-        <div className="mt-8 bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg">
+        <div className="mt-8 bg-gradient-to-r from-green-50 to-tiris-primary-50 p-6 rounded-lg">
           <h3 className="text-lg font-['Bebas_Neue'] font-bold text-[#080404] mb-4">
             {t('trading.chart.performanceHighlights')}
           </h3>

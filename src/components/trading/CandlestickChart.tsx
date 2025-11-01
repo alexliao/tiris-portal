@@ -1126,7 +1126,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     <div className={`relative bg-white rounded-lg border border-gray-200 ${className}`} style={{ height, overflow: 'hidden' }}>
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10 rounded-lg">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tiris-primary-600"></div>
         </div>
       )}
       <div

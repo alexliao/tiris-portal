@@ -793,7 +793,7 @@ export const TradingDetailPage: React.FC = () => {
         <Navigation />
         <div className="pt-20 flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tiris-primary-600 mx-auto mb-4"></div>
             <p className="text-gray-600">{t('common.loading')}</p>
           </div>
         </div>
@@ -808,14 +808,14 @@ export const TradingDetailPage: React.FC = () => {
         <Navigation />
         <div className="pt-20 flex items-center justify-center min-h-screen">
           <div className="text-center max-w-md px-4">
-            <AlertCircle className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+            <AlertCircle className="w-16 h-16 text-tiris-primary-400 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.signInToView')}</h1>
             <p className="text-gray-600 mb-4">
               {t('trading.detail.signInMessage')}
             </p>
             <Link
               to="/"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-tiris-primary-600 text-white rounded-md hover:bg-tiris-primary-700 transition-colors"
             >
               {t('common.signIn')}
             </Link>
@@ -834,7 +834,7 @@ export const TradingDetailPage: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex items-center justify-center h-96">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tiris-primary-600 mx-auto mb-4"></div>
                 <p className="text-gray-600">{t('dashboard.loadingTradings')}</p>
               </div>
             </div>
@@ -857,7 +857,7 @@ export const TradingDetailPage: React.FC = () => {
               <p className="text-red-600 mb-4">{error}</p>
               <Link
                 to="/dashboard"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-tiris-primary-600 text-white rounded-md hover:bg-tiris-primary-700 transition-colors"
               >
                 {t('dashboard.title')}
               </Link>
@@ -881,7 +881,7 @@ export const TradingDetailPage: React.FC = () => {
               <p className="text-gray-600 mb-4">{t('trading.detail.notFound')}</p>
               <Link
                 to="/dashboard"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-tiris-primary-600 text-white rounded-md hover:bg-tiris-primary-700 transition-colors"
               >
                 {t('dashboard.title')}
               </Link>
@@ -901,7 +901,7 @@ export const TradingDetailPage: React.FC = () => {
         <div className="pt-20">
           <div className="flex items-center justify-center h-96">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tiris-primary-600 mx-auto mb-4"></div>
               <p className="text-gray-600">{t('dashboard.loadingTradings')}</p>
             </div>
           </div>
@@ -1059,7 +1059,7 @@ export const TradingDetailPage: React.FC = () => {
                           <button
                             onClick={() => handleStartBot()}
                             disabled={botLoading}
-                            className="inline-flex items-center px-2 py-1 md:px-3 md:py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                            className="inline-flex items-center px-2 py-1 md:px-3 md:py-2 text-sm bg-tiris-primary-600 text-white rounded-md hover:bg-tiris-primary-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                           >
                             {botLoading ? (
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1099,7 +1099,7 @@ export const TradingDetailPage: React.FC = () => {
                         <button
                           onClick={() => handleStartBot()}
                           disabled={botLoading}
-                          className="inline-flex items-center px-2 py-1 md:px-3 md:py-2 text-xs md:text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                          className="inline-flex items-center px-2 py-1 md:px-3 md:py-2 text-xs md:text-sm bg-tiris-primary-600 text-white rounded-md hover:bg-tiris-primary-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                         >
                           {botLoading ? (
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />

@@ -44,13 +44,13 @@ export const RealStep3: React.FC<RealStep3Props> = ({
                 onClick={() => setQuoteCurrency(currency as 'USDT' | 'USDC')}
                 className={`relative p-4 rounded-lg border-2 transition-all text-center font-medium ${
                   quoteCurrency === currency
-                    ? 'border-blue-500 bg-blue-50 text-blue-900'
+                  ? 'border-tiris-primary-500 bg-tiris-primary-50 text-tiris-primary-900'
                     : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700'
                 }`}
               >
                 {currency}
                 {quoteCurrency === currency && (
-                  <div className="absolute -top-2 -right-2 flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full">
+                  <div className="absolute -top-2 -right-2 flex items-center justify-center w-6 h-6 bg-tiris-primary-500 rounded-full">
                     <span className="text-white font-bold text-sm">✓</span>
                   </div>
                 )}
@@ -68,7 +68,7 @@ export const RealStep3: React.FC<RealStep3Props> = ({
 
           {isLoadingBalance ? (
             <div className="flex items-center py-4">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-tiris-primary-600 mr-2"></div>
               <span className="text-sm text-gray-600">{t('trading.create.loadingBalance')}</span>
             </div>
           ) : (
@@ -86,8 +86,8 @@ export const RealStep3: React.FC<RealStep3Props> = ({
 
               {maxBalance > 0 && (
                 <>
-                  <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800 font-medium">
+                  <div className="mb-4 p-4 bg-tiris-primary-50 border border-tiris-primary-200 rounded-lg">
+                    <p className="text-sm text-tiris-primary-800 font-medium">
                       {t('trading.wizard.realStep3.available')}: {maxBalance.toLocaleString()} {quoteCurrency}
                     </p>
                   </div>
@@ -106,7 +106,7 @@ export const RealStep3: React.FC<RealStep3Props> = ({
                         min="0"
                         max={maxBalance}
                         step="1"
-                        className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                        className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-tiris-primary-500 focus:border-tiris-primary-500 text-gray-900"
                         required
                       />
                       <span className="text-sm font-medium text-gray-700">{quoteCurrency}</span>
@@ -122,11 +122,11 @@ export const RealStep3: React.FC<RealStep3Props> = ({
                       min="0"
                       max={maxBalance}
                       step={Math.max(1, Math.floor(maxBalance * 0.1))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-tiris-primary-600"
                     />
                     <div className="flex justify-between mt-2">
                       <span className="text-xs text-gray-500">0%</span>
-                      <span className="text-xs font-medium text-blue-600">
+                      <span className="text-xs font-medium text-tiris-primary-600">
                         {maxBalance > 0 ? Math.round((initialFunds / maxBalance) * 100) : 0}%
                       </span>
                       <span className="text-xs text-gray-500">100%</span>
@@ -137,7 +137,7 @@ export const RealStep3: React.FC<RealStep3Props> = ({
                   <div className="p-3 bg-gray-50 rounded-lg">
                     <p className="text-sm text-gray-700">
                       <span className="font-medium">{t('trading.wizard.realStep3.allocated')}:</span>{' '}
-                      <span className="text-blue-600 font-medium">{initialFunds.toLocaleString()} {quoteCurrency}</span>
+                      <span className="text-tiris-primary-600 font-medium">{initialFunds.toLocaleString()} {quoteCurrency}</span>
                     </p>
                   </div>
                 </>
@@ -147,8 +147,8 @@ export const RealStep3: React.FC<RealStep3Props> = ({
         </div>
 
         {/* Info Box */}
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
+        <div className="p-4 bg-tiris-primary-50 border border-tiris-primary-200 rounded-lg">
+          <p className="text-sm text-tiris-primary-800">
             {t('trading.wizard.realStep3.info')}
           </p>
         </div>

@@ -38,7 +38,7 @@ export const Toast: React.FC<ToastProps> = ({ toast }) => {
         return `${baseStyles} bg-yellow-50 border-yellow-400 text-yellow-800`;
       case 'info':
       default:
-        return `${baseStyles} bg-blue-50 border-blue-400 text-blue-800`;
+        return `${baseStyles} bg-tiris-primary-50 border-tiris-primary-400 text-tiris-primary-800`;
     }
   };
 
@@ -53,7 +53,7 @@ export const Toast: React.FC<ToastProps> = ({ toast }) => {
         return <AlertTriangle {...iconProps} className="w-5 h-5 flex-shrink-0 text-yellow-500" />;
       case 'info':
       default:
-        return <Info {...iconProps} className="w-5 h-5 flex-shrink-0 text-blue-500" />;
+        return <Info {...iconProps} className="w-5 h-5 flex-shrink-0 text-tiris-primary-500" />;
     }
   };
 

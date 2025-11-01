@@ -75,7 +75,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchToSig
             id="signin-email"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-tiris-primary-500 focus:border-tiris-primary-500 ${
               formErrors.email ? 'border-red-300' : 'border-gray-300'
             }`}
             placeholder={t('auth.enterEmail')}
@@ -96,7 +96,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchToSig
             id="signin-password"
             value={formData.password}
             onChange={(e) => handleInputChange('password', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-tiris-primary-500 focus:border-tiris-primary-500 ${
               formErrors.password ? 'border-red-300' : 'border-gray-300'
             }`}
             placeholder={t('auth.enterPassword')}
@@ -111,7 +111,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchToSig
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-md shadow-sm bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-md shadow-sm bg-tiris-primary-600 hover:bg-tiris-primary-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <>
@@ -130,7 +130,7 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchToSig
           {t('auth.dontHaveAccount', "Don't have an account?")}{' '}
           <button
             onClick={onSwitchToSignUp}
-            className="text-blue-600 hover:text-blue-800 font-medium"
+            className="text-tiris-primary-600 hover:text-tiris-primary-800 font-medium"
             disabled={isLoading}
           >
             {t('auth.signUp', 'Sign Up')}
@@ -142,11 +142,11 @@ export const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchToSig
       <div className="text-xs text-center text-gray-500">
         <p>
           {t('auth.termsText', 'By signing in, you agree to our')}{' '}
-          <a href="#" className="text-blue-600 hover:text-blue-800">
+          <a href="#" className="text-tiris-primary-600 hover:text-tiris-primary-800">
             {t('auth.termsOfService', 'Terms of Service')}
           </a>{' '}
           {t('auth.and', 'and')}{' '}
-          <a href="#" className="text-blue-600 hover:text-blue-800">
+          <a href="#" className="text-tiris-primary-600 hover:text-tiris-primary-800">
             {t('auth.privacyPolicy', 'Privacy Policy')}
           </a>
         </p>

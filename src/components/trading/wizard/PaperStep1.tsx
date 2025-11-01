@@ -37,7 +37,7 @@ export const PaperStep1: React.FC<PaperStep1Props> = ({
             value={tradingName}
             onChange={(e) => setTradingName(e.target.value)}
             placeholder={t('trading.wizard.paperStep1.namePlaceholder')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-tiris-primary-500 focus:border-tiris-primary-500 text-gray-900 placeholder-gray-500"
           />
           <p className="mt-1 text-xs text-gray-500">
             {t('trading.wizard.paperStep1.nameHelp')} - {t('trading.wizard.paperStep1.editableHint')}
@@ -45,14 +45,14 @@ export const PaperStep1: React.FC<PaperStep1Props> = ({
         </div>
 
         {/* Paper Trading Info */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-tiris-primary-50 border border-tiris-primary-200 rounded-lg p-4">
           <div className="flex gap-3">
-            <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <Info className="w-5 h-5 text-tiris-primary-600 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-medium text-blue-900 mb-1">
+              <h3 className="font-medium text-tiris-primary-900 mb-1">
                 {t('trading.wizard.paperStep1.paperInfoTitle')}
               </h3>
-              <p className="text-sm text-blue-800">
+              <p className="text-sm text-tiris-primary-800">
                 {t('trading.wizard.paperStep1.paperInfo')}
               </p>
             </div>

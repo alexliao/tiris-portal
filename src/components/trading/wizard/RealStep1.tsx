@@ -35,7 +35,7 @@ export const RealStep1: React.FC<RealStep1Props> = ({
             value={tradingName}
             onChange={(e) => setTradingName(e.target.value)}
             placeholder={t('trading.wizard.realStep1.namePlaceholder')}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-tiris-primary-500 focus:border-tiris-primary-500 text-gray-900 placeholder-gray-500"
           />
           <p className="mt-1 text-xs text-gray-500">
             {t('trading.wizard.realStep1.nameHelp')} - {t('trading.wizard.realStep1.editableHint')}

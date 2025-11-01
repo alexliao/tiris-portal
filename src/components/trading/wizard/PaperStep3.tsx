@@ -61,21 +61,21 @@ export const PaperStep3: React.FC<PaperStep3Props> = ({
               onClick={() => setSelectedFrequency(option.value)}
               className={`relative p-6 rounded-lg border-2 transition-all text-left ${
                 isSelected
-                  ? 'border-blue-500 bg-blue-50'
+                  ? 'border-tiris-primary-500 bg-tiris-primary-50'
                   : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
               {/* Selected Indicator */}
               {isSelected && (
-                <div className="absolute top-3 right-3 flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full">
+                <div className="absolute top-3 right-3 flex items-center justify-center w-6 h-6 bg-tiris-primary-500 rounded-full">
                   <Check className="w-4 h-4 text-white" />
                 </div>
               )}
 
               {/* Header with Icon and Label */}
               <div className="flex items-start gap-4 mb-4">
-                <div className={`p-3 rounded-lg ${isSelected ? 'bg-blue-200' : 'bg-gray-100'}`}>
-                  <Icon className={`w-6 h-6 ${isSelected ? 'text-blue-600' : 'text-gray-600'}`} />
+                <div className={`p-3 rounded-lg ${isSelected ? 'bg-tiris-primary-200' : 'bg-gray-100'}`}>
+                  <Icon className={`w-6 h-6 ${isSelected ? 'text-tiris-primary-600' : 'text-gray-600'}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 text-lg">

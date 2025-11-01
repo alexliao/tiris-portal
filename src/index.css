@@ -1,8 +1,21 @@
 @import "tailwindcss";
 
+@theme {
+  --color-tiris-primary-50: #F4F7FB;
+  --color-tiris-primary-100: #E3E9F4;
+  --color-tiris-primary-200: #CBD5EA;
+  --color-tiris-primary-300: #A9BBDC;
+  --color-tiris-primary-400: #7E9AC8;
+  --color-tiris-primary-500: #5678B2;
+  --color-tiris-primary-600: #3F5E98;
+  --color-tiris-primary-700: #31497A;
+  --color-tiris-primary-800: #25375D;
+  --color-tiris-primary-900: #1B2947;
+}
+
 /* Custom components using Tailwind v4 syntax */
 .tiris-button-primary {
-  @apply bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  @apply bg-tiris-primary-500 hover:bg-tiris-primary-600 text-white px-6 py-3 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-tiris-primary-500 focus:ring-offset-2;
 }
 
 /* Remove focus outlines from Recharts elements */

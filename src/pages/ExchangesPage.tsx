@@ -146,7 +146,7 @@ export const ExchangesPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tiris-primary-600 mx-auto mb-4"></div>
           <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
@@ -226,7 +226,7 @@ export const ExchangesPage: React.FC = () => {
                         <div key={trading.id}>
                           <Link
                             to={`/trading/${trading.id}`}
-                            className="text-sm text-blue-700 hover:text-blue-900 underline font-medium"
+                            className="text-sm text-tiris-primary-700 hover:text-tiris-primary-900 underline font-medium"
                           >
                             → {trading.name}
                           </Link>
@@ -242,7 +242,7 @@ export const ExchangesPage: React.FC = () => {
           {/* Loading State */}
           {isLoading ? (
             <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tiris-primary-600 mx-auto mb-4"></div>
               <p className="text-gray-600">{t('exchanges.loadingExchangeConnections')}</p>
             </div>
           ) : exchanges.length === 0 ? (
@@ -271,7 +271,7 @@ export const ExchangesPage: React.FC = () => {
                     key={exchange.id}
                     type="button"
                     onClick={() => navigate(`/real-trading/create?exchangeId=${exchange.id}&step=1`)}
-                    className="w-full text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-lg self-start"
+                    className="w-full text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tiris-primary-500 rounded-lg self-start"
                   >
                     <ExchangeBindingCard
                       exchange={exchange}
@@ -517,7 +517,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
                 id="exchange"
                 value={formData.exchange}
                 onChange={(e) => setFormData({ ...formData, exchange: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
                 required
                 disabled={loadingExchanges}
               >
@@ -555,7 +555,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
               placeholder={t('exchanges.namePlaceholder')}
               required
             />
@@ -572,7 +572,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
               id="api_key"
               value={formData.api_key}
               onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
               placeholder={t('exchanges.apiKeyPlaceholder')}
               required={!exchange}
             />
@@ -589,7 +589,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
               id="api_secret"
               value={formData.api_secret}
               onChange={(e) => setFormData({ ...formData, api_secret: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
               placeholder={t('exchanges.apiSecretPlaceholder')}
               required={!exchange}
             />
@@ -607,7 +607,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
               id="passphrase"
               value={formData.passphrase}
               onChange={(e) => setFormData({ ...formData, passphrase: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
               placeholder={t('exchanges.passphrasePlaceholder')}
             />
           </div>
@@ -621,7 +621,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-tiris-primary-500 focus:border-tiris-primary-500"
               rows={2}
               placeholder={t('exchanges.connectionDescriptionPlaceholder')}
             />
@@ -640,14 +640,14 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tiris-primary-500"
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-white bg-tiris-primary-600 border border-transparent rounded-md hover:bg-tiris-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tiris-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? t('common.creating') : exchange ? t('common.save') : t('common.create')}
             </button>
