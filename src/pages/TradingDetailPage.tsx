@@ -965,7 +965,7 @@ export const TradingDetailPage: React.FC = () => {
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/80">
                     <div className="flex items-center gap-2">
-                      <span>ID: {trading.id.substring(0, 8)}...</span>
+                      <span>ID: {trading.id.substring(0, 4)}...</span>
                       <button
                         onClick={handleCopyTradingId}
                         className="p-1 rounded hover:bg-white/20 text-white/80 transition-colors hover:text-white"
@@ -997,6 +997,13 @@ export const TradingDetailPage: React.FC = () => {
                         title={t('trading.badges.minuteLevelTooltip')}
                       >
                         <Zap className="w-3.5 h-3.5" />
+                      </span>
+                    )}
+                    {bot && (
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        bot.alive ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-900'
+                      }`}>
+                        {bot.alive ? t('dashboard.botStatus.online') : t('dashboard.botStatus.offline')}
                       </span>
                     )}
                   </div>
