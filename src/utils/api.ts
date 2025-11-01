@@ -1203,6 +1203,7 @@ export async function deleteBot(botId: string): Promise<void> {
 
 // Complete paper trading creation according to business logic
 const PAPER_TRADING_DEFAULT_INITIAL_FUNDS = 10000;
+const BACKTEST_TRADING_DEFAULT_INITIAL_FUNDS = 10000;
 
 export async function createPaperTrading(request: CreateTradingRequest): Promise<Trading> {
   console.log('🔍 [PAPER DEBUG] Creating paper trading with business logic steps...');
@@ -1290,6 +1291,98 @@ export async function createPaperTrading(request: CreateTradingRequest): Promise
 
   } catch (error) {
     console.error('Failed to create paper trading:', error);
+    // Note: In case of failure, the created resources might need cleanup
+    // The backend should handle this or we might need to implement cleanup logic
+    throw error;
+  }
+}
+
+export async function createBacktestTrading(request: CreateTradingRequest): Promise<Trading> {
+  console.log('🔍 [BACKTEST DEBUG] Creating backtest trading with business logic steps...');
+  console.log('🔍 [BACKTEST DEBUG] Request received:', request);
+
+  try {
+    const configuredInitialFunds = Number(request.info?.initial_funds);
+    const initialFunds = Number.isFinite(configuredInitialFunds) && configuredInitialFunds > 0
+      ? configuredInitialFunds
+      : BACKTEST_TRADING_DEFAULT_INITIAL_FUNDS;
+
+    const preparedRequest: CreateTradingRequest = {
+      ...request,
+      type: 'backtest',
+      info: {
+        ...request.info,
+        initial_funds: initialFunds,
+      },
+    };
+
+    // Step 1: Create the trading
+    console.log('Step 1: Creating backtest trading...');
+    const trading = await createTrading(preparedRequest);
+    console.log('🔍 [BACKTEST DEBUG] Trading created, checking info field:', trading.info);
+    console.log('Trading created:', trading.id);
+
+    // Step 2: Create two sub-accounts (ETH for stock, USDT for balance)
+    console.log('Step 2: Creating sub-accounts...');
+
+    // Create ETH sub-account
+    const ethSubAccount = await createSubAccount({
+      name: 'ETH Stock Account',
+      symbol: 'ETH',
+      balance: '0',
+      trading_id: trading.id,
+      info: {
+        description: 'Sub-account for ETH stock holdings',
+        account_type: 'stock'
+      }
+    });
+    console.log('ETH sub-account created:', ethSubAccount.id);
+
+    // Create USDT sub-account
+    const usdtSubAccount = await createSubAccount({
+      name: 'USDT Balance Account',
+      symbol: 'USDT',
+      balance: '0',
+      trading_id: trading.id,
+      info: {
+        description: 'Sub-account for USDT balance',
+        account_type: 'balance'
+      }
+    });
+    console.log('USDT sub-account created:', usdtSubAccount.id);
+
+    // Step 3: Create trading log for initial balance
+    console.log('Step 3: Creating initial balance trading log...');
+    await createTradingLog({
+      trading_id: trading.id,
+      type: 'deposit',
+      source: 'manual',
+      message: 'Initial balance for backtest trading',
+      event_time: new Date().toISOString(),
+      info: {
+        account_id: usdtSubAccount.id,
+        amount: initialFunds,
+        currency: 'USDT'
+      }
+    });
+    console.log('Initial balance trading log created');
+
+    // Step 4: Sub-account IDs are now available and linked via trading_id
+    console.log('Step 4: Backtest trading creation completed');
+    console.log('Sub-account IDs:', {
+      eth_account_id: ethSubAccount.id,
+      usdt_account_id: usdtSubAccount.id
+    });
+
+    trading.info = {
+      ...trading.info,
+      initial_funds: initialFunds,
+    };
+
+    return trading;
+
+  } catch (error) {
+    console.error('Failed to create backtest trading:', error);
     // Note: In case of failure, the created resources might need cleanup
     // The backend should handle this or we might need to implement cleanup logic
     throw error;

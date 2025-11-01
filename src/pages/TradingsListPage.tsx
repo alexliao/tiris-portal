@@ -78,9 +78,9 @@ export const TradingsListPage: React.FC = () => {
   };
 
   const handleCreateTrading = () => {
-    // Show "under construction" message for backtest trading
+    // Navigate to wizard for backtest trading
     if (type === 'backtest') {
-      setShowUnderConstructionDialog(true);
+      navigate('/backtest-trading/create');
       return;
     }
 

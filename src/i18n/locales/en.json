@@ -166,6 +166,7 @@
     "back": "Back",
     "previous": "Previous",
     "next": "Next",
+    "done": "Done",
     "signInToView": "Sign in to view",
     "signIn": "Sign in"
   },
@@ -571,6 +572,38 @@
         "available": "Available Balance",
         "allocated": "Allocated Amount",
         "info": "You can allocate funds from your exchange account to multiple real tradings. Once a real trading is created, the allocated initial funds cannot be changed. However, once you delete a real trading, the allocated funds will be released and can be reallocated to other real tradings."
+      },
+      "backtestTitle": "Create Backtest Trading",
+      "backtestSubtitle": "Follow the steps below to set up your backtest trading with historical data",
+      "backtestStep1": {
+        "label": "Exchange",
+        "title": "Select Exchange",
+        "description": "Different exchanges have different fees and trading volumes, but similar price trends. Over the long term, fees have a significant impact on profitability.",
+        "feeLabel": "Fee",
+        "noExchanges": "No exchanges available"
+      },
+      "backtestStep2": {
+        "label": "Date Range",
+        "title": "Select Date Range",
+        "description": "Choose the start and end dates for your backtest. The system will analyze historical data between these dates.",
+        "startDateLabel": "Start Date",
+        "endDateLabel": "End Date",
+        "selectedRange": "Selected Range",
+        "to": "to",
+        "dayCount": "{{count}} day(s) of historical data",
+        "dateRangeRequired": "Please select both start and end dates",
+        "invalidDateRange": "End date must be after start date"
+      },
+      "backtestStep3": {
+        "label": "Naming",
+        "title": "Naming",
+        "description": "Give your backtest a name to help you identify it later",
+        "nameLabel": "Trading Name",
+        "namePlaceholder": "Enter trading name",
+        "nameHelp": "This will help you quickly identify this trading in the trading list",
+        "editableHint": "You can edit this name at any time",
+        "backtestInfoTitle": "About Backtest Trading",
+        "backtestInfo": "This will create a backtest trading with a 10,000 USDT initial balance. The system will analyze how Tiris trading strategy would have performed between your chosen dates. You can run multiple backtests and delete them at any time without any loss."
       }
     }
   },

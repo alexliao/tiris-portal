@@ -1,0 +1,383 @@
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { createBacktestTrading, type CreateTradingRequest, ApiError, getBacktestExchanges, type ExchangeConfigResponse } from '../utils/api';
+import { AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import Navigation from '../components/layout/Header';
+import Footer from '../components/layout/Footer';
+import { THEME_COLORS } from '../config/theme';
+import BacktestStep1 from '../components/trading/wizard/BacktestStep1';
+import BacktestStep2 from '../components/trading/wizard/BacktestStep2';
+import BacktestStep3 from '../components/trading/wizard/BacktestStep3';
+import BacktestWizardStepIndicator from '../components/trading/wizard/BacktestWizardStepIndicator';
+
+const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
+
+export const BacktestTradingWizardPage: React.FC = () => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
+  // Form data
+  const [tradingName, setTradingName] = useState('');
+  const [selectedExchange, setSelectedExchange] = useState<ExchangeConfigResponse | null>(null);
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+
+  // Available data
+  const [backtestExchanges, setBacktestExchanges] = useState<ExchangeConfigResponse[]>([]);
+
+  const colors = THEME_COLORS.backtest;
+  const Icon = colors.icon;
+
+  // Generate default trading name with timestamp
+  const generateDefaultName = (type: string): string => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+
+    const timestamp = t('trading.create.defaultNameTimestamp', {
+      month,
+      day,
+      hours,
+      minutes
+    });
+
+    return t(`trading.defaultName.${type}`, {
+      timestamp
+    });
+  };
+
+  // Initialize form data on component mount
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      // Set default trading name with timestamp
+      setTradingName(generateDefaultName('backtest'));
+      fetchInitialData();
+    }
+  }, [isAuthenticated, authLoading]);
+
+  const fetchInitialData = async () => {
+    try {
+      setIsLoadingData(true);
+      setError(null);
+
+      // Fetch backtest exchanges from tiris-bot API
+      const exchanges = await getBacktestExchanges();
+      setBacktestExchanges(exchanges);
+
+      // Auto-select first exchange if available
+      if (exchanges.length > 0) {
+        setSelectedExchange(exchanges[0]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch initial data:', err);
+      if (err instanceof ApiError) {
+        setError(t('trading.create.failedToLoadData', { error: err.message }));
+      } else {
+        setError(t('trading.create.failedToLoadData', { error: 'Unknown error' }));
+      }
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  const validateStep = (step: number): boolean => {
+    setError(null);
+
+    if (step === 1) {
+      if (!selectedExchange) {
+        setError(t('trading.create.exchangeRequired'));
+        return false;
+      }
+      return true;
+    }
+
+    if (step === 2) {
+      if (!startDate || !endDate) {
+        setError(t('trading.wizard.backtestStep2.dateRangeRequired'));
+        return false;
+      }
+      if (startDate >= endDate) {
+        setError(t('trading.wizard.backtestStep2.invalidDateRange'));
+        return false;
+      }
+      return true;
+    }
+
+    if (step === 3) {
+      if (!tradingName.trim()) {
+        setError(t('trading.create.nameRequired'));
+        return false;
+      }
+      return true;
+    }
+
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePreviousStep = () => {
+    setError(null);
+    setCurrentStep(currentStep - 1);
+  };
+
+  const handleSubmit = async () => {
+    if (!validateStep(currentStep)) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Prepare request data for backtest trading
+      const requestData = {
+        name: tradingName,
+        type: 'backtest',
+        info: {
+          // Store exchange information from tiris-bot API
+          exchange_type: selectedExchange?.type,
+          exchange_name: selectedExchange?.name,
+          exchange_ccxt_id: selectedExchange?.ccxt_id,
+          exchange_sandbox: selectedExchange?.sandbox,
+          exchange_virtual_fee: selectedExchange?.virtual_exchange_fee,
+          // Store date range information
+          start_date: startDate?.toISOString(),
+          end_date: endDate?.toISOString(),
+        },
+      } as unknown as CreateTradingRequest;
+
+      console.log('📝 [WIZARD DEBUG] Creating backtest trading with:', requestData);
+
+      // Use createBacktestTrading which handles the business logic:
+      // - Creates trading record with exchange info from tiris-bot
+      // - Creates two sub-accounts (ETH stock, USDT balance)
+      const newTrading = await createBacktestTrading(requestData);
+
+      console.log('✅ [WIZARD DEBUG] Backtest trading created:', newTrading);
+
+      // Navigate back to backtest trading list
+      navigate('/tradings/backtest');
+    } catch (err) {
+      console.error('Failed to create backtest trading:', err);
+      let errorMessage = 'Unknown error';
+      if (err instanceof ApiError) {
+        errorMessage = err.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      setError(t('trading.create.failedToCreate', { error: errorMessage }));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tiris-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.accessDenied')}</h1>
+          <p className="text-gray-600 mb-4">{t('dashboard.needSignIn')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoadingData) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="pt-20">
+          <div
+            style={{
+              background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+            }}
+            className="text-white shadow-lg"
+          >
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="flex items-center">
+                <button
+                  onClick={() => navigate('/tradings/backtest')}
+                  className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors cursor-pointer"
+                  title={t('common.back')}
+                >
+                  <Icon className="w-8 h-8" />
+                </button>
+                <div className="ml-4">
+                  <h1 className="text-2xl font-bold">{t('trading.wizard.backtestTitle')}</h1>
+                  <p className="text-white/90 mt-1">{t('trading.wizard.backtestSubtitle')}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tiris-primary-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">{t('common.loading')}</p>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      <div className="pt-20">
+        {/* Header with Wizard Title */}
+        <div
+          style={{
+            background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+          }}
+          className="text-white shadow-lg"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex items-center mb-6">
+              <button
+                onClick={() => navigate('/tradings/backtest')}
+                className="p-3 bg-white/20 rounded-lg backdrop-blur-sm hover:bg-white/30 transition-colors cursor-pointer"
+                title={t('common.back')}
+              >
+                <Icon className="w-8 h-8" />
+              </button>
+              <div className="ml-4">
+                <h1 className="text-2xl font-bold">{t('trading.wizard.backtestTitle')}</h1>
+                <p className="text-white/90 mt-1">{t('trading.wizard.backtestSubtitle')}</p>
+              </div>
+            </div>
+
+            {/* Step Indicator */}
+            <BacktestWizardStepIndicator currentStep={currentStep} totalSteps={3} />
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 px-6 py-4 bg-red-50 border-l-4 border-red-400 rounded-lg">
+              <div className="flex">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <div className="ml-3">
+                  <p className="text-red-800">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Wizard Content */}
+          <div className="w-full min-h-[500px]">
+            {currentStep === 1 && (
+              <BacktestStep1
+                exchanges={backtestExchanges}
+                selectedExchange={selectedExchange}
+                setSelectedExchange={setSelectedExchange}
+                iconServiceBaseUrl={ICON_SERVICE_BASE_URL}
+              />
+            )}
+
+            {currentStep === 2 && (
+              <BacktestStep2
+                startDate={startDate}
+                setStartDate={setStartDate}
+                endDate={endDate}
+                setEndDate={setEndDate}
+              />
+            )}
+
+            {currentStep === 3 && (
+              <BacktestStep3
+                tradingName={tradingName}
+                setTradingName={setTradingName}
+              />
+            )}
+
+            {/* Navigation Buttons */}
+            <div className="mt-8 flex items-center justify-between gap-4">
+              <button
+                onClick={currentStep === 1 ? () => navigate('/tradings/backtest') : handlePreviousStep}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                {currentStep === 1 ? (
+                  <>{t('common.cancel')}</>
+                ) : (
+                  <>
+                    <ChevronLeft className="w-4 h-4 mr-2" />
+                    {t('common.previous')}
+                  </>
+                )}
+              </button>
+
+              <div className="flex-1" />
+
+              {currentStep === 3 ? (
+                <button
+                  onClick={handleSubmit}
+                  disabled={isLoading}
+                  style={{
+                    background: isLoading
+                      ? '#ccc'
+                      : `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+                  }}
+                  className="inline-flex items-center px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {t('common.creating')}
+                    </>
+                  ) : (
+                    <>{t('trading.wizard.create')}</>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={handleNextStep}
+                  style={{
+                    background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+                  }}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white hover:opacity-90 transition-opacity"
+                >
+                  {t('common.next')}
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
+export default BacktestTradingWizardPage;
