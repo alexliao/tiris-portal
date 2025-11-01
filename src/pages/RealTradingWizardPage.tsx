@@ -197,6 +197,8 @@ export const RealTradingWizardPage: React.FC = () => {
         info: {
           quote_currency: quoteCurrency,
           initial_funds: initialFunds,
+          start_date: new Date().toISOString(),
+          end_date: null,
         },
       } as unknown as CreateTradingRequest;
 

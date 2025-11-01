@@ -322,6 +322,7 @@
       "initialFunds": "Initial Funds",
       "initialPrice": "Initial Price",
       "dateRange": "Date Range",
+      "dayCount": "{{count}} days",
       "performanceChart": "Performance Chart",
       "noDataAvailable": "No performance data available",
       "stopBot": "Stop Bot",

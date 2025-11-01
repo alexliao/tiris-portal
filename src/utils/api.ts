@@ -793,6 +793,13 @@ export async function createRealTrading(request: CreateTradingRequest): Promise<
 
   const quoteCurrency = request.info?.quote_currency as string | undefined;
 
+  const nowIso = new Date().toISOString();
+  request.info = {
+    ...request.info,
+    start_date: request.info?.start_date ?? nowIso,
+    end_date: request.info?.end_date ?? null,
+  };
+
   if (!quoteCurrency || typeof quoteCurrency !== 'string') {
     throw new Error('Quote currency is required to create a real trading.');
   }
@@ -1215,11 +1222,17 @@ export async function createPaperTrading(request: CreateTradingRequest): Promise
       ? configuredInitialFunds
       : PAPER_TRADING_DEFAULT_INITIAL_FUNDS;
 
+    const nowIso = new Date().toISOString();
+    const startDate = request.info?.start_date ?? nowIso;
+    const endDate = request.info?.end_date ?? null;
+
     const preparedRequest: CreateTradingRequest = {
       ...request,
       info: {
         ...request.info,
         initial_funds: initialFunds,
+        start_date: startDate,
+        end_date: endDate,
       },
     };
 

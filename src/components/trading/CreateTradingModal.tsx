@@ -270,6 +270,7 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
         // For paper trading, omit exchange_binding_id entirely - it's optional per backend spec
         // The backend will retrieve exchange info from tiris-bot service
         const { exchange_binding_id, ...paperRequestData } = requestData;
+        void exchange_binding_id;
         requestData = {
           ...paperRequestData,
           info: {
@@ -281,6 +282,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
             exchange_ccxt_id: selectedPaperExchange?.ccxt_id,
             exchange_sandbox: selectedPaperExchange?.sandbox,
             exchange_virtual_fee: selectedPaperExchange?.virtual_exchange_fee,
+            start_date: requestData.info?.start_date ?? new Date().toISOString(),
+            end_date: requestData.info?.end_date ?? null,
           },
         } as unknown as CreateTradingRequest;
       }
@@ -292,6 +295,8 @@ export const CreateTradingModal: React.FC<CreateTradingModalProps> = ({
           quote_currency: quoteCurrency,
           strategy_name: selectedStrategy,
           initial_funds: initialFunds,
+          start_date: requestData.info?.start_date ?? new Date().toISOString(),
+          end_date: requestData.info?.end_date ?? null,
         };
       }
 

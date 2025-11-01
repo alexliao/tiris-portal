@@ -11,6 +11,7 @@ import ConfirmDialog from '../components/common/ConfirmDialog';
 import UnderConstruction from '../components/common/UnderConstruction';
 import { THEME_COLORS } from '../config/theme';
 import TradingCardMetrics from '../components/trading/TradingCardMetrics';
+import { getTradingDayCount } from '../utils/tradingDates';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
@@ -326,6 +327,8 @@ export const TradingsListPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTradings.map((trading) => {
                 const bot = getBotForTrading(trading);
+                const dayCount = getTradingDayCount(trading);
+                const dayCountLabel = dayCount !== null ? t('trading.detail.dayCount', { count: dayCount }) : null;
 
                 return (
                   <div
@@ -361,6 +364,11 @@ export const TradingsListPage: React.FC = () => {
                                 {(trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name
                                   ? (trading.info.exchange_name as string)
                                   : trading.exchange_binding?.name}
+                              </span>
+                            )}
+                            {dayCountLabel && (
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/90">
+                                {dayCountLabel}
                               </span>
                             )}
                             {(bot?.record.spec.params?.timeframe || trading.info?.timeframe) === '5m' && (

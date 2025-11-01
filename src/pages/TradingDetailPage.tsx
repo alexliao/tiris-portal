@@ -11,6 +11,7 @@ import ConfirmDialog from '../components/common/ConfirmDialog';
 import EditableText from '../components/common/EditableText';
 import { THEME_COLORS, getTradingTheme, getTradingIcon } from '../config/theme';
 import { createDateTimeFormatter } from '../utils/locale';
+import { getTradingDayCount } from '../utils/tradingDates';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
@@ -143,6 +144,8 @@ export const TradingDetailPage: React.FC = () => {
   const backtestRangeLabel = hasBacktestRange
     ? `${backtestStartDisplay ?? '—'} - ${backtestEndDisplay ?? '—'}`
     : null;
+  const tradingDayCount = useMemo(() => getTradingDayCount(trading), [trading]);
+  const tradingDayCountLabel = tradingDayCount !== null ? t('trading.detail.dayCount', { count: tradingDayCount }) : null;
 
   // Convert timeframe string to seconds
   const timeframeToSeconds = (timeframe: string): number => {
@@ -1031,48 +1034,53 @@ export const TradingDetailPage: React.FC = () => {
                   )}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-white/80">
-                    <div className="flex items-center gap-2">
-                      <span>ID: {trading.id.substring(0, 4)}...</span>
-                      <button
-                        onClick={handleCopyTradingId}
-                        className="p-1 rounded hover:bg-white/20 text-white/80 transition-colors hover:text-white"
-                        title={t('trading.detail.copyId')}
-                      >
-                        {copiedId ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                    {((trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name) || exchangeBinding ? (
-                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80 gap-1.5">
-                        {((trading.type === 'paper' || trading.type === 'backtest') ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string })?.exchange_type : exchangeBinding?.exchange_type) && (
-                          <img
-                            src={`${ICON_SERVICE_BASE_URL}/icons/${(trading.type === 'paper' || trading.type === 'backtest') ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string })?.exchange_type : exchangeBinding?.exchange_type}.png`}
-                            alt={(trading.type === 'paper' || trading.type === 'backtest') ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string })?.exchange_type : exchangeBinding?.exchange_type}
-                            className="w-4 h-4 rounded"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                        )}
-                        {(trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name
-                          ? String(trading.info.exchange_name)
-                          : exchangeBinding?.name}
-                      </span>
-                    ) : null}
-                    {(bot?.record.spec.params?.timeframe || trading.info?.timeframe) === '5m' && (
-                      <span
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80 cursor-help"
-                        title={t('trading.badges.minuteLevelTooltip')}
-                      >
-                        <Zap className="w-3.5 h-3.5" />
-                      </span>
-                    )}
-                    {bot && (
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        bot.alive ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-900'
-                      }`}>
-                        {bot.alive ? t('dashboard.botStatus.online') : t('dashboard.botStatus.offline')}
-                      </span>
-                    )}
+                  <div className="flex items-center gap-2">
+                    <span>ID: {trading.id.substring(0, 4)}...</span>
+                    <button
+                      onClick={handleCopyTradingId}
+                      className="p-1 rounded hover:bg-white/20 text-white/80 transition-colors hover:text-white"
+                      title={t('trading.detail.copyId')}
+                    >
+                      {copiedId ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  {((trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name) || exchangeBinding ? (
+                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80 gap-1.5">
+                      {((trading.type === 'paper' || trading.type === 'backtest') ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string })?.exchange_type : exchangeBinding?.exchange_type) && (
+                        <img
+                          src={`${ICON_SERVICE_BASE_URL}/icons/${(trading.type === 'paper' || trading.type === 'backtest') ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string })?.exchange_type : exchangeBinding?.exchange_type}.png`}
+                          alt={(trading.type === 'paper' || trading.type === 'backtest') ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string })?.exchange_type : exchangeBinding?.exchange_type}
+                          className="w-4 h-4 rounded"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                      {(trading.type === 'paper' || trading.type === 'backtest') && trading.info?.exchange_name
+                        ? String(trading.info.exchange_name)
+                        : exchangeBinding?.name}
+                    </span>
+                  ) : null}
+                  {tradingDayCountLabel && (
+                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80">
+                      {tradingDayCountLabel}
+                    </span>
+                  )}
+                  {(bot?.record.spec.params?.timeframe || trading.info?.timeframe) === '5m' && (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80 cursor-help"
+                      title={t('trading.badges.minuteLevelTooltip')}
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                    </span>
+                  )}
+                  {bot && (
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                      bot.alive ? 'bg-green-200 text-green-900' : 'bg-gray-200 text-gray-900'
+                    }`}>
+                      {bot.alive ? t('dashboard.botStatus.online') : t('dashboard.botStatus.offline')}
+                    </span>
+                  )}
                   </div>
               </div>
             </div>

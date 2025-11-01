@@ -322,6 +322,7 @@
       "initialFunds": "初始资金",
       "initialPrice": "初始价格",
       "dateRange": "日期范围",
+      "dayCount": "{{count}} 天",
       "performanceChart": "绩效图表",
       "noDataAvailable": "无绩效数据可用",
       "stopBot": "停止机器人",

@@ -156,6 +156,8 @@ export const PaperTradingWizardPage: React.FC = () => {
           exchange_sandbox: selectedExchange?.sandbox,
           exchange_virtual_fee: selectedExchange?.virtual_exchange_fee,
           timeframe: selectedFrequency,
+          start_date: new Date().toISOString(),
+          end_date: null,
         },
       } as unknown as CreateTradingRequest;
 
