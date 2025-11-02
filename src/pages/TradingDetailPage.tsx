@@ -3,11 +3,12 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading, deleteTrading, updateTrading } from '../utils/api';
-import { AlertCircle, Play, Square, Loader2, Copy, Check, Trash2, Zap } from 'lucide-react';
+import { AlertCircle, Play, Square, Loader2, Copy, Check, Trash2, Zap, X } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+import UnderConstruction from '../components/common/UnderConstruction';
 import EditableText from '../components/common/EditableText';
 import { THEME_COLORS, getTradingTheme, getTradingIcon } from '../config/theme';
 import { createDateTimeFormatter } from '../utils/locale';
@@ -73,6 +74,7 @@ export const TradingDetailPage: React.FC = () => {
     isOpen: false,
     isDeleting: false,
   });
+  const [showUnderConstructionModal, setShowUnderConstructionModal] = useState(false);
 
   // Data refresh state management
   const [dataRefreshInterval, setDataRefreshInterval] = useState<NodeJS.Timeout | null>(null);
@@ -569,6 +571,12 @@ export const TradingDetailPage: React.FC = () => {
 
   const handleStartBot = async () => {
     if (!trading) return;
+
+    // Show under construction modal for backtest trading
+    if (trading.type === 'backtest') {
+      setShowUnderConstructionModal(true);
+      return;
+    }
 
     console.log('Starting bot for trading:', trading.id);
     setBotLoading(true);
@@ -1233,6 +1241,21 @@ export const TradingDetailPage: React.FC = () => {
         isDestructive={true}
         isLoading={deleteConfirmation.isDeleting}
       />
+
+      {/* Under Construction Modal */}
+      {showUnderConstructionModal && (
+        <div className="fixed inset-0 overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-20 backdrop-blur-sm">
+          <div className="relative mx-auto p-6 border border-gray-200 w-96 shadow-2xl rounded-lg bg-white/95">
+            <button
+              onClick={() => setShowUnderConstructionModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <UnderConstruction />
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
