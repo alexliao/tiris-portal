@@ -13,6 +13,7 @@ interface ExchangeStep2Props {
   exchangeName: string;
   exchangeType: string;
   onValidationSuccess?: () => void;
+  onValidationResult?: (result: { isValid: boolean; timestamp: string }) => void;
 }
 
 export const ExchangeStep2: React.FC<ExchangeStep2Props> = ({
@@ -25,6 +26,7 @@ export const ExchangeStep2: React.FC<ExchangeStep2Props> = ({
   exchangeName,
   exchangeType,
   onValidationSuccess,
+  onValidationResult,
 }) => {
   const { t } = useTranslation();
   const [isValidating, setIsValidating] = useState(false);
@@ -46,10 +48,14 @@ export const ExchangeStep2: React.FC<ExchangeStep2Props> = ({
 
       if (response.read) {
         setValidationStatus('success');
+        const timestamp = new Date().toISOString();
+        onValidationResult?.({ isValid: true, timestamp });
         onValidationSuccess?.();
       } else {
         setValidationStatus('error');
         setValidationError(t('exchanges.wizard.step2.validationFailed'));
+        const timestamp = new Date().toISOString();
+        onValidationResult?.({ isValid: false, timestamp });
       }
     } catch (error) {
       setValidationStatus('error');
@@ -58,6 +64,8 @@ export const ExchangeStep2: React.FC<ExchangeStep2Props> = ({
       } else {
         setValidationError(t('exchanges.wizard.step2.validationError'));
       }
+      const timestamp = new Date().toISOString();
+      onValidationResult?.({ isValid: false, timestamp });
     } finally {
       setIsValidating(false);
     }

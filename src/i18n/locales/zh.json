@@ -265,6 +265,24 @@
     "leaveEmptyToKeepCurrent": "留空以保持当前值",
     "loadingExchanges": "加载交易所中...",
     "noExchangesAvailable": "没有可用的交易所",
+    "validation": {
+      "valid": "凭证有效",
+      "invalid": "凭证无效",
+      "unknown": "待验证",
+      "lastChecked": "上次验证时间 {{time}}",
+      "refreshing": "正在验证凭证...",
+      "relative": {
+        "justNow": "刚刚",
+        "secondsAgo_one": "{{count}} 秒前",
+        "secondsAgo_other": "{{count}} 秒前",
+        "minutesAgo_one": "{{count}} 分钟前",
+        "minutesAgo_other": "{{count}} 分钟前",
+        "hoursAgo_one": "{{count}} 小时前",
+        "hoursAgo_other": "{{count}} 小时前",
+        "daysAgo_one": "{{count}} 天前",
+        "daysAgo_other": "{{count}} 天前"
+      }
+    },
     "wizard": {
       "title": "创建交易所连接",
       "subtitle": "按以下步骤连接您的交易所账户",

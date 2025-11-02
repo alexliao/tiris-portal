@@ -265,6 +265,24 @@
     "leaveEmptyToKeepCurrent": "leave empty to keep current",
     "loadingExchanges": "Loading exchanges...",
     "noExchangesAvailable": "No exchanges available",
+    "validation": {
+      "valid": "Credentials valid",
+      "invalid": "Credentials invalid",
+      "unknown": "Validation pending",
+      "lastChecked": "Last checked {{time}}",
+      "refreshing": "Validating credentials...",
+      "relative": {
+        "justNow": "just now",
+        "secondsAgo_one": "{{count}} second ago",
+        "secondsAgo_other": "{{count}} seconds ago",
+        "minutesAgo_one": "{{count}} minute ago",
+        "minutesAgo_other": "{{count}} minutes ago",
+        "hoursAgo_one": "{{count}} hour ago",
+        "hoursAgo_other": "{{count}} hours ago",
+        "daysAgo_one": "{{count}} day ago",
+        "daysAgo_other": "{{count}} days ago"
+      }
+    },
     "wizard": {
       "title": "Create Exchange Connection",
       "subtitle": "Follow the steps below to connect your exchange account",

@@ -1,5 +1,6 @@
-import React from 'react';
-import { Check, Edit2, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Check, CheckCircle, Edit2, HelpCircle, Trash2, AlertTriangle } from 'lucide-react';
 import type { ExchangeBinding } from '../../utils/api';
 import { THEME_COLORS } from '../../config/theme';
 
@@ -17,6 +18,7 @@ interface ExchangeBindingCardProps {
   onDelete?: (exchange: ExchangeBinding) => void;
   displayName?: (exchangeType: string) => string;
   headerSubtitle?: string;
+  onRefreshValidation?: (exchange: ExchangeBinding) => Promise<unknown> | unknown;
 }
 
 export const ExchangeBindingCard: React.FC<ExchangeBindingCardProps> = ({
@@ -31,8 +33,11 @@ export const ExchangeBindingCard: React.FC<ExchangeBindingCardProps> = ({
   onDelete,
   displayName,
   headerSubtitle,
+  onRefreshValidation,
 }) => {
+  const { t } = useTranslation();
   const colors = THEME_COLORS.real;
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleCardClick = () => {
     if (mode === 'select' && onSelect) {
@@ -58,6 +63,128 @@ export const ExchangeBindingCard: React.FC<ExchangeBindingCardProps> = ({
   const selectableClasses = mode === 'select'
     ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-tiris-primary-500'
     : '';
+
+  const validatedAtString = exchange.info?.validated_at;
+  let validatedAtDate: Date | null = null;
+  if (validatedAtString) {
+    const parsed = new Date(validatedAtString);
+    if (!Number.isNaN(parsed.getTime())) {
+      validatedAtDate = parsed;
+    }
+  }
+
+  type ValidationState = {
+    label: string;
+    Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+    iconClasses: string;
+  };
+
+  const validationState: ValidationState = (() => {
+    if (exchange.info?.is_credential_valid === true) {
+      return {
+        label: t('exchanges.validation.valid'),
+        Icon: CheckCircle,
+        iconClasses: 'text-emerald-100',
+      };
+    }
+    if (exchange.info?.is_credential_valid === false) {
+      return {
+        label: t('exchanges.validation.invalid'),
+        Icon: AlertTriangle,
+        iconClasses: 'text-amber-200',
+      };
+    }
+    return {
+      label: t('exchanges.validation.unknown'),
+      Icon: HelpCircle,
+      iconClasses: 'text-white/70',
+    };
+  })();
+
+  const getRelativeTimeLabel = (date: Date): string => {
+    const diffMs = Date.now() - date.getTime();
+
+    if (diffMs <= 0) {
+      return t('exchanges.validation.relative.justNow');
+    }
+
+    const diffSeconds = Math.floor(diffMs / 1000);
+
+    if (diffSeconds < 60) {
+      const safeSeconds = Math.max(diffSeconds, 1);
+      return t('exchanges.validation.relative.secondsAgo', { count: safeSeconds });
+    }
+
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    if (diffMinutes < 60) {
+      return t('exchanges.validation.relative.minutesAgo', { count: diffMinutes });
+    }
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+      return t('exchanges.validation.relative.hoursAgo', { count: diffHours });
+    }
+
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 30) {
+      return t('exchanges.validation.relative.daysAgo', { count: diffDays });
+    }
+
+    return date.toLocaleDateString();
+  };
+
+  const relativeValidatedAt = validatedAtDate ? getRelativeTimeLabel(validatedAtDate) : null;
+  const tooltip = relativeValidatedAt
+    ? `${validationState.label} • ${t('exchanges.validation.lastChecked', { time: relativeValidatedAt })}`
+    : validationState.label;
+
+  const refreshingLabel = t('exchanges.validation.refreshing');
+
+  const handleValidationRefresh = async (event: React.MouseEvent) => {
+    if (!onRefreshValidation || isRefreshing) {
+      return;
+    }
+
+    event.stopPropagation();
+    setIsRefreshing(true);
+
+    try {
+      await Promise.resolve(onRefreshValidation(exchange));
+    } catch (error) {
+      console.error('Failed to refresh exchange binding validation', exchange.id, error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const iconTooltip = isRefreshing ? refreshingLabel : tooltip;
+  const iconContent = isRefreshing ? (
+    <span className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
+  ) : (
+    <validationState.Icon className={`w-4 h-4 ${validationState.iconClasses}`} />
+  );
+
+  const iconWrapper = onRefreshValidation ? (
+    <button
+      type="button"
+      onClick={handleValidationRefresh}
+      disabled={isRefreshing}
+      title={iconTooltip}
+      aria-label={iconTooltip}
+      aria-busy={isRefreshing}
+      className={`flex items-center justify-center w-6 h-6 rounded-full bg-white/15 text-white transition-opacity ${isRefreshing ? 'cursor-wait opacity-80' : 'hover:bg-white/25 hover:opacity-90'}`}
+    >
+      {iconContent}
+    </button>
+  ) : (
+    <span
+      title={iconTooltip}
+      aria-label={iconTooltip}
+      className="flex items-center justify-center w-6 h-6"
+    >
+      {iconContent}
+    </span>
+  );
 
   const content = (
     <>
@@ -88,9 +215,10 @@ export const ExchangeBindingCard: React.FC<ExchangeBindingCardProps> = ({
                 {displayName ? displayName(exchange.exchange_type) : exchange.exchange_type}
               </h3>
               {headerSubtitle && (
-                <p className="text-white/80 text-xs mt-1 truncate">
-                  {headerSubtitle}
-                </p>
+                <div className="flex items-center gap-2 text-xs text-white/80 mt-1">
+                  <span className="truncate">{headerSubtitle}</span>
+                  {iconWrapper}
+                </div>
               )}
             </div>
           </div>

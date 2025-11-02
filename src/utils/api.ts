@@ -526,6 +526,8 @@ export interface ExchangeBinding {
     api_key?: string;
     api_secret?: string;
     passphrase?: string;
+    validated_at?: string;
+    is_credential_valid?: boolean;
     [key: string]: unknown;
   };
 }
@@ -591,6 +593,8 @@ export interface CreateExchangeBindingRequest {
     description?: string;
     quote_currency?: string;
     passphrase?: string;
+    validated_at?: string;
+    is_credential_valid?: boolean;
     [key: string]: unknown;
   };
 }
@@ -612,6 +616,8 @@ export interface UpdateExchangeBindingRequest {
     description?: string;
     quote_currency?: string;
     passphrase?: string;
+    validated_at?: string;
+    is_credential_valid?: boolean;
     [key: string]: unknown;
   };
 }
@@ -654,7 +660,7 @@ export async function updateTrading(tradingId: string, request: UpdateTradingReq
 }
 
 // Helper function to extract exchange credentials from binding
-function extractExchangeCredentials(binding?: ExchangeBinding | null): { apiKey: string | null; apiSecret: string | null } {
+export function extractExchangeCredentials(binding?: ExchangeBinding | null): { apiKey: string | null; apiSecret: string | null } {
   if (!binding) {
     return { apiKey: null, apiSecret: null };
   }
@@ -688,6 +694,67 @@ function extractExchangeCredentials(binding?: ExchangeBinding | null): { apiKey:
   const apiSecret = candidateSecrets.find((value): value is string => typeof value === 'string' && value.trim().length > 0) ?? null;
 
   return { apiKey, apiSecret };
+}
+
+async function persistValidationResult(
+  binding: ExchangeBinding,
+  infoUpdates: Partial<ExchangeBinding['info']>
+): Promise<ExchangeBinding> {
+  const mergedInfo = {
+    ...(binding.info ?? {}),
+    ...infoUpdates,
+  };
+
+  try {
+    const updatedBinding = await updateExchangeBinding(binding.id, { info: mergedInfo });
+    return updatedBinding;
+  } catch (error) {
+    console.error('Failed to persist validation result for exchange binding', binding.id, error);
+    return {
+      ...binding,
+      info: mergedInfo,
+    };
+  }
+}
+
+export async function refreshExchangeBindingValidation(binding: ExchangeBinding): Promise<ExchangeBinding> {
+  let bindingWithCredentials: ExchangeBinding = binding;
+  try {
+    bindingWithCredentials = await getExchangeBindingById(binding.id);
+  } catch (error) {
+    console.error('Failed to fetch full exchange binding for validation', binding.id, error);
+  }
+
+  const { apiKey, apiSecret } = extractExchangeCredentials(bindingWithCredentials);
+  const passphrase = bindingWithCredentials.info?.passphrase || undefined;
+  const timestamp = new Date().toISOString();
+
+  if (!apiKey || !apiSecret) {
+    console.warn('Missing credentials for exchange binding validation', binding.id);
+    return persistValidationResult(bindingWithCredentials, {
+      validated_at: timestamp,
+      is_credential_valid: false,
+    });
+  }
+
+  let isValid = false;
+  try {
+    const validation = await validateExchangeCredentials(
+      bindingWithCredentials.exchange_type,
+      apiKey,
+      apiSecret,
+      passphrase
+    );
+    isValid = Boolean(validation.read);
+  } catch (error) {
+    console.error('Failed to validate exchange binding credentials', binding.id, error);
+    isValid = false;
+  }
+
+  return persistValidationResult(bindingWithCredentials, {
+    validated_at: timestamp,
+    is_credential_valid: isValid,
+  });
 }
 
 // Fetch available balance for a given exchange binding and quote currency

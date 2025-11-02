@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { createExchangeBinding, getRealExchanges, type ExchangeConfigResponse, ApiError } from '../utils/api';
+import { createExchangeBinding, getRealExchanges, type ExchangeConfigResponse, type CreateExchangeBindingRequest, ApiError } from '../utils/api';
 import { AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -32,6 +32,7 @@ export const ExchangeBindingWizardPage: React.FC = () => {
   const [connectionName, setConnectionName] = useState('');
   const [description, setDescription] = useState('');
   const [credentialsValidated, setCredentialsValidated] = useState(false);
+  const [lastValidationResult, setLastValidationResult] = useState<{ timestamp: string; isValid: boolean } | null>(null);
 
   // Available data
   const [exchanges, setExchanges] = useState<ExchangeConfigResponse[]>([]);
@@ -52,6 +53,12 @@ export const ExchangeBindingWizardPage: React.FC = () => {
       setConnectionName(t('exchanges.defaultName', { exchange: selectedExchange.name }));
     }
   }, [selectedExchange, t]);
+
+  // Reset validation when credentials change to ensure revalidation
+  useEffect(() => {
+    setCredentialsValidated(false);
+    setLastValidationResult(null);
+  }, [apiKey, apiSecret, passphrase]);
 
   const fetchInitialData = async () => {
     try {
@@ -143,7 +150,7 @@ export const ExchangeBindingWizardPage: React.FC = () => {
 
       // Prepare request data
       const trimmedPassphrase = passphrase.trim();
-      const request = {
+      const request: CreateExchangeBindingRequest = {
         name: connectionName,
         exchange_type: selectedExchange!.type,
         api_key: apiKey,
@@ -152,6 +159,10 @@ export const ExchangeBindingWizardPage: React.FC = () => {
           testnet: false,
           description: description,
           ...(trimmedPassphrase ? { passphrase: trimmedPassphrase } : {}),
+          ...(lastValidationResult ? {
+            validated_at: lastValidationResult.timestamp,
+            is_credential_valid: lastValidationResult.isValid,
+          } : {}),
         },
       };
 
@@ -308,6 +319,10 @@ export const ExchangeBindingWizardPage: React.FC = () => {
                 exchangeName={selectedExchange?.name || ''}
                 exchangeType={selectedExchange?.type || ''}
                 onValidationSuccess={() => setCredentialsValidated(true)}
+                onValidationResult={(result) => {
+                  setLastValidationResult(result);
+                  setCredentialsValidated(result.isValid);
+                }}
               />
             )}
 

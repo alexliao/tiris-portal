@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getExchangeBindings, createExchangeBinding, deleteExchangeBinding, updateExchangeBinding, getTradings, getRealExchanges, type ExchangeBinding, type CreateExchangeBindingRequest, type UpdateExchangeBindingRequest, type Trading, type ExchangeConfigResponse, ApiError } from '../utils/api';
+import { getExchangeBindings, createExchangeBinding, deleteExchangeBinding, updateExchangeBinding, getTradings, getRealExchanges, refreshExchangeBindingValidation, type ExchangeBinding, type CreateExchangeBindingRequest, type UpdateExchangeBindingRequest, type Trading, type ExchangeConfigResponse, ApiError } from '../utils/api';
 import { Plus, AlertCircle } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -137,6 +137,15 @@ export const ExchangesPage: React.FC = () => {
   const handleExchangeSuccess = async () => {
     await fetchExchanges();
     handleModalClose();
+  };
+
+  const handleRefreshValidation = async (binding: ExchangeBinding) => {
+    try {
+      const updated = await refreshExchangeBindingValidation(binding);
+      setExchanges(prev => prev.map(item => item.id === updated.id ? updated : item));
+    } catch (error) {
+      console.error('Failed to refresh validation for exchange binding:', binding.id, error);
+    }
   };
 
   // Calculate statistics
@@ -302,6 +311,7 @@ export const ExchangesPage: React.FC = () => {
                       }
                       onEdit={handleEditExchange}
                       onDelete={handleDeleteClick}
+                      onRefreshValidation={handleRefreshValidation}
                     />
                   </button>
                 );
@@ -435,11 +445,21 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
         };
 
         // Only include API credentials if they were changed
-        if (formData.api_key) {
-          updateData.api_key = formData.api_key;
+        const trimmedApiKey = formData.api_key.trim();
+        const trimmedApiSecret = formData.api_secret.trim();
+        const trimmedPassphrase = formData.passphrase.trim();
+
+        const credentialsChanged = Boolean(
+          trimmedApiKey ||
+          trimmedApiSecret ||
+          trimmedPassphrase !== (exchange.info?.passphrase ?? '')
+        );
+
+        if (trimmedApiKey) {
+          updateData.api_key = trimmedApiKey;
         }
-        if (formData.api_secret) {
-          updateData.api_secret = formData.api_secret;
+        if (trimmedApiSecret) {
+          updateData.api_secret = trimmedApiSecret;
         }
 
         const updatedInfo = {
@@ -447,9 +467,15 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
           description: formData.description,
         };
 
-        const trimmedPassphrase = formData.passphrase.trim();
         if (trimmedPassphrase) {
           updatedInfo.passphrase = trimmedPassphrase;
+        } else if (typeof updatedInfo.passphrase === 'string' && trimmedPassphrase === '') {
+          delete updatedInfo.passphrase;
+        }
+
+        if (credentialsChanged) {
+          delete updatedInfo.validated_at;
+          delete updatedInfo.is_credential_valid;
         }
 
         updateData.info = updatedInfo;
