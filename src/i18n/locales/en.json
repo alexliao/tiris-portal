@@ -347,7 +347,14 @@
       "startBot": "Start Bot",
       "bot": "Bot",
       "copyId": "Copy trading ID",
-      "signInMessage": "Sign in to view trading details"
+      "signInMessage": "Sign in to view trading details",
+      "backtestCompleted": "Completed",
+      "backtestStopped": "Stopped",
+      "backtestError": "Error",
+      "backtestRunning": "Running",
+      "iterations": "Iterations",
+      "loopIterations": "Loop Iterations",
+      "lastUpdate": "Last Update"
     },
     "status": {
       "active": "Active",

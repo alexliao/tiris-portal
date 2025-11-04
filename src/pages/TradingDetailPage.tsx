@@ -7,6 +7,7 @@ import { AlertCircle, Play, Square, Loader2, Copy, Check, Trash2, Zap } from 'lu
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
+import BacktestProgressBar from '../components/trading/BacktestProgressBar';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import EditableText from '../components/common/EditableText';
 import { THEME_COLORS, getTradingTheme, getTradingIcon } from '../config/theme';
@@ -1209,6 +1210,20 @@ export const TradingDetailPage: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {/* Backtest Progress Bar */}
+            {trading?.type === 'backtest' && bot?.record.status?.info && (
+              <BacktestProgressBar
+                progressPct={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.progress_pct as number | undefined}
+                status={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.status as string | undefined}
+                completed={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.completed as boolean | undefined}
+                iterations={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.iterations as number | undefined}
+                loopIterations={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.loop_iterations as number | undefined}
+                lastCandleTs={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.last_candle_ts as number | undefined}
+                pointerTs={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.pointer_ts as number | undefined}
+                pointerIso={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.pointer_iso as string | undefined}
+              />
+            )}
           </div>
 
           {/* Performance Widget */}

@@ -346,7 +346,14 @@
       "stopBot": "停止机器人",
       "startBot": "启动机器人",
       "bot": "机器人",
-      "copyId": "复制交易ID"
+      "copyId": "复制交易ID",
+      "backtestCompleted": "已完成",
+      "backtestStopped": "已停止",
+      "backtestError": "错误",
+      "backtestRunning": "运行中",
+      "iterations": "迭代次数",
+      "loopIterations": "循环迭代次数",
+      "lastUpdate": "最后更新"
     },
     "status": {
       "active": "活跃",
