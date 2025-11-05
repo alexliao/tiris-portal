@@ -23,7 +23,8 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
     try {
       await loginWithGoogle();
       onClose();
-      navigate('/dashboard');
+      // Use setTimeout to ensure modal close completes before navigation
+      setTimeout(() => navigate('/dashboard'), 100);
     } catch (error) {
       console.error('Google login failed:', error);
       const errorMessage = error instanceof Error ? error.message : t('auth.googleAuthFailed');
@@ -35,7 +36,8 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
     try {
       await loginWithWeChat();
       onClose();
-      navigate('/dashboard');
+      // Use setTimeout to ensure modal close completes before navigation
+      setTimeout(() => navigate('/dashboard'), 100);
     } catch (error) {
       console.error('WeChat login failed:', error);
       const errorMessage = error instanceof Error ? error.message : t('auth.wechatAuthFailed');
@@ -45,12 +47,14 @@ export const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose }) => 
 
   const handleSignUpSuccess = () => {
     onClose();
-    navigate('/dashboard');
+    // Use setTimeout to ensure modal close completes before navigation
+    setTimeout(() => navigate('/dashboard'), 100);
   };
 
   const handleSignInSuccess = () => {
     onClose();
-    navigate('/dashboard');
+    // Use setTimeout to ensure modal close completes before navigation
+    setTimeout(() => navigate('/dashboard'), 100);
   };
 
   if (!isOpen) return null;
