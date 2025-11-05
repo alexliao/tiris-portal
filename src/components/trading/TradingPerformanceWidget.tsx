@@ -344,10 +344,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Determine default timeframe based on trading timeframe:
+  // Determine default timeframe based on trading type and timeframe:
+  // - For backtest trading, use 8h as default
   // - If trading timeframe is 5m, use 1m as default
   // - For all other timeframes, use 1h as default
   const getDefaultTimeframe = (): Timeframe => {
+    if (trading.type === 'backtest') {
+      return '8h';
+    }
     const tradingTimeframe = trading.info?.timeframe;
     if (tradingTimeframe === '5m') {
       return '1m';
