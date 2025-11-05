@@ -17,9 +17,6 @@ export const BacktestProgressBar: React.FC<BacktestProgressBarProps> = ({
   progressPct = 0,
   status = 'running',
   completed = false,
-  iterations = 0,
-  loopIterations = 0,
-  pointerIso,
 }) => {
   const { t } = useTranslation();
   const [startTime] = useState<number>(() => Date.now());
