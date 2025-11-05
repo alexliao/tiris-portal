@@ -10,6 +10,7 @@ import TradingPerformanceWidget from '../components/trading/TradingPerformanceWi
 import BacktestProgressBar from '../components/trading/BacktestProgressBar';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import EditableText from '../components/common/EditableText';
+import UnderConstruction from '../components/common/UnderConstruction';
 import { THEME_COLORS, getTradingTheme, getTradingIcon } from '../config/theme';
 import { createDateTimeFormatter } from '../utils/locale';
 import { getTradingDayCount } from '../utils/tradingDates';
@@ -74,6 +75,9 @@ export const TradingDetailPage: React.FC = () => {
     isOpen: false,
     isDeleting: false,
   });
+
+  // Under construction modal state
+  const [showUnderConstruction, setShowUnderConstruction] = useState(false);
 
   // Data refresh state management
   const [dataRefreshInterval, setDataRefreshInterval] = useState<NodeJS.Timeout | null>(null);
@@ -568,6 +572,8 @@ export const TradingDetailPage: React.FC = () => {
     };
   }, [statusCheckInterval, dataRefreshInterval]);
 
+  // TODO: Uncomment for future use when backtest bot starting is implemented
+  // @ts-ignore
   const handleStartBot = async () => {
     if (!trading) return;
 
@@ -1153,7 +1159,13 @@ export const TradingDetailPage: React.FC = () => {
                             </div>
                           )}
                           <button
-                            onClick={() => handleStartBot()}
+                            onClick={() => {
+                              if (trading?.type === 'backtest') {
+                                setShowUnderConstruction(true);
+                              } else {
+                                // handleStartBot(); // Uncomment when function is reactivated
+                              }
+                            }}
                             disabled={botLoading}
                             className="inline-flex items-center px-2 py-1 md:px-3 md:py-2 text-sm bg-tiris-primary-600 text-white rounded-md hover:bg-tiris-primary-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                           >
@@ -1193,7 +1205,13 @@ export const TradingDetailPage: React.FC = () => {
                           </div>
                         )}
                         <button
-                          onClick={() => handleStartBot()}
+                          onClick={() => {
+                            if (trading?.type === 'backtest') {
+                              setShowUnderConstruction(true);
+                            } else {
+                              // handleStartBot(); // Uncomment when function is reactivated
+                            }
+                          }}
                           disabled={botLoading}
                           className="inline-flex items-center px-2 py-1 md:px-3 md:py-2 text-xs md:text-sm bg-tiris-primary-600 text-white rounded-md hover:bg-tiris-primary-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                         >
@@ -1255,6 +1273,21 @@ export const TradingDetailPage: React.FC = () => {
         isDestructive={true}
         isLoading={deleteConfirmation.isDeleting}
       />
+
+      {/* Under Construction Modal */}
+      {showUnderConstruction && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <UnderConstruction />
+            <button
+              onClick={() => setShowUnderConstruction(false)}
+              className="mt-6 w-full px-4 py-2 bg-tiris-primary-600 text-white rounded-md hover:bg-tiris-primary-700 transition-colors"
+            >
+              {t('common.close') || 'Close'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
