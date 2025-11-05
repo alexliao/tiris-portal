@@ -6,7 +6,6 @@ import { getTradings, deleteTrading, type Trading, ApiError, getBots, type Bot }
 import { AlertCircle, Plus, Trash2, Zap } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
-import CreateTradingModal from '../components/trading/CreateTradingModal';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import UnderConstruction from '../components/common/UnderConstruction';
 import { THEME_COLORS } from '../config/theme';
@@ -24,7 +23,6 @@ export const TradingsListPage: React.FC = () => {
   const [bots, setBots] = useState<Bot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     trading: Trading | null;
@@ -96,13 +94,6 @@ export const TradingsListPage: React.FC = () => {
       navigate('/real-trading/create');
       return;
     }
-
-    setIsCreateModalOpen(true);
-  };
-
-  const handleCreateSuccess = (newTrading: Trading) => {
-    // Add the new trading to the list and refresh the data
-    setTradings(prev => [newTrading, ...prev]);
   };
 
   const handleDeleteClick = (trading: Trading, event: React.MouseEvent) => {
@@ -408,14 +399,6 @@ export const TradingsListPage: React.FC = () => {
         </div>
       </div>
       <Footer />
-
-      {/* Create Trading Modal */}
-      <CreateTradingModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        tradingType={type as 'backtest' | 'paper' | 'real'}
-        onSuccess={handleCreateSuccess}
-      />
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
