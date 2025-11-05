@@ -171,8 +171,8 @@ export const PaperTradingWizardPage: React.FC = () => {
 
       console.log('✅ [WIZARD DEBUG] Paper trading created:', newTrading);
 
-      // Navigate back to paper trading list
-      navigate('/tradings/paper');
+      // Navigate to the newly created trading's details page
+      navigate(`/trading/${newTrading.id}`);
     } catch (err) {
       console.error('Failed to create paper trading:', err);
       let errorMessage = 'Unknown error';

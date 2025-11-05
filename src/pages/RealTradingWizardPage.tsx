@@ -209,8 +209,8 @@ export const RealTradingWizardPage: React.FC = () => {
 
       console.log('✅ [WIZARD DEBUG] Real trading created:', newTrading);
 
-      // Navigate back to real trading list
-      navigate('/tradings/real');
+      // Navigate to the newly created trading's details page
+      navigate(`/trading/${newTrading.id}`);
     } catch (err) {
       console.error('Failed to create real trading:', err);
       let errorMessage = 'Unknown error';

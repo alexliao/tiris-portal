@@ -170,8 +170,8 @@ export const BacktestTradingWizardPage: React.FC = () => {
 
       console.log('✅ [WIZARD DEBUG] Backtest trading created:', newTrading);
 
-      // Navigate back to backtest trading list
-      navigate('/tradings/backtest');
+      // Navigate to the newly created trading's details page
+      navigate(`/trading/${newTrading.id}`);
     } catch (err) {
       console.error('Failed to create backtest trading:', err);
       let errorMessage = 'Unknown error';
