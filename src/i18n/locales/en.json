@@ -354,7 +354,8 @@
       "backtestRunning": "Running",
       "iterations": "Iterations",
       "loopIterations": "Loop Iterations",
-      "lastUpdate": "Last Update"
+      "lastUpdate": "Last Update",
+      "elapsed": "Elapsed"
     },
     "status": {
       "active": "Active",

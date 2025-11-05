@@ -987,13 +987,15 @@ export async function createRealTrading(request: CreateTradingRequest): Promise<
     const depositAmount = typeof initialFunds === 'number' ? initialFunds : Number(initialBalance);
 
     if (depositAmount > 0) {
+      // Use trading's start_date for the deposit event_time
+      const startDate = (request.info?.start_date as string) ?? new Date().toISOString();
       await createTradingLog({
         trading_id: trading.id,
         type: 'deposit',
         source: 'manual',
         message: `Initial ${quoteCurrency} deposit to account`,
         sub_account_id: balanceSubAccount.id,
-        event_time: new Date().toISOString(),
+        event_time: startDate,
         info: {
           account_id: balanceSubAccount.id,
           amount: depositAmount,
@@ -1345,7 +1347,7 @@ export async function createPaperTrading(request: CreateTradingRequest): Promise
       type: 'deposit',
       source: 'manual',
       message: 'Initial deposit for paper trading',
-      event_time: new Date().toISOString(),
+      event_time: startDate as string,
       info: {
         account_id: usdtSubAccount.id,
         amount: initialFunds,
@@ -1387,12 +1389,16 @@ export async function createBacktestTrading(request: CreateTradingRequest): Prom
       ? configuredInitialFunds
       : BACKTEST_TRADING_DEFAULT_INITIAL_FUNDS;
 
+    const nowIso = new Date().toISOString();
+    const startDate = request.info?.start_date ?? nowIso;
+
     const preparedRequest: CreateTradingRequest = {
       ...request,
       type: 'backtest',
       info: {
         ...request.info,
         initial_funds: initialFunds,
+        start_date: startDate,
       },
     };
 
@@ -1438,7 +1444,7 @@ export async function createBacktestTrading(request: CreateTradingRequest): Prom
       type: 'deposit',
       source: 'manual',
       message: 'Initial balance for backtest trading',
-      event_time: new Date().toISOString(),
+      event_time: startDate as string,
       info: {
         account_id: usdtSubAccount.id,
         amount: initialFunds,

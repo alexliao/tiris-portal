@@ -353,7 +353,8 @@
       "backtestRunning": "运行中",
       "iterations": "迭代次数",
       "loopIterations": "循环迭代次数",
-      "lastUpdate": "最后更新"
+      "lastUpdate": "最后更新",
+      "elapsed": "已用时"
     },
     "status": {
       "active": "活跃",

@@ -530,8 +530,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       const benchmarkData: TradingDataPoint[] = benchmarkDataFromApi;
 
-      // Split equity data into before and after creation time
-      const { beforeCreationData, afterCreationData } = splitEquityDataByCreationTime(data, trading.created_at, selectedTimeframe);
+      // Split equity data into before and after start time (using start_date from trading.info if available, otherwise created_at)
+      const startDate = (trading.info?.start_date as string | undefined) ?? trading.created_at;
+      const { beforeCreationData, afterCreationData } = splitEquityDataByCreationTime(data, startDate, selectedTimeframe);
 
       tradingLogsRef.current = mergeTradingLogs(tradingLogsRef.current, tradingLogs);
       if (tradingLogsRef.current.length > 0) {
@@ -869,8 +870,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         event: point.event,
       }));
 
-      // Split equity data into before and after creation time
-      const { beforeCreationData, afterCreationData } = splitEquityDataByCreationTime(data, trading.created_at, selectedTimeframe);
+      // Split equity data into before and after start time (using start_date from trading.info if available, otherwise created_at)
+      const startDate = (trading.info?.start_date as string | undefined) ?? trading.created_at;
+      const { beforeCreationData, afterCreationData } = splitEquityDataByCreationTime(data, startDate, selectedTimeframe);
 
       setChartState((previous) => {
         const mergedData = mergeTradingDataSets(previous.data, afterCreationData);

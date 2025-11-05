@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2, Circle } from 'lucide-react';
 
@@ -22,6 +22,32 @@ export const BacktestProgressBar: React.FC<BacktestProgressBarProps> = ({
   pointerIso,
 }) => {
   const { t } = useTranslation();
+  const [startTime] = useState<number>(() => Date.now());
+  const [elapsedTime, setElapsedTime] = useState<string>('0s');
+
+  // Update elapsed time every second
+  useEffect(() => {
+    if (completed) {
+      return; // Stop updating after completion
+    }
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const hours = Math.floor(elapsed / 3600);
+      const minutes = Math.floor((elapsed % 3600) / 60);
+      const seconds = elapsed % 60;
+
+      if (hours > 0) {
+        setElapsedTime(`${hours}h ${minutes}m ${seconds}s`);
+      } else if (minutes > 0) {
+        setElapsedTime(`${minutes}m ${seconds}s`);
+      } else {
+        setElapsedTime(`${seconds}s`);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [startTime, completed]);
 
   // Calculate the progress percentage, clamped between 0 and 100
   const clampedProgress = useMemo(() => {
@@ -84,9 +110,14 @@ export const BacktestProgressBar: React.FC<BacktestProgressBarProps> = ({
             {statusDisplay.text}
           </span>
         </div>
-        <span className="text-sm font-semibold text-gray-700">
-          {clampedProgress.toFixed(2)}%
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-600">
+            {t('trading.detail.elapsed') || 'Elapsed'}: <span className="font-semibold text-gray-900">{elapsedTime}</span>
+          </span>
+          <span className="text-sm font-semibold text-gray-700">
+            {clampedProgress.toFixed(2)}%
+          </span>
+        </div>
       </div>
 
       {/* Progress Bar */}
@@ -97,27 +128,6 @@ export const BacktestProgressBar: React.FC<BacktestProgressBarProps> = ({
         />
       </div>
 
-      {/* Progress Details */}
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        {iterations !== undefined && iterations > 0 && (
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">{t('trading.detail.iterations') || 'Iterations'}:</span>
-            <span className="font-semibold text-gray-900">{iterations}</span>
-          </div>
-        )}
-        {loopIterations !== undefined && loopIterations > 0 && (
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">{t('trading.detail.loopIterations') || 'Loop Iterations'}:</span>
-            <span className="font-semibold text-gray-900">{loopIterations}</span>
-          </div>
-        )}
-        {pointerIso && (
-          <div className="col-span-2 flex items-center justify-between">
-            <span className="text-gray-600">{t('trading.detail.lastUpdate') || 'Last Update'}:</span>
-            <span className="font-semibold text-gray-900">{pointerIso}</span>
-          </div>
-        )}
-      </div>
     </div>
   );
 };
