@@ -1163,7 +1163,7 @@ export const TradingDetailPage: React.FC = () => {
                               if (trading?.type === 'backtest') {
                                 setShowUnderConstruction(true);
                               } else {
-                                // handleStartBot(); // Uncomment when function is reactivated
+                                void handleStartBot();
                               }
                             }}
                             disabled={botLoading}
@@ -1209,7 +1209,7 @@ export const TradingDetailPage: React.FC = () => {
                             if (trading?.type === 'backtest') {
                               setShowUnderConstruction(true);
                             } else {
-                              // handleStartBot(); // Uncomment when function is reactivated
+                              void handleStartBot();
                             }
                           }}
                           disabled={botLoading}
