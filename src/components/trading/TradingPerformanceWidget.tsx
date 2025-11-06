@@ -36,6 +36,61 @@ const timeframeToMilliseconds = (timeframe: Timeframe): number => {
   return timeframeMap[timeframe] ?? 60 * 1000;
 };
 
+const parseTimestamp = (value: unknown): number | null => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return Number.isFinite(time) ? time : null;
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === 'string') {
+    const time = new Date(value).getTime();
+    return Number.isFinite(time) ? time : null;
+  }
+
+  return null;
+};
+
+const trimEquityCurveToEndTime = (
+  curve: EquityCurveNewData | undefined | null,
+  endTimeMs: number
+): EquityCurveNewData | undefined | null => {
+  if (!curve || !curve.data_points || curve.data_points.length === 0) {
+    return curve ?? undefined;
+  }
+
+  const trimmedPoints = curve.data_points.filter(point => {
+    const pointTime = new Date(point.timestamp).getTime();
+    return Number.isFinite(pointTime) && pointTime <= endTimeMs;
+  });
+
+  if (trimmedPoints.length === 0) {
+    return {
+      ...curve,
+      data_points: [],
+      start_time: curve.start_time,
+      end_time: curve.start_time,
+    };
+  }
+
+  const firstTimestamp = trimmedPoints[0].timestamp;
+  const lastTimestamp = trimmedPoints[trimmedPoints.length - 1].timestamp;
+
+  return {
+    ...curve,
+    data_points: trimmedPoints,
+    start_time: firstTimestamp,
+    end_time: lastTimestamp,
+  };
+};
+
 const CHART_LEFT_MARGIN = 5;
 const CHART_RIGHT_MARGIN = 0;
 
@@ -459,6 +514,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       setQuoteBalance(quoteBal);
 
       const exchangeType = trading.exchange_binding?.exchange_type;
+      const tradingEndTime = parseTimestamp(trading.info?.end_date);
+      const effectiveEndTime = tradingEndTime ?? Date.now();
 
       const [equityCurve, tradingLogs] = await Promise.all([
         // Use new API with timeframe and recent_timeframes parameters
@@ -469,7 +526,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           fetchedStockSymbol,
           fetchedQuoteSymbol,
           requireAuth,
-          exchangeType
+          exchangeType,
+          effectiveEndTime
         ),
         getTradingLogs(trading.id, requireAuth)
       ]);
@@ -484,6 +542,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       }
 
       const normalizedEquityCurve = normalizeEquityCurve(equityCurve);
+      const constrainedEquityCurve = tradingEndTime
+        ? trimEquityCurveToEndTime(normalizedEquityCurve, tradingEndTime) ?? normalizedEquityCurve
+        : normalizedEquityCurve;
 
       const {
         data,
@@ -492,7 +553,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         initialBalance: resolvedInitialBalance,
         baselinePrice,
       } = transformNewEquityCurveToChartData(
-        normalizedEquityCurve,
+        constrainedEquityCurve,
         tradingLogs,
         selectedTimeframe
       );
@@ -503,7 +564,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         const initialPriceCandidate =
           typeof baselinePrice === 'number' && Number.isFinite(baselinePrice) && baselinePrice > 0
             ? baselinePrice
-            : getFirstValidStockPrice(normalizedEquityCurve);
+            : getFirstValidStockPrice(constrainedEquityCurve);
         if (
           typeof initialPriceCandidate === 'number' &&
           Number.isFinite(initialPriceCandidate) &&
@@ -514,10 +575,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       }
 
       const normalizedCandles = normalizeCandlesticks(candlestickData);
-      if (normalizedCandles.length > 0) {
-        const lastCandle = normalizedCandles[normalizedCandles.length - 1];
+      const constrainedCandles =
+        typeof tradingEndTime === 'number'
+          ? normalizedCandles.filter(candle => candle.timestampNum <= tradingEndTime)
+          : normalizedCandles;
+      if (constrainedCandles.length > 0) {
+        const lastCandle = constrainedCandles[constrainedCandles.length - 1];
         console.debug(
-          `Candles after initial load (${selectedTimeframe}): count=${normalizedCandles.length}, last=${new Date(lastCandle.timestamp).toISOString()} O:${lastCandle.open} H:${lastCandle.high} L:${lastCandle.low} C:${lastCandle.close}`
+          `Candles after initial load (${selectedTimeframe}): count=${constrainedCandles.length}, last=${new Date(lastCandle.timestamp).toISOString()} O:${lastCandle.open} H:${lastCandle.high} L:${lastCandle.low} C:${lastCandle.close}`
         );
       }
 
@@ -549,13 +614,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         const mergedBenchmark = mergeTradingDataSets(previous.benchmarkData, benchmarkData);
         const mergedBeforeCreationData = mergeTradingDataSets(previous.beforeCreationData, beforeCreationData);
         const metricsChanged = !areMetricsEqual(previous.metrics, calculatedMetrics);
-        const candlestickChanged = haveCandlestickDataChanged(previous.candlestickData, normalizedCandles);
+        const candlestickChanged = haveCandlestickDataChanged(previous.candlestickData, constrainedCandles);
 
         const nextData = mergedData.changed ? mergedData.value : previous.data;
         const nextBenchmark = mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData;
         const nextBeforeCreationData = mergedBeforeCreationData.changed ? mergedBeforeCreationData.value : previous.beforeCreationData;
         const nextMetrics = metricsChanged ? calculatedMetrics : previous.metrics;
-        const nextCandlesticks = candlestickChanged ? normalizedCandles : previous.candlestickData;
+        const nextCandlesticks = candlestickChanged ? constrainedCandles : previous.candlestickData;
         const nextBaselinePrice = baselinePrice ?? previous.baselinePrice;
 
         // Store in cache for this timeframe
@@ -566,7 +631,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           beforeCreationData: nextBeforeCreationData,
           metrics: nextMetrics,
           candlestickData: nextCandlesticks,
-          equityCurve: normalizedEquityCurve,
+          equityCurve: constrainedEquityCurve,
           baselinePrice: nextBaselinePrice,
           initialBalance: resolvedInitialBalance,
           lastUpdateTimestamp:
@@ -591,8 +656,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         };
       });
 
-      const nextWarmupState = getWarmupStateFromCurve(normalizedEquityCurve);
-      console.log('fetchTradingData success - nextWarmupState:', nextWarmupState, 'warming_up:', normalizedEquityCurve.warming_up);
+      const nextWarmupState = getWarmupStateFromCurve(constrainedEquityCurve);
+      console.log('fetchTradingData success - nextWarmupState:', nextWarmupState, 'warming_up:', constrainedEquityCurve.warming_up);
       setWarmupState((previous) => {
         if (
           previous.active === nextWarmupState.active &&
@@ -670,6 +735,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     trading.exchange_binding?.exchange_type,
     trading.id,
     trading.type,
+    trading.info?.end_date,
     beginApiCall,
     endApiCall,
     toast,
@@ -678,6 +744,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
 
   const fetchIncrementalUpdates = useCallback(async () => {
+    if (trading.type === 'backtest') {
+      return;
+    }
+
     const cacheKey = selectedTimeframe;
     const cacheEntry = timeframeDataCacheRef.current[cacheKey];
 
@@ -685,7 +755,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       return;
     }
 
-    const existingEquityCurve = cacheEntry.equityCurve;
+    const tradingEndTime = parseTimestamp(trading.info?.end_date);
+    const existingEquityCurve = tradingEndTime
+      ? trimEquityCurveToEndTime(cacheEntry.equityCurve, tradingEndTime) ?? cacheEntry.equityCurve
+      : cacheEntry.equityCurve;
     if (!existingEquityCurve || !existingEquityCurve.data_points || existingEquityCurve.data_points.length === 0) {
       return;
     }
@@ -698,7 +771,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     const timeframeMs = timeframeToMilliseconds(selectedTimeframe);
     const earliestAllowedTimestamp = new Date(existingEquityCurve.start_time).getTime();
     const startTime = Math.max(lastCachedTimestamp - timeframeMs, earliestAllowedTimestamp);
-    const endTime = Date.now();
+    const endTime = tradingEndTime ?? Date.now();
+
+    if (typeof tradingEndTime === 'number' && lastCachedTimestamp >= tradingEndTime) {
+      return;
+    }
 
     if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
       return;
@@ -720,7 +797,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       );
 
       const normalizedIncremental = incrementalEquity ? normalizeEquityCurve(incrementalEquity) : undefined;
-      const newDataPoints = normalizedIncremental?.data_points ?? [];
+      const constrainedIncremental = tradingEndTime
+        ? trimEquityCurveToEndTime(normalizedIncremental, tradingEndTime) ?? normalizedIncremental
+        : normalizedIncremental;
+      const newDataPoints = constrainedIncremental?.data_points ?? [];
 
       if (newDataPoints.length > 0) {
         const firstNew = newDataPoints[0];
@@ -751,11 +831,18 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         .sort((a, b) => a[0] - b[0])
         .map(([, point]) => point);
 
+      if (typeof tradingEndTime === 'number') {
+        combinedPoints = combinedPoints.filter(point => {
+          const pointTime = new Date(point.timestamp).getTime();
+          return Number.isFinite(pointTime) && pointTime <= tradingEndTime;
+        });
+      }
+
       if (combinedPoints.length > TOTAL_DATA_TO_LOAD) {
         combinedPoints = combinedPoints.slice(combinedPoints.length - TOTAL_DATA_TO_LOAD);
       }
 
-      const warmupSourceCurve = normalizedIncremental ?? incrementalEquity ?? existingEquityCurve;
+      const warmupSourceCurve = constrainedIncremental ?? incrementalEquity ?? existingEquityCurve;
       const derivedWarmupState = getWarmupStateFromCurve(warmupSourceCurve);
 
       let derivedRetryAfterSeconds: number | undefined;
@@ -855,11 +942,15 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       }
 
       const normalizedCandles = normalizeCandlesticks(candlestickData);
+      const constrainedCandles =
+        typeof tradingEndTime === 'number'
+          ? normalizedCandles.filter(candle => candle.timestampNum <= tradingEndTime)
+          : normalizedCandles;
 
-      if (normalizedCandles.length > 0) {
-        const lastCandle = normalizedCandles[normalizedCandles.length - 1];
+      if (constrainedCandles.length > 0) {
+        const lastCandle = constrainedCandles[constrainedCandles.length - 1];
         console.debug(
-          `Candles after incremental update (${selectedTimeframe}): count=${normalizedCandles.length}, last=${new Date(lastCandle.timestamp).toISOString()} O:${lastCandle.open} H:${lastCandle.high} L:${lastCandle.low} C:${lastCandle.close}`
+          `Candles after incremental update (${selectedTimeframe}): count=${constrainedCandles.length}, last=${new Date(lastCandle.timestamp).toISOString()} O:${lastCandle.open} H:${lastCandle.high} L:${lastCandle.low} C:${lastCandle.close}`
         );
       }
 
@@ -883,13 +974,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         const mergedBenchmark = mergeTradingDataSets(previous.benchmarkData, benchmarkData);
         const mergedBeforeCreationData = mergeTradingDataSets(previous.beforeCreationData, beforeCreationData);
         const metricsChanged = !areMetricsEqual(previous.metrics, calculatedMetrics);
-        const candlestickChanged = haveCandlestickDataChanged(previous.candlestickData, normalizedCandles);
+        const candlestickChanged = haveCandlestickDataChanged(previous.candlestickData, constrainedCandles);
 
         const nextData = mergedData.changed ? mergedData.value : previous.data;
         const nextBenchmark = mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData;
         const nextBeforeCreationData = mergedBeforeCreationData.changed ? mergedBeforeCreationData.value : previous.beforeCreationData;
         const nextMetrics = metricsChanged ? calculatedMetrics : previous.metrics;
-        const nextCandlesticks = candlestickChanged ? normalizedCandles : previous.candlestickData;
+        const nextCandlesticks = candlestickChanged ? constrainedCandles : previous.candlestickData;
         const nextBaselinePrice = baselinePrice ?? previous.baselinePrice ?? cacheEntry.baselinePrice;
 
         timeframeDataCacheRef.current[cacheKey] = {
@@ -933,6 +1024,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     trading.id,
     trading.type,
     trading.exchange_binding?.exchange_type,
+    trading.info?.end_date,
     beginApiCall,
     endApiCall,
   ]);
@@ -1060,7 +1152,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       incrementalUpdateTimerRef.current = null;
     }
 
-    if (chartState.data.length === 0) {
+    if (trading.type === 'backtest' || chartState.data.length === 0) {
       return;
     }
 
@@ -1074,7 +1166,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         incrementalUpdateTimerRef.current = null;
       }
     };
-  }, [chartState.data.length, fetchIncrementalUpdates, selectedTimeframe]);
+  }, [chartState.data.length, fetchIncrementalUpdates, selectedTimeframe, trading.type]);
 
 
   // Data is already filtered by the API with the selected timeframe

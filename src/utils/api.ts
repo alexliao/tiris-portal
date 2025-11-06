@@ -420,7 +420,8 @@ export async function getEquityCurve(
   stockSymbol: string = 'BTC',
   quoteSymbol: string = 'USDT',
   requireAuth: boolean = true,
-  exchangeType?: string
+  exchangeType?: string,
+  endTime?: number
 ): Promise<EquityCurveNewData> {
   const params = new URLSearchParams();
   params.append('timeframe', timeframe);
@@ -429,6 +430,9 @@ export async function getEquityCurve(
   params.append('quote_symbol', quoteSymbol);
   if (exchangeType) {
     params.append('exchange', exchangeType.toLowerCase());
+  }
+  if (typeof endTime === 'number' && Number.isFinite(endTime)) {
+    params.append('end_time', Math.floor(endTime).toString());
   }
 
   const endpoint = `/tradings/${tradingId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;

@@ -572,8 +572,6 @@ export const TradingDetailPage: React.FC = () => {
     };
   }, [statusCheckInterval, dataRefreshInterval]);
 
-  // TODO: Uncomment for future use when backtest bot starting is implemented
-  // @ts-ignore
   const handleStartBot = async () => {
     if (!trading) return;
 
@@ -1159,13 +1157,7 @@ export const TradingDetailPage: React.FC = () => {
                             </div>
                           )}
                           <button
-                            onClick={() => {
-                              if (trading?.type === 'backtest') {
-                                setShowUnderConstruction(true);
-                              } else {
-                                // handleStartBot(); // Uncomment when function is reactivated
-                              }
-                            }}
+                            onClick={() => handleStartBot()}
                             disabled={botLoading}
                             className="inline-flex items-center px-2 py-1 md:px-3 md:py-2 text-sm bg-tiris-primary-600 text-white rounded-md hover:bg-tiris-primary-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                           >
@@ -1205,13 +1197,7 @@ export const TradingDetailPage: React.FC = () => {
                           </div>
                         )}
                         <button
-                          onClick={() => {
-                            if (trading?.type === 'backtest') {
-                              setShowUnderConstruction(true);
-                            } else {
-                              // handleStartBot(); // Uncomment when function is reactivated
-                            }
-                          }}
+                          onClick={() => handleStartBot()}
                           disabled={botLoading}
                           className="inline-flex items-center px-2 py-1 md:px-3 md:py-2 text-xs md:text-sm bg-tiris-primary-600 text-white rounded-md hover:bg-tiris-primary-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                         >
