@@ -438,7 +438,7 @@
     "chart": {
       "showTradingSignals": "显示交易信号",
       "hideTradingSignals": "隐藏交易信号",
-      "assetsValue": "资产价值",
+      "assetsValue": "当前资产",
       "assetsReturn": "资产收益率",
       "ethBenchmark": "基准收益率",
       "ethReturn": "基准收益率",
@@ -448,7 +448,7 @@
       "zeroLine": "零线",
       "buySignals": "买入",
       "sellSignals": "卖出",
-      "ethPrice": "ETH价格",
+      "ethPrice": "当前价格",
       "ethPosition": "ETH仓位",
       "signalLines": "信号线",
       "performanceChart": "绩效图表",
