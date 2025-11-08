@@ -1604,8 +1604,12 @@ export async function validateExchangeCredentials(
 }
 
 // Get sub-accounts for a trading
-export async function getSubAccountsByTrading(tradingId: string): Promise<SubAccount[]> {
-  const response = await apiRequest<{ sub_accounts: SubAccount[] }>(`/sub-accounts?trading_id=${tradingId}`);
+export async function getSubAccountsByTrading(tradingId: string, requireAuth: boolean = true): Promise<SubAccount[]> {
+  const response = await apiRequest<{ sub_accounts: SubAccount[] }>(
+    `/sub-accounts?trading_id=${tradingId}`,
+    {},
+    requireAuth
+  );
   return response.sub_accounts || [];
 }
 

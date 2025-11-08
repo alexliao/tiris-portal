@@ -210,38 +210,28 @@ export const TradingDetailPage: React.FC = () => {
         }
       } else {
         // For unauthenticated users, try to fetch the specific trading without auth
-        // This will only work for paper/backtest tradings that allow public access
+        // This will only work for tradings that the backend exposes as shareable
         foundTrading = await getTradingById(id, false);
       }
 
       if (!foundTrading) {
-        // If trading not found, show appropriate error message
-        if (isAuthenticated) {
-          setError(t('trading.detail.notFound'));
-        } else {
-          // For unauthenticated users, trading might exist but requires authentication
-          setError(t('common.accessDenied'));
-        }
-        return;
-      }
-
-      // Check if access is allowed for this trading type
-      // For unauthenticated users, only paper/backtest tradings are allowed
-      // For authenticated users, trust the backend filtering (real tradings are already restricted by getTradings())
-      if (!isAuthenticated && foundTrading.type !== 'paper' && foundTrading.type !== 'backtest') {
-        setError(t('common.accessDenied'));
+        setError(t('trading.detail.notFound'));
         return;
       }
 
       setTrading(foundTrading);
 
-      // Try to fetch associated bot
-      try {
-        const associatedBot = await getBotByTradingId(foundTrading.id);
-        setBot(associatedBot);
-      } catch (botErr) {
-        console.warn('Failed to fetch bot for trading:', botErr);
-        // Don't show error for bot fetch failure, just log it
+      // Try to fetch associated bot (requires authentication)
+      if (isAuthenticated) {
+        try {
+          const associatedBot = await getBotByTradingId(foundTrading.id);
+          setBot(associatedBot);
+        } catch (botErr) {
+          console.warn('Failed to fetch bot for trading:', botErr);
+          // Don't show error for bot fetch failure, just log it
+        }
+      } else {
+        setBot(null);
       }
 
       // Set exchange binding from embedded object if available, otherwise fetch it
@@ -263,7 +253,7 @@ export const TradingDetailPage: React.FC = () => {
           resolvedBinding.api_secret = embeddedCredentials.apiSecret;
 
           // For real trading, if credentials are missing from embedded binding, fetch the full binding details
-          if (foundTrading.type === 'real' && (!resolvedBinding.api_key || !resolvedBinding.api_secret)) {
+          if (isAuthenticated && foundTrading.type === 'real' && (!resolvedBinding.api_key || !resolvedBinding.api_secret)) {
             const bindingIdToUse = foundTrading.exchange_binding_id || embeddedBinding.id;
             try {
               const fullBinding = await getExchangeBindingById(bindingIdToUse);
@@ -281,8 +271,8 @@ export const TradingDetailPage: React.FC = () => {
           }
         }
 
-        // Note: At this point, foundTrading can only be 'paper' or 'backtest' based on the earlier check
-        if (!resolvedBinding) {
+        // Note: For unauthenticated access we're limited to the shareable trading types checked earlier
+        if (!resolvedBinding && isAuthenticated) {
           const isPaperOrBacktest = foundTrading.type === 'paper' || foundTrading.type === 'backtest';
 
           if (!isPaperOrBacktest) {
@@ -879,31 +869,6 @@ export const TradingDetailPage: React.FC = () => {
             <p className="text-gray-600">{t('common.loading')}</p>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  // Show a sign-in prompt for unauthenticated users trying to access tradings
-  if (!authLoading && !isAuthenticated && !trading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="pt-20 flex items-center justify-center min-h-screen">
-          <div className="text-center max-w-md px-4">
-            <AlertCircle className="w-16 h-16 text-tiris-primary-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.signInToView')}</h1>
-            <p className="text-gray-600 mb-4">
-              {t('trading.detail.signInMessage')}
-            </p>
-            <Link
-              to="/"
-              className="inline-flex items-center px-4 py-2 bg-tiris-primary-600 text-white rounded-md hover:bg-tiris-primary-700 transition-colors"
-            >
-              {t('common.signIn')}
-            </Link>
-          </div>
-        </div>
-        <Footer />
       </div>
     );
   }

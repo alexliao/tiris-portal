@@ -20,6 +20,7 @@ import {
 import { getFirstValidStockPrice, resolveEffectiveStockPrice } from '../../utils/assetsMetrics';
 import CandlestickChart from './CandlestickChart';
 import { useToast } from '../../hooks/useToast';
+import { useAuth } from '../../hooks/useAuth';
 
 type Timeframe = '1m' | '1h' | '4h' | '8h' | '1d' | '1w';
 
@@ -138,6 +139,87 @@ interface TradingPerformanceWidgetProps {
   showHighlights?: boolean;
   height?: string;
 }
+
+interface MarketContext {
+  stockSymbol: string;
+  quoteSymbol: string;
+  stockBalance: number;
+  quoteBalance: number;
+}
+
+const parseSymbolPair = (value?: unknown): { stockSymbol: string; quoteSymbol: string } | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const separator = trimmed.includes('/') ? '/' : trimmed.includes('_') ? '_' : null;
+  if (!separator) {
+    return null;
+  }
+
+  const [stock, quote] = trimmed.split(separator);
+  if (!stock || !quote) {
+    return null;
+  }
+
+  return {
+    stockSymbol: stock.toUpperCase(),
+    quoteSymbol: quote.toUpperCase(),
+  };
+};
+
+const deriveMarketContextFromTrading = (trading: Trading): MarketContext => {
+  const info = trading.info ?? {};
+  const candidates: unknown[] = [
+    info.market_symbol,
+    info.symbol,
+    info.trading_pair,
+    info.pair,
+    info.bot_symbol,
+    info.strategy_symbol,
+  ];
+
+  let parsedPair: { stockSymbol: string; quoteSymbol: string } | null = null;
+  for (const candidate of candidates) {
+    parsedPair = parseSymbolPair(candidate);
+    if (parsedPair) {
+      break;
+    }
+  }
+
+  const rawStockSymbol = (info.stock_symbol || info.stockSymbol || info.asset_symbol) as string | undefined;
+  const rawQuoteSymbol = (info.quote_symbol || info.quoteSymbol || info.quote_currency) as string | undefined;
+
+  const stockSymbol = (parsedPair?.stockSymbol || rawStockSymbol || 'ETH').toString().toUpperCase();
+  const quoteSymbol = (parsedPair?.quoteSymbol || rawQuoteSymbol || 'USDT').toString().toUpperCase();
+
+  const stockBalanceCandidate =
+    info.initial_stock_balance ?? info.initial_asset_balance ?? info.initial_position ?? info.stock_balance;
+  const quoteBalanceCandidate =
+    info.initial_balance ?? info.initial_funds ?? info.initial_quote_balance ?? info.quote_balance ?? info.balance;
+
+  const stockBalance = typeof stockBalanceCandidate === 'number'
+    ? stockBalanceCandidate
+    : Number(stockBalanceCandidate) || 0;
+  const quoteBalance = typeof quoteBalanceCandidate === 'number'
+    ? quoteBalanceCandidate
+    : Number(quoteBalanceCandidate) || 0;
+
+  return {
+    stockSymbol,
+    quoteSymbol,
+    stockBalance,
+    quoteBalance,
+  };
+};
+
+const shouldRetryWithAuth = (error: unknown): boolean =>
+  error instanceof ApiError && (error.status === 401 || error.status === 403);
 
 const areTradingPointsEqual = (a: TradingDataPoint, b: TradingDataPoint): boolean => {
   if (a.timestampNum !== b.timestampNum) return false;
@@ -386,6 +468,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   showHeader = true,
   showHighlights = true,
 }) => {
+  const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
   const toast = useToast();
   const [chartState, setChartState] = useState<ChartState>({
@@ -459,6 +542,17 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     apiRequestCountRef.current -= 1;
   }, []);
 
+  const attemptPublicFirst = useCallback(async <T,>(request: (useAuth: boolean) => Promise<T>): Promise<T> => {
+    try {
+      return await request(false);
+    } catch (error) {
+      if (isAuthenticated && shouldRetryWithAuth(error)) {
+        return await request(true);
+      }
+      throw error;
+    }
+  }, [isAuthenticated]);
+
 
   const fetchTradingData = useCallback(async (isInitialLoad = false, silentRefresh = false) => {
     let is202Error = false;
@@ -474,62 +568,68 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       beginApiCall();
 
-      // Determine if authentication is required based on trading type
-      const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
+      const fallbackMarketContext = deriveMarketContextFromTrading(trading);
 
-      // Fetch sub-accounts to determine stock and quote symbols
-      const subAccounts = await getSubAccountsByTrading(trading.id);
-      console.log('Sub-accounts:', subAccounts);
+      let resolvedStockSymbol = fallbackMarketContext.stockSymbol;
+      let resolvedQuoteSymbol = fallbackMarketContext.quoteSymbol;
+      let resolvedStockBalance = fallbackMarketContext.stockBalance;
+      let resolvedQuoteBalance = fallbackMarketContext.quoteBalance;
 
-      // Identify stock and balance sub-accounts
-      const stockSubAccount = subAccounts.find(account =>
-        account.info?.account_type === 'stock' ||
-        ['ETH', 'BTC'].includes(account.symbol)
-      );
-      const balanceSubAccount = subAccounts.find(account =>
-        account.info?.account_type === 'balance' ||
-        ['USDT', 'USD', 'USDC'].includes(account.symbol)
-      );
-
-      if (!stockSubAccount || !balanceSubAccount) {
-        throw new Error(t('trading.tradingDetail.missingSubAccounts', `Missing required sub-accounts. Found ${subAccounts.length} sub-accounts, but need both stock and balance accounts.`, { count: subAccounts.length }));
+      let subAccounts: Awaited<ReturnType<typeof getSubAccountsByTrading>> | null = null;
+      try {
+        subAccounts = await attemptPublicFirst(useAuth => getSubAccountsByTrading(trading.id, useAuth));
+        console.log('Sub-accounts:', subAccounts);
+      } catch (subAccountError) {
+        console.warn('Failed to fetch sub-accounts; falling back to trading info snapshot', subAccountError);
       }
 
-      const fetchedStockSymbol = stockSubAccount.symbol;
-      const fetchedQuoteSymbol = balanceSubAccount.symbol;
-      console.log(`Using symbols: stock=${fetchedStockSymbol}, quote=${fetchedQuoteSymbol}`);
+      if (subAccounts && subAccounts.length > 0) {
+        const stockSubAccount = subAccounts.find(account =>
+          account.info?.account_type === 'stock' ||
+          ['ETH', 'BTC'].includes(account.symbol)
+        );
+        const balanceSubAccount = subAccounts.find(account =>
+          account.info?.account_type === 'balance' ||
+          ['USDT', 'USD', 'USDC'].includes(account.symbol)
+        );
 
-      // Update state with the symbols and balances
-      setStockSymbol(fetchedStockSymbol);
-      setQuoteSymbol(fetchedQuoteSymbol);
+        if (stockSubAccount && balanceSubAccount) {
+          resolvedStockSymbol = stockSubAccount.symbol;
+          resolvedQuoteSymbol = balanceSubAccount.symbol;
+          resolvedStockBalance = typeof stockSubAccount.balance === 'number'
+            ? stockSubAccount.balance
+            : (parseFloat(stockSubAccount.balance) || 0);
+          resolvedQuoteBalance = typeof balanceSubAccount.balance === 'number'
+            ? balanceSubAccount.balance
+            : (parseFloat(balanceSubAccount.balance) || 0);
+        } else {
+          console.warn('Sub-accounts fetched but missing required stock/balance entries; using fallback context');
+        }
+      }
 
-      // Extract and set sub-account balances
-      const stockBal = typeof stockSubAccount.balance === 'number'
-        ? stockSubAccount.balance
-        : (parseFloat(stockSubAccount.balance) || 0);
-      const quoteBal = typeof balanceSubAccount.balance === 'number'
-        ? balanceSubAccount.balance
-        : (parseFloat(balanceSubAccount.balance) || 0);
-      setStockBalance(stockBal);
-      setQuoteBalance(quoteBal);
+      setStockSymbol(resolvedStockSymbol);
+      setQuoteSymbol(resolvedQuoteSymbol);
+      setStockBalance(resolvedStockBalance);
+      setQuoteBalance(resolvedQuoteBalance);
 
       const exchangeType = trading.exchange_binding?.exchange_type;
       const tradingEndTime = parseTimestamp(trading.info?.end_date);
       const effectiveEndTime = tradingEndTime ?? Date.now();
 
       const [equityCurve, tradingLogs] = await Promise.all([
-        // Use new API with timeframe and recent_timeframes parameters
-        getEquityCurve(
-          trading.id,
-          selectedTimeframe,
-          TOTAL_DATA_TO_LOAD, // Load 500 recent timeframes for historical scrolling
-          fetchedStockSymbol,
-          fetchedQuoteSymbol,
-          requireAuth,
-          exchangeType,
-          effectiveEndTime
+        attemptPublicFirst(useAuth =>
+          getEquityCurve(
+            trading.id,
+            selectedTimeframe,
+            TOTAL_DATA_TO_LOAD,
+            resolvedStockSymbol,
+            resolvedQuoteSymbol,
+            useAuth,
+            exchangeType,
+            effectiveEndTime
+          )
         ),
-        getTradingLogs(trading.id, requireAuth)
+        attemptPublicFirst(useAuth => getTradingLogs(trading.id, useAuth))
       ]);
 
       console.log('Equity curve response:', equityCurve);
@@ -731,11 +831,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       }
     }
   }, [
+    attemptPublicFirst,
     selectedTimeframe,
-    trading.exchange_binding?.exchange_type,
-    trading.id,
-    trading.type,
-    trading.info?.end_date,
+    trading,
     beginApiCall,
     endApiCall,
     toast,
@@ -763,7 +861,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       return;
     }
 
-    const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
     const exchangeType = trading.exchange_binding?.exchange_type;
 
     const lastCachedTimestamp = cacheEntry.lastUpdateTimestamp
@@ -785,15 +882,17 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     beginApiCall();
 
     try {
-      const incrementalEquity = await getEquityCurveByTimeRange(
-        trading.id,
-        selectedTimeframe,
-        startTime,
-        endTime,
-        stockSymbol,
-        quoteSymbol,
-        requireAuth,
-        exchangeType
+      const incrementalEquity = await attemptPublicFirst(useAuth =>
+        getEquityCurveByTimeRange(
+          trading.id,
+          selectedTimeframe,
+          startTime,
+          endTime,
+          stockSymbol,
+          quoteSymbol,
+          useAuth,
+          exchangeType
+        )
       );
 
       const normalizedIncremental = incrementalEquity ? normalizeEquityCurve(incrementalEquity) : undefined;
@@ -890,10 +989,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       let hasUpdatedData = newDataPoints.length > 0;
 
       // Fetch trading logs incrementally to capture new events
-      const newTradingLogs = await getTradingLogs(
-        trading.id,
-        requireAuth,
-        lastTradingLogTimestampRef.current
+      const newTradingLogs = await attemptPublicFirst(useAuth =>
+        getTradingLogs(
+          trading.id,
+          useAuth,
+          lastTradingLogTimestampRef.current
+        )
       );
 
       if (newTradingLogs.length > 0) {
@@ -1018,13 +1119,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       endApiCall();
     }
   }, [
+    attemptPublicFirst,
     quoteSymbol,
     selectedTimeframe,
     stockSymbol,
-    trading.id,
-    trading.type,
-    trading.exchange_binding?.exchange_type,
-    trading.info?.end_date,
+    trading,
     beginApiCall,
     endApiCall,
   ]);
