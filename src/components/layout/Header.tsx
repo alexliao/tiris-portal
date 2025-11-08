@@ -28,8 +28,8 @@ export const Navigation: React.FC = () => {
   };
 
   return (
-    <nav className="fixed top-0 w-full bg-[#1a1a1a] z-50 py-4">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="fixed top-0 w-full bg-[#1a1a1a] z-50 h-20 flex items-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="flex items-center justify-between">
           <Link
             to="/"
