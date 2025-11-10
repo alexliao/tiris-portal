@@ -615,7 +615,7 @@ export const TradingDetailPage: React.FC = () => {
         );
         const balanceSubAccount = subAccounts.find(account =>
           account.info?.account_type === 'balance' ||
-          ['USDT', 'USD'].includes(account.symbol)
+          ['USDT', 'USDC'].includes(account.symbol)
         );
 
         console.log('Stock sub-account:', stockSubAccount);
