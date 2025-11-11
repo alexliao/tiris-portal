@@ -11,25 +11,40 @@ interface BacktestProgressBarProps {
   lastCandleTs?: number;
   pointerTs?: number;
   pointerIso?: string;
+  isRunning?: boolean;
 }
 
 export const BacktestProgressBar: React.FC<BacktestProgressBarProps> = ({
   progressPct = 0,
-  status = 'running',
+  status = 'pending',
   completed = false,
+  pointerTs,
+  pointerIso,
+  isRunning = false,
 }) => {
   const { t } = useTranslation();
-  const [startTime] = useState<number>(() => Date.now());
   const [elapsedTime, setElapsedTime] = useState<string>('0s');
+  const [timerStart, setTimerStart] = useState<number | null>(null);
+  const isTimerActive = isRunning && !completed;
+
+  useEffect(() => {
+    if (isTimerActive && timerStart === null) {
+      setTimerStart(Date.now());
+    }
+    if (!isTimerActive && !completed) {
+      setTimerStart(null);
+      setElapsedTime('0s');
+    }
+  }, [isTimerActive, timerStart, completed]);
 
   // Update elapsed time every second
   useEffect(() => {
-    if (completed) {
+    if (completed || !isTimerActive || timerStart === null) {
       return; // Stop updating after completion
     }
 
     const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const elapsed = Math.floor((Date.now() - timerStart) / 1000);
       const hours = Math.floor(elapsed / 3600);
       const minutes = Math.floor((elapsed % 3600) / 60);
       const seconds = elapsed % 60;
@@ -44,7 +59,7 @@ export const BacktestProgressBar: React.FC<BacktestProgressBarProps> = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [startTime, completed]);
+  }, [timerStart, completed, isTimerActive]);
 
   // Calculate the progress percentage, clamped between 0 and 100
   const clampedProgress = useMemo(() => {
@@ -59,6 +74,26 @@ export const BacktestProgressBar: React.FC<BacktestProgressBarProps> = ({
     if (status === 'error') return 'bg-red-500';
     return 'bg-tiris-primary-500';
   }, [status, completed]);
+
+  const pointerTimestamp = useMemo(() => {
+    if (pointerIso) {
+      const ts = new Date(pointerIso).getTime();
+      if (Number.isFinite(ts)) {
+        return ts;
+      }
+    }
+    if (typeof pointerTs === 'number' && Number.isFinite(pointerTs)) {
+      return pointerTs > 1_000_000_000_000 ? pointerTs : pointerTs * 1000;
+    }
+    return null;
+  }, [pointerIso, pointerTs]);
+
+  const pointerLabel = useMemo(() => {
+    if (!pointerTimestamp) {
+      return null;
+    }
+    return new Date(pointerTimestamp).toLocaleString();
+  }, [pointerTimestamp]);
 
   // Determine the status text and styling
   const statusDisplay = useMemo(() => {
@@ -84,6 +119,14 @@ export const BacktestProgressBar: React.FC<BacktestProgressBarProps> = ({
         color: 'text-red-700',
         bgColor: 'bg-red-50',
         borderColor: 'border-red-200'
+      };
+    }
+    if (status === 'pending') {
+      return {
+        text: t('trading.detail.backtestPending') || 'Pending',
+        color: 'text-gray-700',
+        bgColor: 'bg-gray-100',
+        borderColor: 'border-gray-200'
       };
     }
     return {
@@ -118,12 +161,32 @@ export const BacktestProgressBar: React.FC<BacktestProgressBarProps> = ({
       </div>
 
       {/* Progress Bar */}
-      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden mb-3">
+      <div className="relative w-full mb-3">
+        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+          <div
+            className={`h-full ${progressBarColor} transition-all duration-300`}
+            style={{ width: `${clampedProgress}%` }}
+          />
+        </div>
         <div
-          className={`h-full ${progressBarColor} transition-all duration-300`}
-          style={{ width: `${clampedProgress}%` }}
-        />
+          className="absolute"
+          style={{
+            left: `${clampedProgress}%`,
+            top: '50%',
+            transform: 'translate(-50%, -50%)'
+          }}
+        >
+          <div className="w-3 h-3 rounded-full border-2 border-white bg-tiris-primary-500 shadow" />
+        </div>
       </div>
+
+      {pointerLabel && (
+        <div className="text-xs text-gray-600 text-right">
+          {t('trading.detail.backtestPointerLabel')}
+          {': '}
+          <span className="font-semibold text-gray-900">{pointerLabel}</span>
+        </div>
+      )}
 
     </div>
   );

@@ -76,6 +76,8 @@ export const TradingDetailPage: React.FC = () => {
     isDeleting: false,
   });
 
+  const tradingTypeRef = useRef<Trading['type'] | null>(null);
+
   // Under construction modal state
   const [showUnderConstruction, setShowUnderConstruction] = useState(false);
 
@@ -83,6 +85,10 @@ export const TradingDetailPage: React.FC = () => {
   const [dataRefreshInterval, setDataRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const isRefreshing2 = useRef(false);
+
+  useEffect(() => {
+    tradingTypeRef.current = trading?.type ?? null;
+  }, [trading?.type]);
 
   const dateTimeFormatter = useMemo(
     () =>
@@ -142,8 +148,26 @@ export const TradingDetailPage: React.FC = () => {
     [dateFormatter]
   );
 
+  const tradingCreatedAtMs = useMemo(() => (trading?.created_at ? new Date(trading.created_at).getTime() : undefined), [trading?.created_at]);
+  const backtestStartMs = useMemo(() => {
+    if (trading?.type !== 'backtest') return undefined;
+    const startValue = trading?.info?.start_date;
+    const explicitStart = typeof startValue === 'string' || typeof startValue === 'number'
+      ? new Date(startValue).getTime()
+      : undefined;
+    return Number.isFinite(explicitStart) ? explicitStart : tradingCreatedAtMs;
+  }, [trading?.info?.start_date, trading?.type, tradingCreatedAtMs]);
+  const backtestEndMs = useMemo(() => {
+    if (trading?.type !== 'backtest') return undefined;
+    const endValue = trading?.info?.end_date;
+    const explicitEnd = typeof endValue === 'string' || typeof endValue === 'number'
+      ? new Date(endValue).getTime()
+      : undefined;
+    return Number.isFinite(explicitEnd) ? explicitEnd : undefined;
+  }, [trading?.info?.end_date, trading?.type]);
+
   const createdAtDisplay = formatDateTime(trading?.created_at);
-  const backtestStartDisplay = trading?.type === 'backtest' ? formatDate(trading?.info?.start_date) : null;
+  const backtestStartDisplay = trading?.type === 'backtest' ? formatDate(trading?.info?.start_date ?? trading?.created_at) : null;
   const backtestEndDisplay = trading?.type === 'backtest' ? formatDate(trading?.info?.end_date) : null;
   const hasBacktestRange = Boolean(backtestStartDisplay || backtestEndDisplay);
   const backtestRangeLabel = hasBacktestRange
@@ -151,6 +175,99 @@ export const TradingDetailPage: React.FC = () => {
     : null;
   const tradingDayCount = useMemo(() => getTradingDayCount(trading), [trading]);
   const tradingDayCountLabel = tradingDayCount !== null ? t('trading.detail.dayCount', { count: tradingDayCount }) : null;
+
+  const backtestStatusInfo = useMemo(() => {
+    if (trading?.type !== 'backtest') {
+      return undefined;
+    }
+
+    const statusInfo = bot?.record.status?.info;
+    if (!statusInfo || typeof statusInfo !== 'object') {
+      return undefined;
+    }
+
+    const backtestInfo = (statusInfo as Record<string, unknown>).backtest;
+    if (backtestInfo && typeof backtestInfo === 'object') {
+      return backtestInfo as Record<string, unknown>;
+    }
+
+    return undefined;
+  }, [bot?.record.status?.info, trading?.type]);
+
+  const normalizeTimestampLike = (value?: number | null): number | undefined => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return undefined;
+    }
+    return value > 1_000_000_000_000 ? value : value * 1000;
+  };
+
+  const backtestProgressPct = backtestStatusInfo?.progress_pct as number | undefined;
+
+  const pointerFromProgress = useMemo(() => {
+    if (trading?.type !== 'backtest') {
+      return undefined;
+    }
+    if (!Number.isFinite(backtestProgressPct) || backtestProgressPct === undefined || backtestProgressPct === null) {
+      return undefined;
+    }
+    if (!Number.isFinite(backtestStartMs) || !Number.isFinite(backtestEndMs)) {
+      return undefined;
+    }
+
+    const safePct = Math.max(0, Math.min(100, backtestProgressPct));
+    const totalRange = (backtestEndMs ?? 0) - (backtestStartMs ?? 0);
+    if (!Number.isFinite(totalRange) || totalRange <= 0 || !Number.isFinite(backtestStartMs ?? NaN)) {
+      return backtestStartMs ?? undefined;
+    }
+
+    return (backtestStartMs ?? 0) + (safePct / 100) * totalRange;
+  }, [backtestProgressPct, trading?.type, backtestStartMs, backtestEndMs]);
+  const backtestPointerMs = useMemo(() => {
+    if (trading?.type !== 'backtest') {
+      return undefined;
+    }
+
+    const pointerIso = backtestStatusInfo?.pointer_iso as string | undefined;
+    const pointerTsRaw = backtestStatusInfo?.pointer_ts as number | undefined;
+
+    const pointerFromIso = pointerIso ? new Date(pointerIso).getTime() : undefined;
+    const pointerFromTs = normalizeTimestampLike(pointerTsRaw);
+
+    const resolvedPointer = Number.isFinite(pointerFromIso) ? pointerFromIso : pointerFromTs;
+    if (typeof resolvedPointer === 'number' && Number.isFinite(resolvedPointer)) {
+      return resolvedPointer;
+    }
+
+    if (pointerFromProgress && Number.isFinite(pointerFromProgress)) {
+      return pointerFromProgress;
+    }
+
+    return backtestStartMs;
+  }, [backtestStatusInfo, trading?.type, pointerFromProgress, backtestStartMs]);
+
+  const isBotRunning = Boolean(bot && bot.record.enabled && bot.alive);
+  const rawBacktestStatus = typeof backtestStatusInfo?.status === 'string'
+    ? (backtestStatusInfo?.status as string)
+    : undefined;
+  const backtestStatus = useMemo(() => {
+    const normalized = rawBacktestStatus?.toLowerCase();
+    if (normalized) {
+      return normalized;
+    }
+    if (isBotRunning) {
+      return 'running';
+    }
+    if (bot) {
+      return 'stopped';
+    }
+    return 'pending';
+  }, [rawBacktestStatus, isBotRunning, bot]);
+  const backtestCompleted = backtestStatusInfo?.completed as boolean | undefined;
+  const backtestIterations = backtestStatusInfo?.iterations as number | undefined;
+  const backtestLoopIterations = backtestStatusInfo?.loop_iterations as number | undefined;
+  const backtestLastCandleTs = backtestStatusInfo?.last_candle_ts as number | undefined;
+  const backtestPointerTs = backtestStatusInfo?.pointer_ts as number | undefined;
+  const backtestPointerIso = backtestStatusInfo?.pointer_iso as string | undefined;
 
   // Convert timeframe string to seconds
   const timeframeToSeconds = (timeframe: string): number => {
@@ -523,7 +640,11 @@ export const TradingDetailPage: React.FC = () => {
     // Create new interval
     console.log('Creating new status monitoring interval');
     const interval = setInterval(() => {
-      checkBotStatus(botId);
+      if (tradingTypeRef.current === 'backtest') {
+        void refreshAllData();
+      } else {
+        void checkBotStatus(botId);
+      }
     }, 5000);
 
     setStatusCheckInterval(interval);
@@ -1180,16 +1301,17 @@ export const TradingDetailPage: React.FC = () => {
             </div>
 
             {/* Backtest Progress Bar */}
-            {trading?.type === 'backtest' && bot?.record.status?.info && (
+            {trading?.type === 'backtest' && (
               <BacktestProgressBar
-                progressPct={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.progress_pct as number | undefined}
-                status={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.status as string | undefined}
-                completed={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.completed as boolean | undefined}
-                iterations={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.iterations as number | undefined}
-                loopIterations={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.loop_iterations as number | undefined}
-                lastCandleTs={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.last_candle_ts as number | undefined}
-                pointerTs={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.pointer_ts as number | undefined}
-                pointerIso={((bot.record.status.info as Record<string, Record<string, unknown>>)?.backtest as Record<string, unknown>)?.pointer_iso as string | undefined}
+                progressPct={backtestProgressPct}
+                status={backtestStatus}
+                completed={backtestCompleted}
+                iterations={backtestIterations}
+                loopIterations={backtestLoopIterations}
+                lastCandleTs={backtestLastCandleTs}
+                pointerTs={backtestPointerTs}
+                pointerIso={backtestPointerIso}
+                isRunning={backtestStatus === 'running'}
               />
             )}
           </div>
@@ -1197,6 +1319,7 @@ export const TradingDetailPage: React.FC = () => {
           {/* Performance Widget */}
           <TradingPerformanceWidget
             trading={trading}
+            dataEndTime={backtestPointerMs}
             showHeader={false}
             showHighlights={false}
           />
