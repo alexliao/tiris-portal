@@ -1586,7 +1586,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         {/* Metrics Cards - Group 1: Account */}
         <div className="bg-white p-3 rounded-lg shadow-sm flex items-end">
           <div>
-            <div className="text-xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
+            <div className="text-3xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
               ${formatSignificantDigits(derivedAssetsValue, 4)}
             </div>
             <div className="text-sm text-gray-600">{t('trading.chart.assetsValue')}</div>
@@ -1623,7 +1623,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         {/* Metrics Cards - Group 2: Trading Status */}
         <div className="bg-white p-3 rounded-lg shadow-sm flex items-end">
           <div>
-            <div className="text-xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
+            <div className="text-3xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
               {formatPercentage(derivedTotalROI)}
             </div>
             <div className="text-sm text-gray-600">{t('trading.metrics.totalROI')}</div>
