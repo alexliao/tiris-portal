@@ -92,7 +92,7 @@ export const BacktestProgressBar: React.FC<BacktestProgressBarProps> = ({
     if (!pointerTimestamp) {
       return null;
     }
-    return new Date(pointerTimestamp).toLocaleString();
+    return new Date(pointerTimestamp).toLocaleDateString();
   }, [pointerTimestamp]);
 
   // Determine the status text and styling
@@ -151,9 +151,6 @@ export const BacktestProgressBar: React.FC<BacktestProgressBarProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600">
-            {t('trading.detail.elapsed') || 'Elapsed'}: <span className="font-semibold text-gray-900">{elapsedTime}</span>
-          </span>
           <span className="text-sm font-semibold text-gray-700">
             {clampedProgress.toFixed(2)}%
           </span>
@@ -180,11 +177,14 @@ export const BacktestProgressBar: React.FC<BacktestProgressBarProps> = ({
         </div>
       </div>
 
-      {pointerLabel && (
-        <div className="text-xs text-gray-600 text-right">
-          {t('trading.detail.backtestPointerLabel')}
-          {': '}
-          <span className="font-semibold text-gray-900">{pointerLabel}</span>
+      {(pointerLabel || elapsedTime) && (
+        <div className="flex items-center justify-between text-sm text-gray-600 mt-1">
+          <div className="font-semibold text-gray-900">{elapsedTime}</div>
+          {pointerLabel && (
+            <div>
+              <span className="font-semibold text-gray-900">{pointerLabel}</span>
+            </div>
+          )}
         </div>
       )}
 
