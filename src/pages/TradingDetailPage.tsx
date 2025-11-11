@@ -524,7 +524,7 @@ export const TradingDetailPage: React.FC = () => {
     console.log('Creating new status monitoring interval');
     const interval = setInterval(() => {
       checkBotStatus(botId);
-    }, 10000);
+    }, 5000);
 
     setStatusCheckInterval(interval);
   };
@@ -756,9 +756,8 @@ export const TradingDetailPage: React.FC = () => {
         startBotStatusMonitoring(refreshedBot.record.id);
       }
 
-      // Reload the page to ensure fresh state and avoid interval issues
-      console.log('Bot started successfully, reloading page...');
-      window.location.reload();
+      // Bot data/trading data already refreshed above; no need to hard refresh the page
+      console.log('Bot started successfully, keeping page state intact.');
     } catch (err) {
       console.error('Failed to start bot:', err);
       // Could add a toast notification here
