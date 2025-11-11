@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading, deleteTrading, updateTrading } from '../utils/api';
+import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type BotSpec, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading, deleteTrading, updateTrading } from '../utils/api';
 import { AlertCircle, Play, Square, Loader2, Copy, Check, Trash2, Zap } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -462,7 +462,7 @@ export const TradingDetailPage: React.FC = () => {
     if (!authLoading && id) {
       initialLoad();
     }
-  }, [id, isAuthenticated, authLoading]);
+  }, [id, isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Bot status checking function
   const checkBotStatus = async (botId: string) => {
@@ -580,7 +580,7 @@ export const TradingDetailPage: React.FC = () => {
       isRefreshing2.current = false;
       setIsRefreshing(false);
     }
-  }, [bot?.record.id]);
+  }, [bot?.record.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // Start automatic data refresh when page loads and user is authenticated
@@ -616,7 +616,7 @@ export const TradingDetailPage: React.FC = () => {
         clearInterval(interval);
       };
     }
-  }, [isAuthenticated, authLoading, bot?.record.spec.params?.timeframe, trading?.info?.timeframe]);
+  }, [isAuthenticated, authLoading, bot?.record.spec.params?.timeframe, trading?.info?.timeframe]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Start periodic status checking when bot is running
   const startBotStatusMonitoring = (botId: string) => {
@@ -669,7 +669,7 @@ export const TradingDetailPage: React.FC = () => {
       console.log('Bot is not running, stopping status monitoring');
       stopBotStatusMonitoring();
     }
-  }, [bot?.record.id, bot?.record.enabled, bot?.alive]); // More specific dependencies
+  }, [bot?.record.id, bot?.record.enabled, bot?.alive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup intervals on component unmount
   useEffect(() => {
@@ -792,7 +792,7 @@ export const TradingDetailPage: React.FC = () => {
         // Generate symbol from stock and balance sub-accounts
         const symbol = `${stockSubAccount.symbol}/${balanceSubAccount.symbol}`;
 
-        const spec: any = {
+        const spec: BotSpec = {
           trading: {
             id: trading.id,
             name: trading.name,

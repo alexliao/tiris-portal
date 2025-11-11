@@ -697,12 +697,14 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
       setHasInitialized(true);
 
+      // Capture container ref in effect scope to avoid stale ref issues
+      const containerRef = chartContainerRef.current;
       return () => {
         window.removeEventListener('resize', handleResize);
         chart.unsubscribeCrosshairMove(handleCrosshairMove);
         timeScale.unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
-        if (tooltipRef.current && chartContainerRef.current?.contains(tooltipRef.current)) {
-          chartContainerRef.current.removeChild(tooltipRef.current);
+        if (tooltipRef.current && containerRef?.contains(tooltipRef.current)) {
+          containerRef.removeChild(tooltipRef.current);
         }
         tooltipRef.current = null;
         benchmarkMarkersPluginRef.current?.detach();
@@ -712,7 +714,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       console.error('Failed to initialize candlestick chart:', err);
       setError(t('trading.chart.failedToInitialize', `Failed to initialize chart: ${err instanceof Error ? err.message : String(err)}`));
     }
-  }, [initialBalance]);
+  }, [initialBalance, t]);
 
   useEffect(() => {
     if (!chartRef.current) {
@@ -1078,7 +1080,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       previousLatestBarTimeRef.current = null;
     }
     previousCandlesLengthRef.current = chartData.length;
-  }, [
+  }, [ // eslint-disable-line react-hooks/exhaustive-deps
     candles,
     equityPoints,
     benchmarkPoints,

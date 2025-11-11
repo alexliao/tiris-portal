@@ -145,7 +145,7 @@ const EditableText: React.FC<EditableTextProps> = ({
     let payload: unknown = null;
     try {
       payload = await response.json();
-    } catch (err) {
+    } catch {
       // Ignore JSON parse errors for empty bodies
     }
 

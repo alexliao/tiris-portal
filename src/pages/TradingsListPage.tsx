@@ -72,7 +72,7 @@ export const TradingsListPage: React.FC = () => {
     if (isAuthenticated && !authLoading) {
       fetchTradings();
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getFilteredTradings = () => {
     return tradings.filter(trading => trading.type.toLowerCase() === type?.toLowerCase());

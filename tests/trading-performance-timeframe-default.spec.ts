@@ -24,11 +24,8 @@ test.describe('Trading Performance Widget - Default Timeframe Selection', () => 
       await page.waitForLoadState('networkidle');
 
       // Check if the default selected timeframe is 1m (green button)
-      const timeframeButtons = page.locator('button:has-text("1m"), button:has-text("1h"), button:has-text("5m"), button:has-text("8h"), button:has-text("1d")');
-
-      // Get the first green button (selected state)
       const selectedButton = page.locator('button.bg-green-600').first();
-      const selectedText = await selectedButton.textContent();
+      await expect(selectedButton).toBeVisible();
 
       // This test would verify the button is selected based on trading timeframe
       // Note: Exact behavior depends on the trading data available in the test environment
@@ -49,7 +46,6 @@ test.describe('Trading Performance Widget - Default Timeframe Selection', () => 
 
       // For non-5m trading timeframes, the default should be 1h
       const selectedButton = page.locator('button.bg-green-600').first();
-      const selectedText = await selectedButton.textContent();
 
       // Verify the button exists and is styled as selected
       await expect(selectedButton).toBeVisible();
@@ -124,9 +120,6 @@ test.describe('Trading Performance Widget - Default Timeframe Selection', () => 
     if (await tradingItem.isVisible()) {
       await tradingItem.click();
       await page.waitForLoadState('networkidle');
-
-      // Get initial selected button
-      const initialSelected = await page.locator('button.bg-green-600').first().textContent();
 
       // Click on a different timeframe button
       const timeframeOptions = ['1m', '1h', '8h', '1d'];

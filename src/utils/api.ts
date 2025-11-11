@@ -1133,6 +1133,8 @@ export interface BotSpec {
     api_secret?: string | null;
     info?: { [key: string]: unknown };
   };
+  start_date?: string | unknown;
+  end_date?: string | unknown;
 }
 
 export interface BotCreateRequest {

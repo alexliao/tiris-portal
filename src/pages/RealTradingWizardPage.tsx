@@ -67,7 +67,7 @@ export const RealTradingWizardPage: React.FC = () => {
       setTradingName(generateDefaultName('real'));
       fetchInitialData();
     }
-  }, [isAuthenticated, authLoading, exchangeIdParam]);
+  }, [isAuthenticated, authLoading, exchangeIdParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch exchange balance when exchange binding or quote currency changes
   useEffect(() => {

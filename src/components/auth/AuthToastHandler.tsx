@@ -24,10 +24,10 @@ export const AuthToastHandler: React.FC = () => {
           default: return 'email';
         }
       };
-      
+
       const providerName = getProviderName(user.provider);
       toast.success(
-        t('auth.welcomeBack'), 
+        t('auth.welcomeBack'),
         t('auth.signedInWith', { provider: providerName })
       );
       hasShownToast.current = true;
@@ -37,7 +37,7 @@ export const AuthToastHandler: React.FC = () => {
     if (!justSignedIn) {
       hasShownToast.current = false;
     }
-  }, [user, justSignedIn]); // Removed toast from dependencies
+  }, [user, justSignedIn, t, toast]);
 
   return null; // This component doesn't render anything
 };

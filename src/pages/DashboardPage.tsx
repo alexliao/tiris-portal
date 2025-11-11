@@ -58,7 +58,7 @@ export const DashboardPage: React.FC = () => {
     if (isAuthenticated && !authLoading) {
       fetchTradings();
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getFilteredTradings = (type: string) => {
     return tradings.filter(trading => trading.type.toLowerCase() === type.toLowerCase());

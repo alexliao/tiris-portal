@@ -62,7 +62,7 @@ export const PaperTradingWizardPage: React.FC = () => {
       setTradingName(generateDefaultName('paper'));
       fetchInitialData();
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchInitialData = async () => {
     try {

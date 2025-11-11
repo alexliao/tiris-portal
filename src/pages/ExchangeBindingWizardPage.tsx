@@ -45,7 +45,7 @@ export const ExchangeBindingWizardPage: React.FC = () => {
     if (isAuthenticated && !authLoading) {
       fetchInitialData();
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update default connection name when exchange selection changes
   useEffect(() => {

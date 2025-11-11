@@ -63,7 +63,7 @@ export const BacktestTradingWizardPage: React.FC = () => {
       setTradingName(generateDefaultName('backtest'));
       fetchInitialData();
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchInitialData = async () => {
     try {

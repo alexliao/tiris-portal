@@ -69,7 +69,7 @@ export const ExchangesPage: React.FC = () => {
     if (isAuthenticated && !authLoading) {
       fetchExchanges();
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreateExchange = () => {
     // Navigate to the exchange binding wizard instead of opening modal
@@ -404,7 +404,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
     if (isOpen) {
       fetchExchanges();
     }
-  }, [isOpen, exchange]);
+  }, [isOpen, exchange]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update default name when exchange type changes (only for new exchanges)
   useEffect(() => {
@@ -414,7 +414,7 @@ const ExchangeModal: React.FC<ExchangeModalProps> = ({ isOpen, onClose, onSucces
         name: getDefaultName(prev.exchange),
       }));
     }
-  }, [formData.exchange, exchange, isOpen]);
+  }, [formData.exchange, exchange, isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
