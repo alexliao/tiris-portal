@@ -92,6 +92,24 @@ const trimEquityCurveToEndTime = (
   };
 };
 
+const resolveEffectiveEndTime = (
+  override?: number,
+  tradingEndTime?: number | null
+): number => {
+  const normalizedOverride = typeof override === 'number' && Number.isFinite(override)
+    ? override
+    : undefined;
+  const normalizedTradingEnd = typeof tradingEndTime === 'number' && Number.isFinite(tradingEndTime)
+    ? tradingEndTime
+    : undefined;
+
+  if (normalizedOverride && normalizedTradingEnd) {
+    return Math.min(normalizedOverride, normalizedTradingEnd);
+  }
+
+  return normalizedOverride ?? normalizedTradingEnd ?? Date.now();
+};
+
 const CHART_LEFT_MARGIN = 5;
 const CHART_RIGHT_MARGIN = 0;
 
@@ -138,6 +156,7 @@ interface TradingPerformanceWidgetProps {
   showHeader?: boolean;
   showHighlights?: boolean;
   height?: string;
+  dataEndTime?: number;
 }
 
 interface MarketContext {
@@ -467,6 +486,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   className = '',
   showHeader = true,
   showHighlights = true,
+  dataEndTime,
 }) => {
   const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
@@ -614,21 +634,115 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       const exchangeType = trading.exchange_binding?.exchange_type;
       const tradingEndTime = parseTimestamp(trading.info?.end_date);
-      const effectiveEndTime = tradingEndTime ?? Date.now();
+      const effectiveEndTime = resolveEffectiveEndTime(dataEndTime, tradingEndTime);
+
+      const isBacktest = trading.type === 'backtest';
+      const backtestStartTime = isBacktest
+        ? parseTimestamp(trading.info?.start_date) ?? parseTimestamp(trading.created_at)
+        : undefined;
+
+      const loadBacktestEquityCurve = async () => {
+        if (!isBacktest ||
+          typeof backtestStartTime !== 'number' ||
+          !Number.isFinite(backtestStartTime) ||
+          backtestStartTime >= effectiveEndTime
+        ) {
+          return attemptPublicFirst(useAuth =>
+            getEquityCurve(
+              trading.id,
+              selectedTimeframe,
+              TOTAL_DATA_TO_LOAD,
+              resolvedStockSymbol,
+              resolvedQuoteSymbol,
+              useAuth,
+              exchangeType,
+              effectiveEndTime
+            )
+          );
+        }
+
+        const timeframeMs = timeframeToMilliseconds(selectedTimeframe);
+        const chunkDurationMs = Math.max(timeframeMs * TOTAL_DATA_TO_LOAD, timeframeMs * 50, 60_000);
+        const pointMap = new Map<number, NonNullable<EquityCurveNewData['data_points']>[number]>();
+        let lastChunk: EquityCurveNewData | null = null;
+        let cursorStart = backtestStartTime;
+
+        while (cursorStart < effectiveEndTime) {
+          const cursorEnd = Math.min(cursorStart + chunkDurationMs, effectiveEndTime);
+          try {
+            const chunk = await attemptPublicFirst(useAuth =>
+              getEquityCurveByTimeRange(
+                trading.id,
+                selectedTimeframe,
+                cursorStart,
+                cursorEnd,
+                resolvedStockSymbol,
+                resolvedQuoteSymbol,
+                useAuth,
+                exchangeType
+              )
+            );
+            if (chunk?.data_points?.length) {
+              chunk.data_points.forEach(point => {
+                const pointTime = new Date(point.timestamp).getTime();
+                if (Number.isFinite(pointTime)) {
+                  const existing = pointMap.get(pointTime);
+                  if (isIncomingPointPreferred(existing, point)) {
+                    pointMap.set(pointTime, point);
+                  }
+                }
+              });
+              lastChunk = chunk;
+            }
+          } catch (error) {
+            console.warn('Failed to fetch backtest equity chunk, falling back to default request', error);
+            return attemptPublicFirst(useAuth =>
+              getEquityCurve(
+                trading.id,
+                selectedTimeframe,
+                TOTAL_DATA_TO_LOAD,
+                resolvedStockSymbol,
+                resolvedQuoteSymbol,
+                useAuth,
+                exchangeType,
+                effectiveEndTime
+              )
+            );
+          }
+          cursorStart = cursorEnd;
+        }
+
+        if (!lastChunk || pointMap.size === 0) {
+          return attemptPublicFirst(useAuth =>
+            getEquityCurve(
+              trading.id,
+              selectedTimeframe,
+              TOTAL_DATA_TO_LOAD,
+              resolvedStockSymbol,
+              resolvedQuoteSymbol,
+              useAuth,
+              exchangeType,
+              effectiveEndTime
+            )
+          );
+        }
+
+        const combinedPoints = Array.from(pointMap.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map(([, point]) => point);
+
+        return {
+          ...lastChunk,
+          data_points: combinedPoints,
+          start_time: combinedPoints[0]?.timestamp ?? lastChunk.start_time,
+          end_time: combinedPoints[combinedPoints.length - 1]?.timestamp ?? lastChunk.end_time,
+        };
+      };
+
+      const equityCurvePromise = loadBacktestEquityCurve();
 
       const [equityCurve, tradingLogs] = await Promise.all([
-        attemptPublicFirst(useAuth =>
-          getEquityCurve(
-            trading.id,
-            selectedTimeframe,
-            TOTAL_DATA_TO_LOAD,
-            resolvedStockSymbol,
-            resolvedQuoteSymbol,
-            useAuth,
-            exchangeType,
-            effectiveEndTime
-          )
-        ),
+        equityCurvePromise,
         attemptPublicFirst(useAuth => getTradingLogs(trading.id, useAuth))
       ]);
 
@@ -642,9 +756,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       }
 
       const normalizedEquityCurve = normalizeEquityCurve(equityCurve);
-      const constrainedEquityCurve = tradingEndTime
-        ? trimEquityCurveToEndTime(normalizedEquityCurve, tradingEndTime) ?? normalizedEquityCurve
-        : normalizedEquityCurve;
+      const constrainedEquityCurve = trimEquityCurveToEndTime(normalizedEquityCurve, effectiveEndTime) ?? normalizedEquityCurve;
 
       const {
         data,
@@ -675,10 +787,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       }
 
       const normalizedCandles = normalizeCandlesticks(candlestickData);
-      const constrainedCandles =
-        typeof tradingEndTime === 'number'
-          ? normalizedCandles.filter(candle => candle.timestampNum <= tradingEndTime)
-          : normalizedCandles;
+      const constrainedCandles = normalizedCandles.filter(candle => candle.timestampNum <= effectiveEndTime);
       if (constrainedCandles.length > 0) {
         const lastCandle = constrainedCandles[constrainedCandles.length - 1];
         console.debug(
@@ -838,14 +947,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     endApiCall,
     toast,
     t,
+    dataEndTime,
   ]);
 
 
   const fetchIncrementalUpdates = useCallback(async () => {
-    if (trading.type === 'backtest') {
-      return;
-    }
-
     const cacheKey = selectedTimeframe;
     const cacheEntry = timeframeDataCacheRef.current[cacheKey];
 
@@ -854,9 +960,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
 
     const tradingEndTime = parseTimestamp(trading.info?.end_date);
-    const existingEquityCurve = tradingEndTime
-      ? trimEquityCurveToEndTime(cacheEntry.equityCurve, tradingEndTime) ?? cacheEntry.equityCurve
-      : cacheEntry.equityCurve;
+    const targetEndTime = resolveEffectiveEndTime(dataEndTime, tradingEndTime);
+    const existingEquityCurve = trimEquityCurveToEndTime(cacheEntry.equityCurve, targetEndTime) ?? cacheEntry.equityCurve;
     if (!existingEquityCurve || !existingEquityCurve.data_points || existingEquityCurve.data_points.length === 0) {
       return;
     }
@@ -868,7 +973,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     const timeframeMs = timeframeToMilliseconds(selectedTimeframe);
     const earliestAllowedTimestamp = new Date(existingEquityCurve.start_time).getTime();
     const startTime = Math.max(lastCachedTimestamp - timeframeMs, earliestAllowedTimestamp);
-    const endTime = tradingEndTime ?? Date.now();
+    const endTime = targetEndTime;
 
     if (typeof tradingEndTime === 'number' && lastCachedTimestamp >= tradingEndTime) {
       return;
@@ -896,9 +1001,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       );
 
       const normalizedIncremental = incrementalEquity ? normalizeEquityCurve(incrementalEquity) : undefined;
-      const constrainedIncremental = tradingEndTime
-        ? trimEquityCurveToEndTime(normalizedIncremental, tradingEndTime) ?? normalizedIncremental
-        : normalizedIncremental;
+      const constrainedIncremental = trimEquityCurveToEndTime(normalizedIncremental, targetEndTime) ?? normalizedIncremental;
       const newDataPoints = constrainedIncremental?.data_points ?? [];
 
       if (newDataPoints.length > 0) {
@@ -930,14 +1033,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         .sort((a, b) => a[0] - b[0])
         .map(([, point]) => point);
 
-      if (typeof tradingEndTime === 'number') {
-        combinedPoints = combinedPoints.filter(point => {
-          const pointTime = new Date(point.timestamp).getTime();
-          return Number.isFinite(pointTime) && pointTime <= tradingEndTime;
-        });
-      }
+      combinedPoints = combinedPoints.filter(point => {
+        const pointTime = new Date(point.timestamp).getTime();
+        return Number.isFinite(pointTime) && pointTime <= targetEndTime;
+      });
 
-      if (combinedPoints.length > TOTAL_DATA_TO_LOAD) {
+      if (trading.type !== 'backtest' && combinedPoints.length > TOTAL_DATA_TO_LOAD) {
         combinedPoints = combinedPoints.slice(combinedPoints.length - TOTAL_DATA_TO_LOAD);
       }
 
@@ -1126,6 +1227,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     trading,
     beginApiCall,
     endApiCall,
+    dataEndTime,
   ]);
 
 
@@ -1134,6 +1236,38 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     fetchTradingData(true); // Mark as initial load
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run on mount
+
+  const lastKnownDataEndTimeRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (typeof dataEndTime !== 'number' || !Number.isFinite(dataEndTime)) {
+      lastKnownDataEndTimeRef.current = undefined;
+      return;
+    }
+
+    const previous = lastKnownDataEndTimeRef.current;
+
+    if (previous === undefined) {
+      lastKnownDataEndTimeRef.current = dataEndTime;
+      return;
+    }
+
+    if (dataEndTime + 50 < previous) {
+      timeframeDataCacheRef.current = {};
+      tradingLogsRef.current = [];
+      lastTradingLogTimestampRef.current = undefined;
+      initialStockPriceRef.current = undefined;
+      fetchTradingData(false, true);
+      lastKnownDataEndTimeRef.current = dataEndTime;
+      return;
+    }
+
+    if (dataEndTime > previous + 50) {
+      fetchIncrementalUpdates();
+    }
+
+    lastKnownDataEndTimeRef.current = dataEndTime;
+  }, [dataEndTime, fetchIncrementalUpdates, fetchTradingData]);
 
   // Timeframe change effect - use cached data if available, otherwise fetch
   useEffect(() => {
@@ -1251,7 +1385,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       incrementalUpdateTimerRef.current = null;
     }
 
-    if (trading.type === 'backtest' || chartState.data.length === 0) {
+    if (chartState.data.length === 0) {
       return;
     }
 
@@ -1340,16 +1474,21 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       ? initialStockPriceRef.current
       : normalizedBaselinePrice;
 
+  const latestNetValue = (() => {
+    if (filteredData.length === 0) {
+      return undefined;
+    }
+    const candidate = filteredData[filteredData.length - 1]?.netValue;
+    return typeof candidate === 'number' && Number.isFinite(candidate) ? candidate : undefined;
+  })();
+
   const derivedAssetsValue = (() => {
-    if (typeof effectiveStockPrice === 'number' && Number.isFinite(effectiveStockPrice)) {
-      return normalizedQuoteBalance + normalizedStockBalance * effectiveStockPrice;
+    if (typeof latestNetValue === 'number') {
+      return latestNetValue;
     }
 
-    const latestNetValue =
-      filteredData.length > 0 ? filteredData[filteredData.length - 1]?.netValue : undefined;
-
-    if (typeof latestNetValue === 'number' && Number.isFinite(latestNetValue)) {
-      return latestNetValue;
+    if (typeof effectiveStockPrice === 'number' && Number.isFinite(effectiveStockPrice)) {
+      return normalizedQuoteBalance + normalizedStockBalance * effectiveStockPrice;
     }
 
     return normalizedQuoteBalance;
@@ -1751,7 +1890,8 @@ const arePropsEqual = (
     prev.className === next.className &&
     prev.showHeader === next.showHeader &&
     prev.showHighlights === next.showHighlights &&
-    prev.height === next.height
+    prev.height === next.height &&
+    prev.dataEndTime === next.dataEndTime
   );
 };
 

@@ -32,6 +32,13 @@ export const TradingsListPage: React.FC = () => {
     trading: null,
     isDeleting: false,
   });
+  const [bulkDeleteState, setBulkDeleteState] = useState<{
+    isOpen: boolean;
+    isDeleting: boolean;
+  }>({
+    isOpen: false,
+    isDeleting: false,
+  });
   const [showUnderConstructionDialog, setShowUnderConstructionDialog] = useState(false);
 
   const fetchTradings = async () => {
@@ -158,6 +165,55 @@ export const TradingsListPage: React.FC = () => {
     });
   };
 
+  const openBulkDeleteDialog = () => {
+    setBulkDeleteState({
+      isOpen: true,
+      isDeleting: false,
+    });
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    const backtestTradings = getFilteredTradings();
+
+    if (backtestTradings.length === 0) {
+      setBulkDeleteState({ isOpen: false, isDeleting: false });
+      return;
+    }
+
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setError(t('trading.tradingDetail.notSignedIn'));
+      setBulkDeleteState({ isOpen: false, isDeleting: false });
+      return;
+    }
+
+    try {
+      setBulkDeleteState(prev => ({ ...prev, isDeleting: true }));
+
+      for (const trading of backtestTradings) {
+        await deleteTrading(trading.id, trading.type);
+      }
+
+      setTradings(prev => prev.filter(t => t.type.toLowerCase() !== 'backtest'));
+      setError(null);
+      setBulkDeleteState({ isOpen: false, isDeleting: false });
+    } catch (err) {
+      console.error('Failed to delete backtests:', err);
+      let errorMessage = 'Unknown error';
+      if (err instanceof ApiError) {
+        errorMessage = err.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setError(t('dashboard.deleteFailed', { error: errorMessage }));
+      setBulkDeleteState({ isOpen: false, isDeleting: false });
+    }
+  };
+
+  const handleBulkDeleteCancel = () => {
+    setBulkDeleteState({ isOpen: false, isDeleting: false });
+  };
+
   const getTradingTypeInfo = () => {
     const types = {
       paper: {
@@ -270,16 +326,28 @@ export const TradingsListPage: React.FC = () => {
             <h2 className="text-xl font-semibold text-gray-900">
               {t('dashboard.allTradings')}
             </h2>
-            <button
-              onClick={handleCreateTrading}
-              style={{
-                background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
-              }}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm text-white hover:opacity-90 transition-opacity"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              {t('dashboard.createNew', { type: typeInfo.label })}
-            </button>
+            <div className="flex items-center gap-3">
+              {type === 'backtest' && filteredTradings.length > 0 && (
+                <button
+                  onClick={openBulkDeleteDialog}
+                  className="inline-flex items-center justify-center p-2 border border-red-200 rounded-md text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                  title={t('dashboard.deleteAllBacktests') || 'Delete all backtests'}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="sr-only">{t('dashboard.deleteAllBacktests')}</span>
+                </button>
+              )}
+              <button
+                onClick={handleCreateTrading}
+                style={{
+                  background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+                }}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm text-white hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {t('dashboard.createNew', { type: typeInfo.label })}
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -419,6 +487,18 @@ export const TradingsListPage: React.FC = () => {
         cancelText={t('common.cancel')}
         isDestructive={true}
         isLoading={deleteConfirmation.isDeleting}
+      />
+
+      <ConfirmDialog
+        isOpen={bulkDeleteState.isOpen}
+        onClose={handleBulkDeleteCancel}
+        onConfirm={handleBulkDeleteConfirm}
+        title={t('dashboard.deleteAllBacktestsTitle')}
+        message={t('dashboard.deleteAllBacktestsMessage')}
+        confirmText={t('dashboard.deleteAllBacktestsConfirm')}
+        cancelText={t('common.cancel')}
+        isDestructive={true}
+        isLoading={bulkDeleteState.isDeleting}
       />
 
       {/* Under Construction Dialog */}
