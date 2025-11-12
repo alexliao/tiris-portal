@@ -40,6 +40,7 @@ export interface TradingMetrics {
   totalROI: number;
   benchmarkROI?: number;
   excessROI?: number;
+  annualizedReturnRate: number;
   winRate: number;
   sharpeRatio: number;
   maxDrawdown: number;
@@ -65,6 +66,14 @@ function timeframeToMilliseconds(timeframe: string): number {
     '1w': 7 * 24 * 60 * 60 * 1000,
   };
   return timeframeMap[timeframe] || 60 * 1000; // Default to 1 minute
+}
+
+interface TransformNewEquityCurveOptions {
+  tradingStartTimestamp?: number | null;
+}
+
+interface MetricsCalculationOptions {
+  tradingStartTimestamp?: number | null;
 }
 
 /**
@@ -133,7 +142,8 @@ export function splitEquityDataByCreationTime(
 export function transformNewEquityCurveToChartData(
   equityCurve: EquityCurveNewData,
   tradingLogs: TradingLog[] = [],
-  timeframe: string = '1m'
+  timeframe: string = '1m',
+  options: TransformNewEquityCurveOptions = {}
 ): {
   data: TradingDataPoint[];
   metrics: TradingMetrics;
@@ -148,6 +158,7 @@ export function transformNewEquityCurveToChartData(
       data: [],
       metrics: {
         totalROI: 0,
+        annualizedReturnRate: 0,
         winRate: 0,
         sharpeRatio: 0,
         maxDrawdown: 0,
@@ -186,6 +197,7 @@ export function transformNewEquityCurveToChartData(
       data: [],
       metrics: {
         totalROI: 0,
+        annualizedReturnRate: 0,
         winRate: 0,
         sharpeRatio: 0,
         maxDrawdown: 0,
@@ -331,7 +343,9 @@ export function transformNewEquityCurveToChartData(
   }
 
   // Calculate metrics using the new chart data
-  const metrics = calculateMetricsFromNewData(chartData, tradingLogs, initialAssetsValue);
+  const metrics = calculateMetricsFromNewData(chartData, tradingLogs, initialAssetsValue, {
+    tradingStartTimestamp: options.tradingStartTimestamp,
+  });
 
   return { data: chartData, metrics, candlestickData, initialBalance: initialAssetsValue, baselinePrice };
 }
@@ -378,11 +392,13 @@ function normalizeOhlcv(
 function calculateMetricsFromNewData(
   chartData: TradingDataPoint[],
   tradingLogs: TradingLog[],
-  initialEquity: number
+  initialEquity: number,
+  options: MetricsCalculationOptions = {}
 ): TradingMetrics {
   if (chartData.length === 0) {
     return {
       totalROI: 0,
+      annualizedReturnRate: 0,
       winRate: 0,
       sharpeRatio: 0,
       maxDrawdown: 0,
@@ -458,8 +474,32 @@ function calculateMetricsFromNewData(
   ) : 0;
   const sharpeRatio = volatility > 0 ? (avgReturn / volatility) * Math.sqrt(252) : 0;
 
+  // Calculate annualized return rate
+  let annualizedReturnRate = 0;
+  if (chartData.length > 0) {
+    const lastTimestamp = new Date(chartData[chartData.length - 1].timestamp).getTime();
+    const providedStart = options.tradingStartTimestamp;
+    const fallbackStart = new Date(chartData[0].timestamp).getTime();
+    const startTimestamp =
+      typeof providedStart === 'number' && Number.isFinite(providedStart)
+        ? providedStart
+        : fallbackStart;
+
+    const millisecondsInDay = 1000 * 60 * 60 * 24;
+    const days = (lastTimestamp - startTimestamp) / millisecondsInDay;
+
+    if (days > 0) {
+      const years = days / 365;
+      const totalROIDecimal = totalROI / 100;
+      annualizedReturnRate = (Math.pow(1 + totalROIDecimal, 1 / years) - 1) * 100;
+    } else {
+      annualizedReturnRate = totalROI;
+    }
+  }
+
   return {
     totalROI: Math.round(totalROI * 100) / 100,
+    annualizedReturnRate: Math.round(annualizedReturnRate * 100) / 100,
     winRate: Math.round(winRate * 100) / 100,
     sharpeRatio: Math.round(sharpeRatio * 100) / 100,
     maxDrawdown: -Math.round(maxDrawdown * 100) / 100,
@@ -707,6 +747,7 @@ function calculateMetrics(
   if (chartData.length === 0) {
     return {
       totalROI: 0,
+      annualizedReturnRate: 0,
       winRate: 0,
       sharpeRatio: 0,
       maxDrawdown: 0,
@@ -787,8 +828,25 @@ function calculateMetrics(
   );
   const sharpeRatio = volatility > 0 ? (avgReturn / volatility) * Math.sqrt(252) : 0; // Annualized
 
+  // Calculate annualized return rate
+  let annualizedReturnRate = 0;
+  if (chartData.length > 1) {
+    const firstTimestamp = new Date(chartData[0].timestamp).getTime();
+    const lastTimestamp = new Date(chartData[chartData.length - 1].timestamp).getTime();
+    const days = (lastTimestamp - firstTimestamp) / (1000 * 60 * 60 * 24);
+
+    if (days > 0) {
+      const years = days / 365;
+      const totalROIDecimal = totalROI / 100;
+      annualizedReturnRate = (Math.pow(1 + totalROIDecimal, 1 / years) - 1) * 100;
+    } else {
+      annualizedReturnRate = totalROI;
+    }
+  }
+
   return {
     totalROI: Math.round(totalROI * 100) / 100,
+    annualizedReturnRate: Math.round(annualizedReturnRate * 100) / 100,
     winRate: Math.round(winRate * 100) / 100,
     sharpeRatio: Math.round(sharpeRatio * 100) / 100,
     maxDrawdown: -Math.round(maxDrawdown * 100) / 100, // Negative for display

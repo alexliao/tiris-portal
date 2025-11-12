@@ -435,6 +435,7 @@
       "totalROI": "总收益率",
       "benchmarkROI": "基准收益率",
       "excessROI": "超额收益率",
+      "annualizedReturnRate": "年化收益率",
       "winRate": "胜率",
       "sharpeRatio": "夏普比率",
       "maxDrawdown": "最大回撤",
