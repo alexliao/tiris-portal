@@ -963,6 +963,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     toast,
     t,
     dataEndTime,
+    tradingStartDateIso,
+    tradingStartTimestamp,
   ]);
 
 
@@ -1249,6 +1251,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     beginApiCall,
     endApiCall,
     dataEndTime,
+    tradingStartDateIso,
+    tradingStartTimestamp,
   ]);
 
 
