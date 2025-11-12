@@ -48,7 +48,7 @@
       "winRate": "Win Rate",
       "sharpeRatio": "Sharpe Ratio",
       "maxDrawdown": "Max Drawdown",
-      "totalTrades": "Total Trades"
+      "totalTrades": "Trades"
     },
     "legend": {
       "assetsReturn": "Assets Return Rate (Area)",
@@ -436,10 +436,11 @@
       "totalROI": "Total ROI",
       "benchmarkROI": "Benchmark",
       "excessROI": "Excess ROI",
+      "annualizedReturnRate": "Annualized ROI",
       "winRate": "Win Rate",
       "sharpeRatio": "Sharpe Ratio",
       "maxDrawdown": "Max Drawdown",
-      "totalTrades": "Total Trades",
+      "totalTrades": "Trades",
       "groupAccount": "Account",
       "groupTradingStatus": "Trading Status"
     },

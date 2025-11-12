@@ -113,6 +113,10 @@ const resolveEffectiveEndTime = (
 const CHART_LEFT_MARGIN = 5;
 const CHART_RIGHT_MARGIN = 0;
 
+const METRIC_VALUE_BLOCK_CLASS = 'flex flex-col justify-end';
+const SECONDARY_METRIC_CARD_CLASS =
+  'bg-white p-3 rounded-lg shadow-sm flex flex-col justify-end';
+
 const MIN_WARMUP_RETRY_MS = 1_500;
 const DEFAULT_WARMUP_RETRY_MS = 2_000;
 const EQUITY_CURVE_FETCH_INTERVAL_MS = 5_000; // 5 seconds
@@ -1463,6 +1467,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
   const normalizedQuoteBalance = Number.isFinite(quoteBalance) ? quoteBalance : 0;
   const normalizedStockBalance = Number.isFinite(stockBalance) ? stockBalance : 0;
+  const displayStockBalance = normalizedStockBalance < 0.01 ? 0 : normalizedStockBalance;
+  const displayQuoteBalance = normalizedQuoteBalance < 1 ? 0 : normalizedQuoteBalance;
   const normalizedInitialBalance =
     typeof initialBalance === 'number' && Number.isFinite(initialBalance) && initialBalance > 0
       ? initialBalance
@@ -1582,32 +1588,32 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   return (
     <div className={className}>
 
-      <div className="mb-6 flex flex-wrap justify-between gap-2 md:gap-3 lg:gap-4">
+      <div className="mb-6 flex flex-wrap justify-between gap-2">
         {/* Metrics Cards - Group 1: Account */}
-        <div className="bg-white p-3 rounded-lg shadow-sm flex items-end">
-          <div>
+        <div className="bg-white p-3 rounded-lg shadow-sm flex flex-wrap items-stretch gap-0.5">
+          <div className={METRIC_VALUE_BLOCK_CLASS}>
             <div className="text-3xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
               ${formatSignificantDigits(derivedAssetsValue, 4)}
             </div>
             <div className="text-sm text-gray-600">{t('trading.chart.assetsValue')}</div>
           </div>
-          <div className="text-sm font-bold text-gray-400 mx-2">=</div>
-          <div>
+          <div className="text-sm font-bold text-gray-400 mx-2 self-end">=</div>
+          <div className={METRIC_VALUE_BLOCK_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
-                ${formatSignificantDigits(normalizedQuoteBalance, 4)}
+                ${formatSignificantDigits(displayQuoteBalance, 4)}
             </div>
             <div className="text-sm text-gray-600">{quoteSymbol}</div>
           </div>
-          <div className="text-sm font-bold text-gray-400 mx-2">+</div>
-          <div className="text-sm font-bold text-gray-400">(</div>
-          <div>
+          <div className="text-sm font-bold text-gray-400 mx-2 self-end">+</div>
+          <div className="text-sm font-bold text-gray-400 self-end">(</div>
+          <div className={METRIC_VALUE_BLOCK_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
-              {formatSignificantDigits(normalizedStockBalance, 4)}
+              {formatSignificantDigits(displayStockBalance, 4)}
             </div>
             <div className="text-sm text-gray-600">{stockSymbol}</div>
           </div>
-          <div className="text-sm font-bold text-gray-400 mx-2">×</div>
-          <div>
+          <div className="text-sm font-bold text-gray-400 mx-2 self-end">×</div>
+          <div className={METRIC_VALUE_BLOCK_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-green-600">
               ${formatSignificantDigits(
                     typeof effectiveStockPrice === 'number' && Number.isFinite(effectiveStockPrice)
@@ -1618,25 +1624,25 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             </div>
             <div className="text-sm text-gray-600">{t('trading.chart.ethPrice')}</div>
           </div>
-          <div className="text-sm font-bold text-gray-400">)</div>
+          <div className="text-sm font-bold text-gray-400 self-end">)</div>
         </div>
         {/* Metrics Cards - Group 2: Trading Status */}
-        <div className="bg-white p-3 rounded-lg shadow-sm flex items-end">
-          <div>
+        <div className="bg-white p-3 rounded-lg shadow-sm flex flex-wrap items-stretch gap-1">
+          <div className={METRIC_VALUE_BLOCK_CLASS}>
             <div className="text-3xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
               {formatPercentage(derivedTotalROI)}
             </div>
             <div className="text-sm text-gray-600">{t('trading.metrics.totalROI')}</div>
           </div>
-          <div className="text-sm font-bold text-gray-400 mx-2">-</div>
-          <div>
+          <div className="text-sm font-bold text-gray-400 mx-2 self-end">-</div>
+          <div className={METRIC_VALUE_BLOCK_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
               {formatPercentage(derivedBenchmarkROI)}
             </div>
             <div className="text-sm text-gray-600">{t('trading.metrics.benchmarkROI', 'Benchmark')}</div>
           </div>
-          <span className="text-sm font-bold text-gray-400 mx-2">=</span>
-          <div>
+          <span className="text-sm font-bold text-gray-400 mx-2 self-end">=</span>
+          <div className={METRIC_VALUE_BLOCK_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
               {formatPercentage(derivedExcessROI)}
             </div>
@@ -1645,29 +1651,36 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         </div>
 
         {/* Second Row: Other Metrics */}
+        {/* Annualized Return Rate */}
+        <div className={SECONDARY_METRIC_CARD_CLASS}>
+            <div className="text-xl font-['Bebas_Neue'] font-bold text-green-600">
+              {formatPercentage(chartState.metrics.annualizedReturnRate ?? 0)}
+            </div>
+            <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.annualizedReturnRate')}</div>
+        </div>
         {/* Sharpe Ratio */}
-        <div className="bg-white p-3 rounded-lg shadow-sm">
+        <div className={SECONDARY_METRIC_CARD_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-purple-600">
               {(chartState.metrics.sharpeRatio ?? 0).toFixed(1)}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.sharpeRatio')}</div>
         </div>
         {/* Max Drawdown */}
-        <div className="bg-white p-3 rounded-lg shadow-sm">
+        <div className={SECONDARY_METRIC_CARD_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-orange-600">
               {formatPercentage(chartState.metrics.maxDrawdown ?? 0)}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.maxDrawdown')}</div>
         </div>
         {/* Win Rate */}
-        <div className="bg-white p-3 rounded-lg shadow-sm">
+        {/* <div className={SECONDARY_METRIC_CARD_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-cyan-600">
               {formatPercentage(chartState.metrics.winRate ?? 0)}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.winRate')}</div>
-        </div>
+        </div> */}
         {/* Total Trades */}
-        <div className="bg-white p-3 rounded-lg shadow-sm">
+        <div className={SECONDARY_METRIC_CARD_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-rose-600">
               {chartState.metrics.totalTrades ?? 0}
             </div>
