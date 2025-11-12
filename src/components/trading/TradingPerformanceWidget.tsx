@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, memo, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getEquityCurve,
@@ -22,11 +22,12 @@ import CandlestickChart from './CandlestickChart';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
 
-type Timeframe = '1m' | '1h' | '4h' | '8h' | '1d' | '1w';
+type Timeframe = '1m' | '5m' | '1h' | '4h' | '8h' | '1d' | '1w';
 
 const timeframeToMilliseconds = (timeframe: Timeframe): number => {
   const timeframeMap: Record<Timeframe, number> = {
     '1m': 60 * 1000,
+    '5m': 5 * 60 * 1000,
     '1h': 60 * 60 * 1000,
     '4h': 4 * 60 * 60 * 1000,
     '8h': 8 * 60 * 60 * 1000,
@@ -505,6 +506,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const tradingTimeframe = trading.info?.timeframe;
 
   // Determine default timeframe based on trading type and timeframe:
   // - For backtest trading, use 8h as default
@@ -514,12 +516,23 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     if (trading.type === 'backtest') {
       return '8h';
     }
-    const tradingTimeframe = trading.info?.timeframe;
     if (tradingTimeframe === '5m') {
       return '1m';
     }
     return '1h';
   };
+
+  const availableTimeframes = useMemo<Timeframe[]>(() => {
+    const baseTimeframes: Timeframe[] = ['1m', '1h', '8h', '1d'];
+    if (tradingTimeframe === '5m') {
+      const withFiveMinute = [...baseTimeframes];
+      if (!withFiveMinute.includes('5m')) {
+        withFiveMinute.splice(1, 0, '5m');
+      }
+      return withFiveMinute.filter(tf => tf !== '1d');
+    }
+    return baseTimeframes;
+  }, [tradingTimeframe]);
 
   const tradingStartDateIso = (trading.info?.start_date as string | undefined) ?? trading.created_at;
   const tradingStartTimestampRaw = parseTimestamp(tradingStartDateIso);
@@ -1710,8 +1723,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       </div>
 
       {/* Chart Container */}
-      <div className="bg-white p-6 rounded-lg shadow-lg">
-        <div className="mb-4">
+      <div className="md:bg-white md:p-6 md:rounded-lg md:shadow-lg">
+        <div className="">
           <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
             {showHeader && (
               <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404]">
@@ -1719,7 +1732,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
               </h3>
             )}
             {/* Legend Buttons - Left Aligned */}
-            <div className="flex items-center gap-1 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               {[
                 { key: 'equity' as const, labelKey: 'trading.tradingDetail.equityLabel', color: '#10B981' },
                 { key: 'benchmark' as const, labelKey: 'trading.tradingDetail.benchmarkLabel', color: '#F59E0B' },
@@ -1801,9 +1814,49 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   {t(item.labelKey)}
                 </button>
               ))}
+              <div className="flex items-center gap-2 flex-wrap md:hidden">
+                {isWarmingUp && (
+                  <span className="inline-flex items-center justify-center">
+                    <span
+                      className="h-4 w-4 rounded-full border-2 border-green-500 border-t-transparent animate-spin"
+                      aria-hidden="true"
+                    />
+                    <span className="sr-only">
+                      {t('trading.detail.loadingDataLabel', 'Fetching latest market data')}
+                    </span>
+                  </span>
+                )}
+                <div className="flex-shrink-0 w-auto">
+                  <label htmlFor="timeframe-select" className="sr-only">
+                    {t('trading.chart.timeframeSelectLabel', 'Select timeframe range')}
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="timeframe-select"
+                      value={selectedTimeframe}
+                      onChange={(event) => handleTimeframeChange(event.target.value as Timeframe)}
+                      disabled={isRefetchingData}
+                      className={`block w-auto appearance-none rounded-md border border-gray-200 bg-white px-3 pr-8 py-2 text-sm font-['Nunito'] text-gray-700 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200 ${
+                        isRefetchingData ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {availableTimeframes.map((tf) => (
+                        <option key={tf} value={tf}>
+                          {t(`trading.timeframeButtons.${tf}`, tf)}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-500">
+                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.087l3.71-3.857a.75.75 0 1 1 1.04 1.08l-4.25 4.418a.75.75 0 0 1-1.04 0L5.21 8.31a.75.75 0 0 1 .02-1.1z" />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
             {/* Timeframe Selector Buttons - Right Aligned */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="hidden md:flex items-center gap-2 flex-wrap">
               {isWarmingUp && (
                 <span className="inline-flex items-center justify-center">
                   <span
@@ -1815,19 +1868,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                   </span>
                 </span>
               )}
-              {(() => {
-                const baseTimeframes: Timeframe[] = ['1m', '1h', '8h', '1d'];
-                const tradingTimeframe = trading.info?.timeframe;
-                // Include 5m timeframe if the trading/strategy timeframe is 5m
-                if (tradingTimeframe === '5m') {
-                  if (!baseTimeframes.includes('5m' as Timeframe)) {
-                    baseTimeframes.splice(1, 0, '5m' as Timeframe);
-                  }
-                  // Hide 1d timeframe for 5m trading
-                  return baseTimeframes.filter(tf => tf !== '1d');
-                }
-                return baseTimeframes;
-              })().map((tf) => (
+              {availableTimeframes.map((tf) => (
                 <button
                   key={tf}
                   onClick={() => handleTimeframeChange(tf)}
