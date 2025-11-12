@@ -102,16 +102,6 @@ export const TradingDetailPage: React.FC = () => {
     [i18n.language]
   );
 
-  const dateFormatter = useMemo(
-    () =>
-      createDateTimeFormatter(i18n.language, {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }),
-    [i18n.language]
-  );
-
   const formatDateTime = useCallback(
     (value: unknown): string | null => {
       if (!value) return null;
@@ -128,24 +118,6 @@ export const TradingDetailPage: React.FC = () => {
       return dateTimeFormatter.format(date);
     },
     [dateTimeFormatter]
-  );
-
-  const formatDate = useCallback(
-    (value: unknown): string | null => {
-      if (!value) return null;
-
-      const date =
-        value instanceof Date
-          ? value
-          : typeof value === 'string' || typeof value === 'number'
-          ? new Date(value)
-          : null;
-
-      if (!date || Number.isNaN(date.getTime())) return null;
-
-      return dateFormatter.format(date);
-    },
-    [dateFormatter]
   );
 
   const tradingCreatedAtMs = useMemo(() => (trading?.created_at ? new Date(trading.created_at).getTime() : undefined), [trading?.created_at]);
@@ -166,13 +138,9 @@ export const TradingDetailPage: React.FC = () => {
     return Number.isFinite(explicitEnd) ? explicitEnd : undefined;
   }, [trading?.info?.end_date, trading?.type]);
 
-  const createdAtDisplay = formatDateTime(trading?.created_at);
-  const backtestStartDisplay = trading?.type === 'backtest' ? formatDate(trading?.info?.start_date ?? trading?.created_at) : null;
-  const backtestEndDisplay = trading?.type === 'backtest' ? formatDate(trading?.info?.end_date) : null;
-  const hasBacktestRange = Boolean(backtestStartDisplay || backtestEndDisplay);
-  const backtestRangeLabel = hasBacktestRange
-    ? `${backtestStartDisplay ?? '—'} - ${backtestEndDisplay ?? '—'}`
-    : null;
+  const startDateDisplay = formatDateTime(trading?.info?.start_date ?? trading?.created_at);
+  const hasEndDate = trading?.info?.end_date !== null && trading?.info?.end_date !== undefined;
+  const endDateDisplay = hasEndDate ? formatDateTime(trading?.info?.end_date) : null;
   const tradingDayCount = useMemo(() => getTradingDayCount(trading), [trading]);
   const tradingDayCountLabel = tradingDayCount !== null ? t('trading.detail.dayCount', { count: tradingDayCount }) : null;
 
@@ -1209,13 +1177,13 @@ export const TradingDetailPage: React.FC = () => {
                 )}
                 <div className="flex flex-col gap-1 w-full">
                   <div className="flex items-center gap-1">
-                    <span className="text-xs md:text-sm font-medium text-gray-600">{t('dashboard.tableHeaders.created')}:&nbsp;</span>
-                    <span className="text-sm font-semibold text-gray-900">{createdAtDisplay ?? '—'}</span>
+                    <span className="text-xs md:text-sm font-medium text-gray-600">{t('trading.detail.startDate', 'Start Date')}:&nbsp;</span>
+                    <span className="text-sm font-semibold text-gray-900">{startDateDisplay ?? '—'}</span>
                   </div>
-                  {backtestRangeLabel && (
+                  {hasEndDate && (
                     <div className="flex items-center gap-1">
-                      <span className="text-xs md:text-sm font-medium text-gray-600">{t('trading.detail.dateRange')}:&nbsp;</span>
-                      <span className="text-sm font-semibold text-gray-900">{backtestRangeLabel}</span>
+                      <span className="text-xs md:text-sm font-medium text-gray-600">{t('trading.detail.endDate', 'End Date')}:&nbsp;</span>
+                      <span className="text-sm font-semibold text-gray-900">{endDateDisplay ?? '—'}</span>
                     </div>
                   )}
                   {/* Bot Controls - Mobile Only */}

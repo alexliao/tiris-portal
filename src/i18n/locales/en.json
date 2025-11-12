@@ -343,6 +343,8 @@
       "exchangeType": "Exchange Type",
       "initialFunds": "Initial Funds",
       "initialPrice": "Initial Price",
+      "startDate": "Start Date",
+      "endDate": "End Date",
       "dateRange": "Date Range",
       "dayCount": "{{count}} days",
       "performanceChart": "Performance Chart",

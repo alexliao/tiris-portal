@@ -343,6 +343,8 @@
       "exchangeType": "交易所类型",
       "initialFunds": "初始资金",
       "initialPrice": "初始价格",
+      "startDate": "开始日期",
+      "endDate": "结束日期",
       "dateRange": "日期范围",
       "dayCount": "{{count}} 天",
       "performanceChart": "绩效图表",
