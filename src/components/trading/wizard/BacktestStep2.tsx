@@ -67,10 +67,10 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
 
         // Set date range: from 2024-01-01 to now
         const startDate2024 = new Date('2024-01-01');
-        const endDateNow = new Date();
+        const requestEndTime = Date.now();
 
         const startTime = startDate2024.getTime();
-        const endTime = endDateNow.getTime();
+        const endTime = requestEndTime;
 
         // Fetch OHLCV data for ETH_USDT with 1d timeframe from binance
         const ohlcvData = await getOHLCV(
@@ -92,6 +92,31 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
         // Sort by timestamp
         transformedData.sort((a, b) => a.timestamp - b.timestamp);
 
+        // Ensure the final data point lines up with the current system time so the
+        // date range always ends "now" even if the latest OHLCV candle is older.
+        if (transformedData.length > 0) {
+          const latestPoint = transformedData[transformedData.length - 1];
+          const nowTimestamp = Date.now();
+
+          if (latestPoint.timestamp < nowTimestamp) {
+            const syntheticCandle = {
+              ...latestPoint.originalData,
+              ts: new Date(nowTimestamp).toISOString(),
+              o: latestPoint.price,
+              h: latestPoint.price,
+              l: latestPoint.price,
+              c: latestPoint.price,
+              final: false
+            };
+
+            transformedData.push({
+              timestamp: nowTimestamp,
+              price: latestPoint.price,
+              originalData: syntheticCandle
+            });
+          }
+        }
+
         setChartData(transformedData);
 
         // Set initial dates to the first and last candle if no dates are set
@@ -100,7 +125,8 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
             setStartDate(new Date(transformedData[0].timestamp));
           }
           if (!endDate) {
-            setEndDate(new Date(transformedData[transformedData.length - 1].timestamp));
+            const nowTimestamp = transformedData[transformedData.length - 1].timestamp;
+            setEndDate(new Date(nowTimestamp));
           }
           // Set initial brush to show full range
           setBrushStartIndex(0);
@@ -144,7 +170,7 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
   const setPresetDateRange = (days: number) => {
     if (chartData.length === 0) return;
 
-    const endDate = new Date(chartData[chartData.length - 1].timestamp);
+    const endDate = new Date();
     const startDate = new Date(endDate);
     startDate.setDate(startDate.getDate() - days);
 
@@ -172,7 +198,7 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
     const now = new Date();
     const year = now.getFullYear();
     const startDate = new Date(year, 0, 1); // Jan 1 of current year
-    const endDate = new Date(year, 11, 31); // Dec 31 of current year
+    const endDate = new Date(); // Always end at current system time
 
     // Find the closest indices in chartData
     let startIndex = 0;
