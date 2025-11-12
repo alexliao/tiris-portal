@@ -536,7 +536,8 @@
       "5m": "5m",
       "1h": "1h",
       "8h": "8h",
-      "1d": "1d"
+      "1d": "1d",
+      "1w": "1w"
     },
     "badges": {
       "minuteLevelTooltip": "It's a minute-level trading for demonstration"

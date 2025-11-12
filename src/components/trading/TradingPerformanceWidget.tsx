@@ -523,13 +523,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   };
 
   const availableTimeframes = useMemo<Timeframe[]>(() => {
-    const baseTimeframes: Timeframe[] = ['1m', '1h', '8h', '1d'];
+    const baseTimeframes: Timeframe[] = ['1m', '1h', '8h', '1d', '1w'];
     if (tradingTimeframe === '5m') {
       const withFiveMinute = [...baseTimeframes];
       if (!withFiveMinute.includes('5m')) {
         withFiveMinute.splice(1, 0, '5m');
       }
-      return withFiveMinute.filter(tf => tf !== '1d');
+      return withFiveMinute.filter(tf => tf !== '1d' && tf !== '1w');
     }
     return baseTimeframes;
   }, [tradingTimeframe]);
