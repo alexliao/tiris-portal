@@ -19,7 +19,7 @@ export const Footer: React.FC<FooterProps> = ({
               {t('footer.copyright', { year: new Date().getFullYear() })}
             </div>
             <a 
-              href="mailto:biganiseed@gmail.com" 
+              href="mailto:alexliao@tiris.ai" 
               className="inline-flex items-center text-[#080404] hover:opacity-70 transition-opacity font-['Nunito'] text-sm"
             >
               <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">

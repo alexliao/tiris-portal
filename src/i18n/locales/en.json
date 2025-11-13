@@ -32,7 +32,8 @@
   },
   "performance": {
     "title": "LIVE PERFORMANCE SHOWCASE",
-    "description": "See how our trading bot performs in live markets compared with the benchmark return. The benchmark represents a buy-and-hold strategy: invest all capital in ETH and simply hold it, letting performance follow price. This comparison shows how our algorithm captures excess returns from market volatility.",
+    "description": "See how our trading bot performs in <bold>live</bold> markets compared with the benchmark return. The <bold>benchmark</bold> represents a buy-and-hold strategy: invest all capital in ETH and simply hold it, letting performance follow price. This comparison shows how our algorithm captures <bold>excess returns</bold> from market volatility.",
+    "overview": "This trading session began on <bold>{{start_date}}</bold> with an initial deployment of <bold>{{initial_funds}}</bold> USDT and has been running for <bold>{{days}}</bold> days. The figures below reflect the latest performance metrics, and the chart captures the complete trading history.",
     "loading": "Loading live trading data...",
     "noData": "No trading data available at this time.",
     "chart": {
@@ -440,8 +441,8 @@
       "excessROI": "Excess ROI",
       "annualizedReturnRate": "Annualized ROI",
       "winRate": "Win Rate",
-      "sharpeRatio": "Sharpe Ratio",
       "maxDrawdown": "Max Drawdown",
+      "sharpeRatio": "Sharpe Ratio",
       "totalTrades": "Trades",
       "groupAccount": "Account",
       "groupTradingStatus": "Trading Status"
@@ -656,7 +657,7 @@
     }
   },
   "footer": {
-    "copyright": "© {{year}} Tiris.ai",
-    "contact": "biganiseed@gmail.com"
+    "copyright": "© {{year}} Tiris AI",
+    "contact": "alexliao@tiris.ai"
   }
 }

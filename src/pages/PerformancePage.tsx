@@ -7,7 +7,7 @@ export const PerformancePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
-      <div className="pt-20"> {/* Add padding to account for fixed navigation */}
+      <div className="pt-10"> {/* Add padding to account for fixed navigation */}
         <PerformanceSection />
       </div>
       <Footer />

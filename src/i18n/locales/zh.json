@@ -32,7 +32,8 @@
   },
   "performance": {
     "title": "实时绩效演示",
-    "description": "查看我们的交易机器人在真实市场交易中与基准收益率相比的表现。基准收益率指的是买入并持有策略的收益率。买入并持有策略就是用全部资金买入ETH后什么都不做一直持有，收益率完全取决于市场价格。这个比较显示了我们的算法是如何利用市场价格波动获得超额收益的。",
+    "description": "查看我们的交易机器人在<bold>真实市场</bold>交易中与基准收益率相比的表现。<bold>基准收益率</bold>指的是买入并持有策略的收益率, 也就是用全部资金买入ETH后什么都不做一直持有，收益率完全取决于市场价格。这个比较显示了我们的算法是如何利用市场价格波动获得<bold>超额收益</bold>的。",
+    "overview": "这个交易开始于<bold>{{start_date}}</bold>，投入了<bold>{{initial_funds}}</bold> USDT，目前已经交易了<bold>{{days}}</bold>天。以下数字为最新的绩效指标，图表展示了历史交易的全貌。",
     "loading": "正在加载实时交易数据...",
     "noData": "目前没有可用的交易数据。",
     "chart": {
@@ -655,7 +656,7 @@
     }
   },
   "footer": {
-    "copyright": "© {{year}} Tiris.ai",
-    "contact": "biganiseed@gmail.com"
+    "copyright": "© {{year}} Tiris AI",
+    "contact": "alexliao@tiris.ai"
   }
 }

@@ -22,8 +22,6 @@ import CandlestickChart from './CandlestickChart';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
 
-type Timeframe = '1m' | '5m' | '1h' | '4h' | '8h' | '1d' | '1w';
-
 const timeframeToMilliseconds = (timeframe: Timeframe): number => {
   const timeframeMap: Record<Timeframe, number> = {
     '1m': 60 * 1000,
@@ -155,6 +153,16 @@ const getWarmupStateFromCurve = (
   };
 };
 
+type Timeframe = '1m' | '5m' | '1h' | '4h' | '8h' | '1d' | '1w';
+
+type SeriesVisibility = {
+  equity: boolean;
+  benchmark: boolean;
+  signals: boolean;
+  price: boolean;
+  position: boolean;
+};
+
 interface TradingPerformanceWidgetProps {
   trading: Trading;
   className?: string;
@@ -162,6 +170,12 @@ interface TradingPerformanceWidgetProps {
   showHighlights?: boolean;
   height?: string;
   dataEndTime?: number;
+  timeframe?: Timeframe;
+  showEquity?: boolean;
+  showBenchmark?: boolean;
+  showSignals?: boolean;
+  showPrice?: boolean;
+  showPosition?: boolean;
 }
 
 interface MarketContext {
@@ -492,6 +506,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   showHeader = true,
   showHighlights = true,
   dataEndTime,
+  timeframe,
+  showEquity = true,
+  showBenchmark = true,
+  showSignals = true,
+  showPrice = false,
+  showPosition = false,
 }) => {
   const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
@@ -508,20 +528,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [error, setError] = useState<string | null>(null);
   const tradingTimeframe = trading.info?.timeframe;
 
-  // Determine default timeframe based on trading type and timeframe:
-  // - For backtest trading, use 8h as default
-  // - If trading timeframe is 5m, use 1m as default
-  // - For all other timeframes, use 1h as default
-  const getDefaultTimeframe = (): Timeframe => {
-    if (trading.type === 'backtest') {
-      return '8h';
-    }
-    if (tradingTimeframe === '5m') {
-      return '1m';
-    }
-    return '1h';
-  };
-
   const availableTimeframes = useMemo<Timeframe[]>(() => {
     const baseTimeframes: Timeframe[] = ['1h', '8h', '1d', '1w'];
     if (tradingTimeframe === '5m') {
@@ -534,6 +540,23 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     return baseTimeframes;
   }, [tradingTimeframe]);
 
+  const baseDefaultTimeframe = useMemo<Timeframe>(() => {
+    if (trading.type === 'backtest') {
+      return '8h';
+    }
+    if (tradingTimeframe === '5m') {
+      return '1m';
+    }
+    return '1h';
+  }, [trading.type, tradingTimeframe]);
+
+  const resolvedDefaultTimeframe = useMemo<Timeframe>(() => {
+    if (timeframe && availableTimeframes.includes(timeframe)) {
+      return timeframe;
+    }
+    return baseDefaultTimeframe;
+  }, [availableTimeframes, baseDefaultTimeframe, timeframe]);
+
   const tradingStartDateIso = (trading.info?.start_date as string | undefined) ?? trading.created_at;
   const tradingStartTimestampRaw = parseTimestamp(tradingStartDateIso);
   const tradingStartTimestamp =
@@ -541,18 +564,18 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       ? tradingStartTimestampRaw
       : undefined;
 
-  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>(getDefaultTimeframe());
+  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>(resolvedDefaultTimeframe);
   const [stockSymbol, setStockSymbol] = useState<string>('ETH');
   const [quoteSymbol, setQuoteSymbol] = useState<string>('USDT');
   const [isRefetchingData, setIsRefetchingData] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const [seriesVisibility, setSeriesVisibility] = useState({
-    equity: true,
-    benchmark: true,
-    signals: true,
-    price: false,
-    position: false,
-  });
+  const [seriesVisibility, setSeriesVisibility] = useState<SeriesVisibility>(() => ({
+    equity: showEquity,
+    benchmark: showBenchmark,
+    signals: showSignals,
+    price: showPrice,
+    position: showPosition,
+  }));
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   // Per-timeframe data cache to store data loaded for each timeframe
@@ -1568,14 +1591,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   // Loading state
   if (loading) {
     return (
-      <div className={`bg-white rounded-lg shadow-lg border p-6 ${className}`}>
-        {showHeader && (
-          <div className="mb-4">
-            <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404] mb-2">
-              {trading.name} - {t('trading.detail.performance')}
-            </h3>
-          </div>
-        )}
+      <div className={`bg-white rounded-lg shadow-lg p-6 ${className}`}>
         <div className="flex justify-center items-center h-96">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
         </div>
@@ -1726,11 +1742,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       <div className="md:bg-white md:p-6 md:rounded-lg md:shadow-lg">
         <div className="">
           <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-            {showHeader && (
-              <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404]">
-                {trading.name} - {t('trading.detail.performanceChart')}
-              </h3>
-            )}
             {/* Legend Buttons - Left Aligned */}
             <div className="flex items-center gap-2 flex-wrap">
               {[
@@ -1931,26 +1942,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         </div>
       </div>
 
-
-      {/* Performance Highlights */}
-      {showHighlights && (
-        <div className="mt-8 bg-gradient-to-r from-green-50 to-tiris-primary-50 p-6 rounded-lg">
-          <h3 className="text-lg font-['Bebas_Neue'] font-bold text-[#080404] mb-4">
-            {t('trading.chart.performanceHighlights')}
-          </h3>
-          <div className="grid md:grid-cols-3 gap-4 text-sm font-['Nunito']">
-            <div>
-              {t('trading.chart.highlight1')}
-            </div>
-            <div>
-              {t('trading.chart.highlight2')}
-            </div>
-            <div>
-              {t('trading.chart.highlight3')}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -1966,7 +1957,13 @@ const arePropsEqual = (
     prev.showHeader === next.showHeader &&
     prev.showHighlights === next.showHighlights &&
     prev.height === next.height &&
-    prev.dataEndTime === next.dataEndTime
+    prev.dataEndTime === next.dataEndTime &&
+    prev.timeframe === next.timeframe &&
+    prev.showEquity === next.showEquity &&
+    prev.showBenchmark === next.showBenchmark &&
+    prev.showSignals === next.showSignals &&
+    prev.showPrice === next.showPrice &&
+    prev.showPosition === next.showPosition
   );
 };
 
