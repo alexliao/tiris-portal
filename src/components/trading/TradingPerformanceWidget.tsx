@@ -484,7 +484,7 @@ const normalizeCandlesticks = (candles: TradingCandlestickPoint[]): TradingCandl
     .map(([, candle]) => candle);
 };
 
-const TOTAL_DATA_TO_LOAD = 500; // Total number of data points to load from backend
+const TOTAL_DATA_TO_LOAD = 365; // Total number of data points to load from backend
 
 const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps> = ({
   trading,
