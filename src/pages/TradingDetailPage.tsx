@@ -1288,8 +1288,6 @@ export const TradingDetailPage: React.FC = () => {
           <TradingPerformanceWidget
             trading={trading}
             dataEndTime={backtestPointerMs}
-            showHeader={false}
-            showHighlights={false}
           />
         </div>
       </div>

@@ -166,8 +166,6 @@ type SeriesVisibility = {
 interface TradingPerformanceWidgetProps {
   trading: Trading;
   className?: string;
-  showHeader?: boolean;
-  showHighlights?: boolean;
   height?: string;
   dataEndTime?: number;
   timeframe?: Timeframe;
@@ -503,8 +501,6 @@ const TOTAL_DATA_TO_LOAD = 365; // Total number of data points to load from back
 const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps> = ({
   trading,
   className = '',
-  showHeader = true,
-  showHighlights = true,
   dataEndTime,
   timeframe,
   showEquity = true,
@@ -1603,13 +1599,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   if (error) {
     return (
       <div className={`bg-white rounded-lg shadow-lg border p-6 ${className}`}>
-        {showHeader && (
-          <div className="mb-4">
-            <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404] mb-2">
-              {trading.name} - {t('trading.detail.performance')}
-            </h3>
-          </div>
-        )}
+        <div className="mb-4">
+          <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404] mb-2">
+            {trading.name} - {t('trading.detail.performance')}
+          </h3>
+        </div>
         <div className="text-center text-red-600 py-8">
           {error}
         </div>
@@ -1621,13 +1615,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   if (chartState.data.length === 0) {
     return (
       <div className={`bg-white rounded-lg shadow-lg p-6 ${className}`}>
-        {showHeader && (
-          <div className="mb-4">
-            <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404] mb-2">
-              {trading.name} - {t('trading.detail.performance')}
-            </h3>
-          </div>
-        )}
+        <div className="mb-4">
+          <h3 className="text-xl font-['Bebas_Neue'] font-bold text-[#080404] mb-2">
+            {trading.name} - {t('trading.detail.performance')}
+          </h3>
+        </div>
         <div className="text-center text-gray-600 py-8">
           {t('trading.detail.noDataAvailable')}
         </div>
@@ -1954,8 +1946,6 @@ const arePropsEqual = (
     prev.trading.id === next.trading.id &&
     prev.trading.name === next.trading.name &&
     prev.className === next.className &&
-    prev.showHeader === next.showHeader &&
-    prev.showHighlights === next.showHighlights &&
     prev.height === next.height &&
     prev.dataEndTime === next.dataEndTime &&
     prev.timeframe === next.timeframe &&
