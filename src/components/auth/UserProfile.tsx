@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
-import { LogOut, User, Check, Mail, Loader2, ShieldAlert, BadgeCheck } from 'lucide-react';
+import { LogOut, User, Mail, Loader2, ShieldAlert, BadgeCheck } from 'lucide-react';
 
 export const UserProfile: React.FC = () => {
   const { t } = useTranslation();
@@ -172,14 +172,19 @@ export const UserProfile: React.FC = () => {
                       type="button"
                       onClick={handleConfirmVerification}
                       disabled={isConfirmingVerification}
-                      className="inline-flex items-center justify-center gap-1 rounded bg-tiris-primary-600 px-3 py-1 text-sm font-medium text-white hover:bg-tiris-primary-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="inline-flex items-center justify-center gap-2 rounded bg-tiris-primary-600 px-3 py-1 text-sm font-medium text-white hover:bg-tiris-primary-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {isConfirmingVerification ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <span></span>
-                      )}
-                      {isConfirmingVerification ? t('auth.emailVerification.verifying') : t('auth.emailVerification.confirm')}
+                      <span className="relative inline-flex items-center justify-center">
+                        {isConfirmingVerification && (
+                          <Loader2 className="absolute w-4 h-4 animate-spin" />
+                        )}
+                        <span
+                          className={`whitespace-nowrap transition-opacity ${isConfirmingVerification ? 'opacity-0' : 'opacity-100'}`}
+                          aria-hidden={isConfirmingVerification}
+                        >
+                          {t('auth.emailVerification.confirm')}
+                        </span>
+                      </span>
                     </button>
                   </div>
                   <p className="mt-1 text-xs text-gray-500">
