@@ -9,6 +9,7 @@ export interface BackendUser {
   name?: string;
   email: string;
   avatar: string;
+  email_verified_at?: string | null;
   settings: {
     timezone: string;
     currency: string;
@@ -476,6 +477,44 @@ class AuthService {
       }
       })();
     });
+  }
+
+  async requestEmailVerification(token: string): Promise<string> {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-email/request`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      const message = data?.error?.message || 'Failed to send verification email';
+      throw new Error(message);
+    }
+
+    return data.data?.message || 'Verification email sent';
+  }
+
+  async confirmEmailVerification(token: string, code: string): Promise<string> {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-email/confirm`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      const message = data?.error?.message || 'Email verification failed';
+      throw new Error(message);
+    }
+
+    return data.data?.message || 'Email verified successfully';
   }
 }
 

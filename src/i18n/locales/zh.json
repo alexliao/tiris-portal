@@ -128,7 +128,22 @@
     "logoutSuccess": "您已成功退出登录。",
     "copyEmailFailed": "无法复制邮箱地址。",
     "welcomeBack": "欢迎回来！",
-    "signedInWith": "已成功通过{{provider}}登录"
+    "signedInWith": "已成功通过{{provider}}登录",
+    "emailVerification": {
+      "cta": "验证邮箱",
+      "sending": "发送中...",
+      "prompt": "输入收到的验证码",
+      "helper": "请在邮箱中查收6位验证码。",
+      "codePlaceholder": "6位验证码",
+      "confirm": "确认",
+      "verifying": "验证中...",
+      "codeRequired": "请输入6位验证码。",
+      "sendSuccess": "验证码邮件已发送",
+      "verifySuccess": "邮箱验证成功",
+      "sendFailed": "无法发送验证码邮件。",
+      "verifyFailed": "验证失败，请重试。",
+      "badgeVerified": "已验证"
+    }
   },
   "common": {
     "loading": "加载中...",

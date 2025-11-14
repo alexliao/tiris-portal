@@ -10,6 +10,8 @@ interface User {
   name: string;
   picture?: string;
   provider: AuthProvider;
+  emailVerified: boolean;
+  emailVerifiedAt?: string | null;
   settings?: {
     timezone: string;
     currency: string;
@@ -28,6 +30,8 @@ interface AuthContextType {
   signUpWithEmailPassword: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
+  requestEmailVerification: () => Promise<string>;
+  confirmEmailVerification: (code: string) => Promise<string>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -48,6 +52,8 @@ const convertBackendUserToUser = (backendUser: BackendUser): User => {
     name: displayName,
     picture: backendUser.avatar,
     provider: (backendUser.info.oauth_provider as AuthProvider) || 'email',
+    emailVerified: Boolean(backendUser.email_verified_at),
+    emailVerifiedAt: backendUser.email_verified_at,
     settings: backendUser.settings,
   };
 };
@@ -106,6 +112,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await logout();
       throw error;
     }
+  };
+
+  const requestEmailVerification = async (): Promise<string> => {
+    const { accessToken } = getTokens();
+
+    if (!accessToken) {
+      throw new Error('Not authenticated');
+    }
+
+    return authService.requestEmailVerification(accessToken);
+  };
+
+  const confirmEmailVerification = async (code: string): Promise<string> => {
+    const { accessToken } = getTokens();
+
+    if (!accessToken) {
+      throw new Error('Not authenticated');
+    }
+
+    const message = await authService.confirmEmailVerification(accessToken, code);
+    const backendUser = await authService.getCurrentUser(accessToken);
+    setUser(convertBackendUserToUser(backendUser));
+    return message;
   };
 
   // Restore session on app load
@@ -273,6 +302,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signUpWithEmailPassword,
     logout,
     refreshAuth,
+    requestEmailVerification,
+    confirmEmailVerification,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -128,7 +128,22 @@
     "logoutSuccess": "You have been successfully signed out.",
     "copyEmailFailed": "Unable to copy email address.",
     "welcomeBack": "Welcome back!",
-    "signedInWith": "Successfully signed in with {{provider}}"
+    "signedInWith": "Successfully signed in with {{provider}}",
+    "emailVerification": {
+      "cta": "Verify",
+      "sending": "Sending...",
+      "prompt": "Enter the verification code",
+      "helper": "Check your inbox for the 6-digit code.",
+      "codePlaceholder": "6-digit code",
+      "confirm": "Confirm",
+      "verifying": "Verifying...",
+      "codeRequired": "Please enter the 6-digit verification code.",
+      "sendSuccess": "Verification email sent",
+      "verifySuccess": "Email verified successfully",
+      "sendFailed": "Unable to send verification email.",
+      "verifyFailed": "Verification failed. Please try again.",
+      "badgeVerified": "Verified"
+    }
   },
   "common": {
     "loading": "Loading...",

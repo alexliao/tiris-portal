@@ -3,13 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
-import { LogOut, User, Copy, Check, Mail } from 'lucide-react';
+import { LogOut, User, Check, Mail, Loader2, ShieldAlert, BadgeCheck } from 'lucide-react';
 
 export const UserProfile: React.FC = () => {
   const { t } = useTranslation();
-  const { user, logout } = useAuth();
+  const { user, logout, requestEmailVerification, confirmEmailVerification } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
+  const [isConfirmingVerification, setIsConfirmingVerification] = useState(false);
+  const [showVerificationInput, setShowVerificationInput] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const toast = useToast();
@@ -34,18 +37,48 @@ export const UserProfile: React.FC = () => {
     };
   }, [isDropdownOpen, user]);
 
+  useEffect(() => {
+    if (user?.emailVerified) {
+      setShowVerificationInput(false);
+      setVerificationCode('');
+    }
+  }, [user?.emailVerified]);
+
   if (!user) return null;
 
-  const handleCopyEmail = async () => {
-    if (!user?.email) return;
+  const handleSendVerification = async () => {
+    if (isSendingVerification) return;
     try {
-      await navigator.clipboard.writeText(user.email);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-      toast.success(t('common.success'), t('auth.copyEmail'));
+      setIsSendingVerification(true);
+      const message = await requestEmailVerification();
+      toast.success(t('common.success'), message || t('auth.emailVerification.sendSuccess'));
+      setShowVerificationInput(true);
     } catch (err) {
-      console.error('Copy failed:', err);
-      toast.error(t('common.failed'), t('auth.copyEmailFailed'));
+      const errorMessage = err instanceof Error ? err.message : t('auth.emailVerification.sendFailed');
+      toast.error(t('common.failed'), errorMessage);
+    } finally {
+      setIsSendingVerification(false);
+    }
+  };
+
+  const handleConfirmVerification = async () => {
+    const sanitizedCode = verificationCode.trim();
+    if (sanitizedCode.length < 6) {
+      toast.error(t('common.failed'), t('auth.emailVerification.codeRequired'));
+      return;
+    }
+
+    try {
+      setIsConfirmingVerification(true);
+      const message = await confirmEmailVerification(sanitizedCode);
+      toast.success(t('common.success'), message || t('auth.emailVerification.verifySuccess'));
+      setShowVerificationInput(false);
+      setVerificationCode('');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : t('auth.emailVerification.verifyFailed');
+      toast.error(t('common.failed'), errorMessage);
+    } finally {
+      setIsConfirmingVerification(false);
     }
   };
 
@@ -81,8 +114,8 @@ export const UserProfile: React.FC = () => {
           <div className="px-4 pb-3 border-b">
             <div className="pt-1">
               <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="flex items-center gap-1.5 text-xs text-gray-500 truncate max-w-[11rem]" title={user.email}>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 truncate max-w-[14rem]" title={user.email}>
                   {user.provider === 'google' ? (
                     <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -95,14 +128,65 @@ export const UserProfile: React.FC = () => {
                   )}
                   <span className="truncate">{user.email}</span>
                 </div>
-                <button
-                  onClick={handleCopyEmail}
-                  className="p-1 rounded hover:bg-gray-100 text-gray-500 flex-shrink-0"
-                  title={t('auth.copyEmail')}
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
+                {user.emailVerified ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-50 text-green-700 border border-green-100">
+                    <BadgeCheck className="w-3.5 h-3.5" />
+                    {t('auth.emailVerification.badgeVerified')}
+                  </span>
+                ) : (
+                  <button
+                    onClick={handleSendVerification}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-yellow-300 text-yellow-800 bg-white hover:bg-yellow-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+                    disabled={isSendingVerification}
+                    type="button"
+                  >
+                    {isSendingVerification ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                    )}
+                    {isSendingVerification ? t('auth.emailVerification.sending') : t('auth.emailVerification.cta')}
+                  </button>
+                )}
               </div>
+              {!user.emailVerified && showVerificationInput && (
+                <div className="mt-3" role="form" aria-label={t('auth.emailVerification.prompt')}>
+                  <label className="block text-xs font-medium text-gray-700">
+                    {t('auth.emailVerification.prompt')}
+                  </label>
+                  <div className="mt-1 flex gap-2">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      value={verificationCode}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setVerificationCode(value);
+                      }}
+                      placeholder={t('auth.emailVerification.codePlaceholder')}
+                      className="w-40 rounded border border-gray-200 px-2 py-1 text-lg focus:outline-none focus:ring-2 focus:ring-tiris-primary-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleConfirmVerification}
+                      disabled={isConfirmingVerification}
+                      className="inline-flex items-center justify-center gap-1 rounded bg-tiris-primary-600 px-3 py-1 text-sm font-medium text-white hover:bg-tiris-primary-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {isConfirmingVerification ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <span></span>
+                      )}
+                      {isConfirmingVerification ? t('auth.emailVerification.verifying') : t('auth.emailVerification.confirm')}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {t('auth.emailVerification.helper')}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
           <button
