@@ -138,6 +138,30 @@ export class ApiError extends Error {
   }
 }
 
+export interface InvitationValidationResult {
+  valid: boolean;
+  invitation_code: {
+    id: string;
+    code: string;
+    is_active: boolean;
+    created_at: string;
+    expires_at?: string | null;
+    created_by?: string;
+    consumed_at?: string | null;
+  };
+}
+
+export async function validateInvitationCode(code: string): Promise<InvitationValidationResult> {
+  return apiRequest<InvitationValidationResult>(
+    '/invitations/validate',
+    {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    },
+    false
+  );
+}
+
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}, requireAuth: boolean = true): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   const token = getAccessToken();

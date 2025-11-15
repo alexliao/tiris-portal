@@ -2,6 +2,13 @@ import type { AuthProvider } from '../contexts/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+export interface BackendUserInfo {
+  oauth_provider?: string;
+  last_login?: string;
+  real_trading_enabled?: boolean;
+  [key: string]: unknown;
+}
+
 export interface BackendUser {
   id: string;
   username: string;
@@ -15,12 +22,17 @@ export interface BackendUser {
     currency: string;
     notifications: boolean;
   };
-  info: {
-    oauth_provider: string;
-    last_login: string;
-  };
+  info: BackendUserInfo;
   created_at: string;
   updated_at: string;
+}
+
+export interface UpdateUserProfileRequest {
+  username?: string;
+  full_name?: string;
+  avatar?: string;
+  settings?: BackendUser['settings'];
+  info?: BackendUserInfo;
 }
 
 export interface AuthResponse {
@@ -211,6 +223,25 @@ class AuthService {
     
     if (!data.success) {
       throw new Error(data.error?.message || 'Failed to get user profile');
+    }
+
+    return data.data;
+  }
+
+  async updateUserProfile(token: string, updates: UpdateUserProfileRequest): Promise<BackendUser> {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error?.message || 'Failed to update user profile');
     }
 
     return data.data;

@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { authService, type BackendUser } from '../services/auth';
+import { authService, type BackendUser, type BackendUserInfo } from '../services/auth';
 
 export type AuthProvider = 'google' | 'wechat' | 'email';
 
@@ -17,6 +17,7 @@ interface User {
     currency: string;
     notifications: boolean;
   };
+  info?: BackendUserInfo;
 }
 
 interface AuthContextType {
@@ -32,6 +33,7 @@ interface AuthContextType {
   refreshAuth: () => Promise<void>;
   requestEmailVerification: () => Promise<string>;
   confirmEmailVerification: (code: string) => Promise<string>;
+  updateUserInfo: (infoUpdates: Partial<BackendUserInfo>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,15 +48,17 @@ export { AuthContext };
 const convertBackendUserToUser = (backendUser: BackendUser): User => {
   // Prefer full name if available; fall back to username.
   const displayName = backendUser.full_name || backendUser.name || backendUser.username;
+  const info: BackendUserInfo = backendUser.info || {};
   return {
     id: backendUser.id,
     email: backendUser.email,
     name: displayName,
     picture: backendUser.avatar,
-    provider: (backendUser.info.oauth_provider as AuthProvider) || 'email',
+    provider: (info.oauth_provider as AuthProvider) || 'email',
     emailVerified: Boolean(backendUser.email_verified_at),
     emailVerifiedAt: backendUser.email_verified_at,
     settings: backendUser.settings,
+    info,
   };
 };
 
@@ -135,6 +139,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const backendUser = await authService.getCurrentUser(accessToken);
     setUser(convertBackendUserToUser(backendUser));
     return message;
+  };
+
+  const updateUserInfo = async (infoUpdates: Partial<BackendUserInfo>): Promise<void> => {
+    const { accessToken } = getTokens();
+
+    if (!accessToken) {
+      throw new Error('Not authenticated');
+    }
+
+    const mergedInfo: BackendUserInfo = {
+      ...(user?.info || {}),
+      ...infoUpdates,
+    };
+
+    const backendUser = await authService.updateUserProfile(accessToken, { info: mergedInfo });
+    setUser(convertBackendUserToUser(backendUser));
   };
 
   // Restore session on app load
@@ -304,6 +324,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshAuth,
     requestEmailVerification,
     confirmEmailVerification,
+    updateUserInfo,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

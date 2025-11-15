@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { createRealTrading, type CreateTradingRequest, ApiError, getExchangeBindings, fetchExchangeBalanceForBinding, type ExchangeBinding } from '../utils/api';
-import { AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useToast } from '../hooks/useToast';
+import { createRealTrading, type CreateTradingRequest, ApiError, getExchangeBindings, fetchExchangeBalanceForBinding, type ExchangeBinding, validateInvitationCode } from '../utils/api';
+import { AlertCircle, ChevronLeft, ChevronRight, Loader2, Shield } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { THEME_COLORS } from '../config/theme';
@@ -17,7 +18,8 @@ const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 export const RealTradingWizardPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user, updateUserInfo } = useAuth();
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const exchangeIdParam = searchParams.get('exchangeId');
 
@@ -36,6 +38,10 @@ export const RealTradingWizardPage: React.FC = () => {
 
   // Available data
   const [exchangeBindings, setExchangeBindings] = useState<ExchangeBinding[]>([]);
+  const [hasRealTradingAccess, setHasRealTradingAccess] = useState<boolean>(() => Boolean(user?.info?.real_trading_enabled));
+  const [invitationCode, setInvitationCode] = useState('');
+  const [invitationError, setInvitationError] = useState<string | null>(null);
+  const [isValidatingInvitation, setIsValidatingInvitation] = useState(false);
 
   const colors = THEME_COLORS.real;
   const Icon = colors.icon;
@@ -60,14 +66,18 @@ export const RealTradingWizardPage: React.FC = () => {
     });
   };
 
+  useEffect(() => {
+    setHasRealTradingAccess(Boolean(user?.info?.real_trading_enabled));
+  }, [user?.info?.real_trading_enabled]);
+
   // Initialize form data on component mount
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
+    if (isAuthenticated && !authLoading && hasRealTradingAccess) {
       // Set default trading name with timestamp
       setTradingName(generateDefaultName('real'));
       fetchInitialData();
     }
-  }, [isAuthenticated, authLoading, exchangeIdParam]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, authLoading, exchangeIdParam, hasRealTradingAccess]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch exchange balance when exchange binding or quote currency changes
   useEffect(() => {
@@ -226,6 +236,46 @@ export const RealTradingWizardPage: React.FC = () => {
     }
   };
 
+  const handleInvitationSubmit = async () => {
+    const code = invitationCode.trim();
+    if (!code) {
+      setInvitationError(t('realTrading.invitation.codeRequired'));
+      return;
+    }
+
+    try {
+      setIsValidatingInvitation(true);
+      setInvitationError(null);
+      await validateInvitationCode(code);
+      await updateUserInfo({ real_trading_enabled: true });
+      setInvitationCode('');
+      toast.success(t('common.success'), t('realTrading.invitation.success'));
+      setHasRealTradingAccess(true);
+    } catch (invitationErr) {
+      let message = t('realTrading.invitation.genericError');
+      if (invitationErr instanceof ApiError) {
+        switch (invitationErr.code) {
+          case 'INVITATION_CODE_INVALID':
+            message = t('realTrading.invitation.invalid');
+            break;
+          case 'INVITATION_CODE_EXPIRED':
+            message = t('realTrading.invitation.expired');
+            break;
+          case 'INVITATION_CODE_NOT_FOUND':
+            message = t('realTrading.invitation.notFound');
+            break;
+          default:
+            message = invitationErr.message || message;
+        }
+      } else if (invitationErr instanceof Error) {
+        message = invitationErr.message;
+      }
+      setInvitationError(message);
+    } finally {
+      setIsValidatingInvitation(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -245,6 +295,72 @@ export const RealTradingWizardPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.accessDenied')}</h1>
           <p className="text-gray-600 mb-4">{t('dashboard.needSignIn')}</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!hasRealTradingAccess) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="pt-36 pb-16 px-4">
+          <div className="max-w-lg mx-auto bg-white rounded-xl shadow p-8">
+            <div className="">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                <AlertCircle className="h-6 w-6" />
+              </div>
+              <h1 className="text-center text-2xl font-semibold text-gray-900 mb-2">{t('realTrading.invitation.requirementTitle')}</h1>
+              <p className="text-gray-600 mb-6">{t('realTrading.invitation.requirementDescription')}</p>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleInvitationSubmit();
+              }}
+              className="mt-6"
+            >
+                <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={invitationCode}
+                      maxLength={32}
+                      onChange={(event) => setInvitationCode(event.target.value.replace(/\s+/g, ''))}
+                      placeholder={t('realTrading.invitation.placeholder')}
+                      className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:border-tiris-primary-500 focus:outline-none focus:ring-2 focus:ring-tiris-primary-100"
+                      disabled={isValidatingInvitation}
+                      autoFocus
+                    />
+                    <Shield className="pointer-events-none absolute inset-y-0 right-3 my-auto h-4 w-4 text-gray-400" />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isValidatingInvitation}
+                    className="inline-flex items-center justify-center rounded-lg bg-tiris-primary-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-tiris-primary-700 disabled:opacity-60"
+                  >
+                    {isValidatingInvitation ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t('realTrading.invitation.validating')}
+                      </>
+                    ) : (
+                      t('realTrading.invitation.submit')
+                    )}
+                  </button>
+                </div>
+              {invitationError ? (
+                <p className="mt-2 text-sm text-red-600" role="alert">
+                  {invitationError}
+                </p>
+              ) : (
+                <p className="mt-2 text-sm text-gray-500">
+                  {t('realTrading.invitation.helper')}
+                </p>
+              )}
+            </form>
+          </div>
+        </div>
+        <Footer />
       </div>
     );
   }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
-import { LogOut, User, Mail, Loader2, ShieldAlert, BadgeCheck } from 'lucide-react';
+import { LogOut, User, Mail, Loader2, ShieldAlert, BadgeCheck, Coins } from 'lucide-react';
 
 export const UserProfile: React.FC = () => {
   const { t } = useTranslation();
@@ -113,7 +113,15 @@ export const UserProfile: React.FC = () => {
           {/* Header */}
           <div className="px-4 pb-3 border-b">
             <div className="pt-1">
-              <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <span className="truncate">{user.name}</span>
+                {user.info?.real_trading_enabled && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 whitespace-nowrap">
+                    <Coins className="h-3.5 w-3.5" />
+                    {t('auth.realTradingBadge')}
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <div className="flex items-center gap-1.5 text-xs text-gray-500 truncate max-w-[14rem]" title={user.email}>
                   {user.provider === 'google' ? (
