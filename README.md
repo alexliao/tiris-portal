@@ -258,20 +258,32 @@ Replace `YOUR_GITHUB_PAT` with your actual token.
 
 #### Step 3: Build the Docker Image
 
-**For Apple Silicon Mac (building for AMD64 production server):**
-```bash
-docker build --platform linux/amd64 -t ghcr.io/alexliao/tiris-portal:latest .
-```
+The Dockerfile accepts an `ENV_FILE` build argument to specify which `.env` file to use during build.
 
-**For AMD64/Intel machines:**
+**Build with default .env file:**
 ```bash
+# For Apple Silicon Mac (building for AMD64 production server)
+docker build --platform linux/amd64 -t ghcr.io/alexliao/tiris-portal:latest .
+
+# For AMD64/Intel machines
 docker build -t ghcr.io/alexliao/tiris-portal:latest .
 ```
 
-Optional: Add version tags for releases:
+**Build with a specific .env file:**
 ```bash
-docker build --platform linux/amd64 -t ghcr.io/alexliao/tiris-portal:v1.0.0 .
-docker build --platform linux/amd64 -t ghcr.io/alexliao/tiris-portal:latest .
+# For production
+docker build --platform linux/amd64 --build-arg ENV_FILE=.env.prod -t ghcr.io/alexliao/tiris-portal:prod .
+
+# For staging
+docker build --platform linux/amd64 --build-arg ENV_FILE=.env.staging -t ghcr.io/alexliao/tiris-portal:staging .
+
+# For development
+docker build --platform linux/amd64 --build-arg ENV_FILE=.env.dev -t ghcr.io/alexliao/tiris-portal:dev .
+```
+
+**With version tags:**
+```bash
+docker build --platform linux/amd64 --build-arg ENV_FILE=.env.prod -t ghcr.io/alexliao/tiris-portal:v1.0.0 -t ghcr.io/alexliao/tiris-portal:latest .
 ```
 
 **Note:** If your production server uses a different architecture, replace `linux/amd64` with the appropriate platform (`linux/arm64` for ARM64, etc.)
@@ -324,20 +336,28 @@ docker-compose up -d
 
 ### Quick Reference Cheatsheet
 
-**Build for AMD64 production (from Apple Silicon Mac):**
+**Build for production (AMD64, Apple Silicon Mac):**
+```bash
+docker build --platform linux/amd64 --build-arg ENV_FILE=.env.prod -t ghcr.io/alexliao/tiris-portal:latest .
+docker push ghcr.io/alexliao/tiris-portal:latest
+```
+
+**Pull and run on production server:**
+```bash
+docker pull ghcr.io/alexliao/tiris-portal:latest
+docker run -d --name tiris-portal -p 80:3000 ghcr.io/alexliao/tiris-portal:latest
+```
+
+**Build for staging (different .env file):**
+```bash
+docker build --platform linux/amd64 --build-arg ENV_FILE=.env.staging -t ghcr.io/alexliao/tiris-portal:staging .
+docker push ghcr.io/alexliao/tiris-portal:staging
+```
+
+**Build with default .env file:**
 ```bash
 docker build --platform linux/amd64 -t ghcr.io/alexliao/tiris-portal:latest .
 docker push ghcr.io/alexliao/tiris-portal:latest
-docker pull ghcr.io/alexliao/tiris-portal:latest
-docker run -d -p 80:3000 ghcr.io/alexliao/tiris-portal:latest
-```
-
-**Build for your current architecture:**
-```bash
-docker build -t ghcr.io/alexliao/tiris-portal:latest .
-docker push ghcr.io/alexliao/tiris-portal:latest
-docker pull ghcr.io/alexliao/tiris-portal:latest
-docker run -d -p 80:3000 ghcr.io/alexliao/tiris-portal:latest
 ```
 
 ## Documentation

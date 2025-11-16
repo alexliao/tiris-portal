@@ -33,3 +33,4 @@ dist-ssr
 .claude/*.jwt
 .claude/auth.debug.txt
 deploy.sh
+.env.*
