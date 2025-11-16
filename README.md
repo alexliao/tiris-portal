@@ -257,14 +257,24 @@ echo YOUR_GITHUB_PAT | docker login ghcr.io -u alexliao --password-stdin
 Replace `YOUR_GITHUB_PAT` with your actual token.
 
 #### Step 3: Build the Docker Image
+
+**For Apple Silicon Mac (building for AMD64 production server):**
+```bash
+docker build --platform linux/amd64 -t ghcr.io/alexliao/tiris-portal:latest .
+```
+
+**For AMD64/Intel machines:**
 ```bash
 docker build -t ghcr.io/alexliao/tiris-portal:latest .
 ```
+
 Optional: Add version tags for releases:
 ```bash
-docker build -t ghcr.io/alexliao/tiris-portal:v1.0.0 .
-docker build -t ghcr.io/alexliao/tiris-portal:latest .
+docker build --platform linux/amd64 -t ghcr.io/alexliao/tiris-portal:v1.0.0 .
+docker build --platform linux/amd64 -t ghcr.io/alexliao/tiris-portal:latest .
 ```
+
+**Note:** If your production server uses a different architecture, replace `linux/amd64` with the appropriate platform (`linux/arm64` for ARM64, etc.)
 
 #### Step 4: Push to GitHub Container Registry
 ```bash
@@ -313,14 +323,19 @@ docker-compose up -d
 ```
 
 ### Quick Reference Cheatsheet
+
+**Build for AMD64 production (from Apple Silicon Mac):**
 ```bash
-# Build
-docker build -t ghcr.io/alexliao/tiris-portal:latest .
-
-# Push
+docker build --platform linux/amd64 -t ghcr.io/alexliao/tiris-portal:latest .
 docker push ghcr.io/alexliao/tiris-portal:latest
+docker pull ghcr.io/alexliao/tiris-portal:latest
+docker run -d -p 80:3000 ghcr.io/alexliao/tiris-portal:latest
+```
 
-# Pull & Run (production)
+**Build for your current architecture:**
+```bash
+docker build -t ghcr.io/alexliao/tiris-portal:latest .
+docker push ghcr.io/alexliao/tiris-portal:latest
 docker pull ghcr.io/alexliao/tiris-portal:latest
 docker run -d -p 80:3000 ghcr.io/alexliao/tiris-portal:latest
 ```
