@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import TradingPerformanceWidget from '../trading/TradingPerformanceWidget';
 import { getTradingById, type Trading } from '../../utils/api';
 import { useAuth } from '../../hooks/useAuth';
 import { getTradingDayCount } from '../../utils/tradingDates';
+import { THEME_COLORS } from '../../config/theme';
 
 const parseNumericValue = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -200,6 +202,17 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
               components={{ bold: <span className="font-bold text-black" /> }}
             />
           </p>
+          <div className="mt-6 text-center">
+            <Link
+              to="/backtest-trading/create"
+              className="inline-flex items-center justify-center rounded-full px-6 py-2 text-sm font-semibold font-['Nunito'] text-white transition-colors hover:opacity-90"
+              style={{
+                backgroundColor: THEME_COLORS.backtest.primary
+              }}
+            >
+              {t('performance.cta')}
+            </Link>
+          </div>
         </div>
 
         <div className="">

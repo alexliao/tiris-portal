@@ -13,10 +13,11 @@
     "description": "Tiris is a compact quantitative trading platform that delivers full backtesting, paper, and live trading capabilities. It also includes a proven, profitable trading strategy so every trader can enjoy automated trading without writing code or performing technical analysis."
   },
   "features": {
-    "profitable": {
-      "title": "Profitable",
-      "description": "Our trading strategy is built on cutting-edge artificial intelligence techniques and validated through extensive historical backtesting, delivering a 140% return on ETH/USDT trading throughout 2024. During the same period, ETH price only rose 40%."
-    },
+  "profitable": {
+    "title": "Profitable",
+    "description": "Our trading strategy is built on cutting-edge artificial intelligence techniques and validated through extensive historical backtesting, delivering a 140% return on ETH/USDT trading throughout 2024. During the same period, ETH price only rose 40%.",
+    "cta": "View Performance"
+  },
     "secure": {
       "title": "Secure",
       "description": "We only provide trading strategies and do not hold user funds in custody like traditional hedge funds. Your funds are safely held in your own account in exchanges."
@@ -34,6 +35,7 @@
     "title": "LIVE PERFORMANCE SHOWCASE",
     "description": "See how our trading bot performs in <bold>live</bold> markets compared with the benchmark return. The <bold>benchmark</bold> represents a buy-and-hold strategy: invest all capital in ETH and simply hold it, letting performance follow price. This comparison shows how our algorithm captures <bold>excess returns</bold> from market volatility.",
     "overview": "This trading session began on <bold>{{start_date}}</bold> with an initial deployment of <bold>{{initial_funds}}</bold> USDT and has been running for <bold>{{days}}</bold> days. The figures below reflect the latest performance metrics, and the chart captures the complete trading history.",
+    "cta": "Try it by yourself",
     "loading": "Loading live trading data...",
     "noData": "No trading data available at this time.",
     "chart": {

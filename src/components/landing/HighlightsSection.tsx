@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { THEME_COLORS } from '../../config/theme';
 
@@ -10,6 +11,8 @@ interface Feature {
   titleKey: string;
   descriptionKey: string;
   bgColor: string;
+  ctaKey?: string;
+  ctaHref?: string;
 }
 
 export const HighlightsSection: React.FC<HighlightsSectionProps> = ({ 
@@ -22,7 +25,9 @@ export const HighlightsSection: React.FC<HighlightsSectionProps> = ({
     {
       titleKey: 'features.profitable.title',
       descriptionKey: 'features.profitable.description',
-      bgColor: THEME_COLORS.backtest.primary  // Backtest - Profitable
+      bgColor: THEME_COLORS.backtest.primary,  // Backtest - Profitable
+      ctaKey: 'features.profitable.cta',
+      ctaHref: '/performance'
     },
     {
       titleKey: 'features.secure.title',
@@ -74,6 +79,14 @@ export const HighlightsSection: React.FC<HighlightsSectionProps> = ({
             <p className="font-['Nunito'] text-base text-white leading-relaxed">
               {t(feature.descriptionKey)}
             </p>
+            {feature.ctaKey && feature.ctaHref && (
+              <Link
+                to={feature.ctaHref}
+                className="mt-8 inline-flex items-center justify-center px-5 py-2 text-sm font-semibold font-['Nunito'] text-white border border-white rounded-full hover:bg-white/10 transition-colors"
+              >
+                {t(feature.ctaKey)}
+              </Link>
+            )}
           </div>
         ))}
       </div>
