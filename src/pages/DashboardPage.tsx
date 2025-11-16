@@ -7,6 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { THEME_COLORS } from '../config/theme';
+import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
@@ -59,6 +60,8 @@ export const DashboardPage: React.FC = () => {
       fetchTradings();
     }
   }, [isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useRequireAuthRedirect({ isAuthenticated, isLoading: authLoading });
 
   const getFilteredTradings = (type: string) => {
     return tradings.filter(trading => trading.type.toLowerCase() === type.toLowerCase());

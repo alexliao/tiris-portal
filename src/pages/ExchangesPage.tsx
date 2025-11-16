@@ -10,6 +10,7 @@ import ConfirmDialog from '../components/common/ConfirmDialog';
 import ExchangeBindingCard from '../components/trading/ExchangeBindingCard';
 import { THEME_COLORS, getTradingIcon } from '../config/theme';
 import { getExchangeTypeName } from '../utils/exchangeNames';
+import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
@@ -70,6 +71,8 @@ export const ExchangesPage: React.FC = () => {
       fetchExchanges();
     }
   }, [isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useRequireAuthRedirect({ isAuthenticated, isLoading: authLoading });
 
   const handleCreateExchange = () => {
     // Navigate to the exchange binding wizard instead of opening modal

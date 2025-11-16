@@ -14,7 +14,7 @@
 - `src/contexts/AuthContext.tsx` - Backend authentication context with token management
 - `src/hooks/useAuth.ts` - Authentication hook with loading states and error handling
 - `src/services/auth.ts` - Backend-only authentication service with complete OAuth flows
-- `src/components/auth/SignInModal.tsx` - Modal with Google and WeChat sign-in options
+- `src/pages/SignInPage.tsx` - Dedicated page with Google and WeChat sign-in options
 - `src/components/auth/SignInButton.tsx` - Button that opens the sign-in modal
 - `src/components/auth/UserProfile.tsx` - User profile with backend user data
 - `src/components/auth/AuthStatus.tsx` - Simple authentication status indicator
@@ -80,7 +80,7 @@ VITE_API_BASE_URL=https://backend.dev.tiris.ai/v1
 
 #### Customization Options
 You can customize the authentication UI:
-- Modal styling in `SignInModal.tsx`
+- Sign-in page styling in `SignInPage.tsx`
 - Provider button designs and loading states  
 - User profile dropdown appearance
 - Error message display
@@ -114,7 +114,7 @@ You can customize the authentication UI:
 - `src/services/auth.ts` - Backend-only authentication service with OAuth flows  
 - `src/contexts/AuthContext.tsx` - Backend authentication context
 - `src/hooks/useAuth.ts` - Authentication hook with loading states and error handling
-- `src/components/auth/SignInModal.tsx` - Multi-provider sign-in modal  
+- `src/pages/SignInPage.tsx` - Multi-provider sign-in page  
 - `src/components/auth/SignInButton.tsx` - Button to open sign-in modal
 - `src/components/auth/UserProfile.tsx` - User profile with backend data
 - `src/components/auth/AuthStatus.tsx` - Simple authentication status indicator

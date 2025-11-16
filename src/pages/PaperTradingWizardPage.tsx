@@ -12,6 +12,7 @@ import PaperStep1 from '../components/trading/wizard/PaperStep1';
 import PaperStep2 from '../components/trading/wizard/PaperStep2';
 import PaperStep3 from '../components/trading/wizard/PaperStep3';
 import PaperWizardStepIndicator from '../components/trading/wizard/PaperWizardStepIndicator';
+import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
@@ -64,6 +65,8 @@ export const PaperTradingWizardPage: React.FC = () => {
       fetchInitialData();
     }
   }, [isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useRequireAuthRedirect({ isAuthenticated, isLoading: authLoading });
 
   const fetchInitialData = async () => {
     try {

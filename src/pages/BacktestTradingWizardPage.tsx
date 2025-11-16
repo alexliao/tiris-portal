@@ -11,6 +11,7 @@ import BacktestStep1 from '../components/trading/wizard/BacktestStep1';
 import BacktestStep2 from '../components/trading/wizard/BacktestStep2';
 import BacktestStep3 from '../components/trading/wizard/BacktestStep3';
 import BacktestWizardStepIndicator from '../components/trading/wizard/BacktestWizardStepIndicator';
+import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
@@ -64,6 +65,8 @@ export const BacktestTradingWizardPage: React.FC = () => {
       fetchInitialData();
     }
   }, [isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useRequireAuthRedirect({ isAuthenticated, isLoading: authLoading });
 
   const fetchInitialData = async () => {
     try {

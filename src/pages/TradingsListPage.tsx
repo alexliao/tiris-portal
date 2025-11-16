@@ -11,6 +11,7 @@ import UnderConstruction from '../components/common/UnderConstruction';
 import { THEME_COLORS } from '../config/theme';
 import TradingCardMetrics from '../components/trading/TradingCardMetrics';
 import { getTradingDayCount } from '../utils/tradingDates';
+import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
@@ -73,6 +74,8 @@ export const TradingsListPage: React.FC = () => {
       fetchTradings();
     }
   }, [isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useRequireAuthRedirect({ isAuthenticated, isLoading: authLoading });
 
   const getFilteredTradings = () => {
     return tradings.filter(trading => trading.type.toLowerCase() === type?.toLowerCase());

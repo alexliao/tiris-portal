@@ -13,16 +13,18 @@ import PaperTradingWizardPage from './pages/PaperTradingWizardPage';
 import BacktestTradingWizardPage from './pages/BacktestTradingWizardPage';
 import RealTradingWizardPage from './pages/RealTradingWizardPage';
 import { OAuthCallback } from './pages/auth/OAuthCallback';
+import SignInPage from './pages/SignInPage';
 
 function App() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <AuthToastHandler />
         <Router>
+          <AuthToastHandler />
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/performance" element={<PerformancePage />} />
+            <Route path="/signin" element={<SignInPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/tradings/:type" element={<TradingsListPage />} />
             <Route path="/trading/:id" element={<TradingDetailPage />} />

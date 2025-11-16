@@ -12,6 +12,7 @@ import RealStep1 from '../components/trading/wizard/RealStep1';
 import RealStep2 from '../components/trading/wizard/RealStep2';
 import RealStep3 from '../components/trading/wizard/RealStep3';
 import RealWizardStepIndicator from '../components/trading/wizard/RealWizardStepIndicator';
+import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
@@ -78,6 +79,8 @@ export const RealTradingWizardPage: React.FC = () => {
       fetchInitialData();
     }
   }, [isAuthenticated, authLoading, exchangeIdParam, hasRealTradingAccess]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useRequireAuthRedirect({ isAuthenticated, isLoading: authLoading });
 
   // Fetch exchange balance when exchange binding or quote currency changes
   useEffect(() => {

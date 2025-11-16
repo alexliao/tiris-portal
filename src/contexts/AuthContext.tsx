@@ -25,7 +25,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   justSignedIn: boolean;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: (redirectPath?: string) => Promise<void>;
   loginWithWeChat: () => Promise<void>;
   signInWithEmailPassword: (email: string, password: string) => Promise<void>;
   signUpWithEmailPassword: (email: string, password: string, fullName: string) => Promise<void>;
@@ -60,6 +60,24 @@ const convertBackendUserToUser = (backendUser: BackendUser): User => {
     settings: backendUser.settings,
     info,
   };
+};
+
+const DEFAULT_SIGNIN_REDIRECT = '/dashboard';
+
+const sanitizeRedirect = (value?: string | null): string => {
+  if (!value) {
+    return DEFAULT_SIGNIN_REDIRECT;
+  }
+
+  if (!value.startsWith('/')) {
+    return DEFAULT_SIGNIN_REDIRECT;
+  }
+
+  if (value === '/') {
+    return DEFAULT_SIGNIN_REDIRECT;
+  }
+
+  return value;
 };
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -218,11 +236,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [justSignedIn]);
 
-  const loginWithGoogle = async (): Promise<void> => {
+  const loginWithGoogle = async (redirectPath?: string): Promise<void> => {
     try {
       setIsLoading(true);
-      // Save current path to return after login
-      sessionStorage.setItem('redirect_after_login', window.location.pathname + window.location.search);
+      // Save redirect target (defaults to dashboard)
+      const fallbackPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      const target = sanitizeRedirect(redirectPath ?? fallbackPath);
+      sessionStorage.setItem('redirect_after_login', target);
       await authService.loginWithGoogle(); // will redirect away
     } catch (error) {
       console.error('Google login failed:', error);
@@ -296,7 +316,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async (): Promise<void> => {
     const { accessToken } = getTokens();
-    
+
+    // Clear local state and tokens immediately so protected pages don't redirect to signin
+    setUser(null);
+    clearTokens();
+
     if (accessToken) {
       try {
         await authService.logout(accessToken);
@@ -305,10 +329,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Continue with local cleanup even if API call fails
       }
     }
-
-    // Clear local state and tokens
-    setUser(null);
-    clearTokens();
   };
 
   const value = {

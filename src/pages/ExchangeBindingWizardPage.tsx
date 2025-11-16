@@ -12,6 +12,7 @@ import ExchangeStep1 from '../components/trading/wizard/ExchangeStep1';
 import ExchangeStep2 from '../components/trading/wizard/ExchangeStep2';
 import ExchangeStep3 from '../components/trading/wizard/ExchangeStep3';
 import ExchangeWizardStepIndicator from '../components/trading/wizard/ExchangeWizardStepIndicator';
+import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
@@ -47,6 +48,8 @@ export const ExchangeBindingWizardPage: React.FC = () => {
       fetchInitialData();
     }
   }, [isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useRequireAuthRedirect({ isAuthenticated, isLoading: authLoading });
 
   // Update default connection name when exchange selection changes
   useEffect(() => {

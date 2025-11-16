@@ -65,7 +65,7 @@ npm run test         # Run Playwright tests
 src/
 ├── components/
 │   ├── auth/
-│   │   ├── SignInModal.tsx       # Multi-provider authentication modal
+│   │   ├── SignInPage.tsx        # Dedicated sign-in/sign-up page
 │   │   ├── SignInButton.tsx      # Sign-in button component
 │   │   ├── UserProfile.tsx       # User profile dropdown
 │   │   └── AuthStatus.tsx        # Authentication status indicator
@@ -104,7 +104,7 @@ src/
 ## Key Components
 
 ### Authentication System
-- **SignInModal**: Multi-provider authentication modal with Google and WeChat options
+- **SignInPage**: Dedicated authentication page with Google and (future) WeChat options
 - **AuthContext**: Backend-integrated authentication state management
 - **SignInButton**: Secure sign-in trigger with loading states
 - **UserProfile**: User dropdown with provider info and logout
