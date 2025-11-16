@@ -144,6 +144,18 @@
       "verifyFailed": "验证失败，请重试。",
       "badgeVerified": "已验证"
     },
+    "emailVerificationPrompt": {
+      "title": "验证您的邮箱",
+      "description": "在继续之前请先验证 {{email}}。",
+      "send": "发送验证邮件",
+      "sending": "发送中...",
+      "resend": "重新发送验证码",
+      "codeLabel": "验证码",
+      "placeholder": "输入6位验证码",
+      "helper": "请输入发送到您邮箱的6位验证码。",
+      "submit": "验证邮箱",
+      "verifying": "验证中..."
+    },
     "realTradingBadge": "实盘权限"
   },
   "common": {

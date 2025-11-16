@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import EmailVerificationPrompt from '../components/auth/EmailVerificationPrompt';
 import { createExchangeBinding, getRealExchanges, type ExchangeConfigResponse, type CreateExchangeBindingRequest, ApiError } from '../utils/api';
 import { AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import Navigation from '../components/layout/Header';
@@ -17,7 +18,7 @@ const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 export const ExchangeBindingWizardPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -209,6 +210,18 @@ export const ExchangeBindingWizardPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.accessDenied')}</h1>
           <p className="text-gray-600 mb-4">{t('dashboard.needSignIn')}</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!user?.emailVerified) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="pt-36 pb-16 px-4">
+          <EmailVerificationPrompt />
+        </div>
+        <Footer />
       </div>
     );
   }
