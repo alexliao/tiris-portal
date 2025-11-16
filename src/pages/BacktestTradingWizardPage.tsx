@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { createBacktestTrading, type CreateTradingRequest, ApiError, getBacktestExchanges, type ExchangeConfigResponse } from '../utils/api';
+import { createBacktestTrading, type CreateTradingRequest, ApiError, getBacktestExchanges, type ExchangeConfigResponse, getOHLCV, type OHLCVCandle } from '../utils/api';
 import { AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -14,6 +14,12 @@ import BacktestWizardStepIndicator from '../components/trading/wizard/BacktestWi
 import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
+
+interface ChartDataPoint {
+  timestamp: number;
+  price: number;
+  originalData: OHLCVCandle;
+}
 
 export const BacktestTradingWizardPage: React.FC = () => {
   const { t } = useTranslation();
@@ -33,6 +39,13 @@ export const BacktestTradingWizardPage: React.FC = () => {
 
   // Available data
   const [backtestExchanges, setBacktestExchanges] = useState<ExchangeConfigResponse[]>([]);
+
+  // Chart data (cached to prevent reloading on step navigation)
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [chartError, setChartError] = useState<string | null>(null);
+
+  // Default time range for step 2 ('all' | 'lastYear' | 'thisYear' | 'last3Months' | 'last1Month')
+  const defaultTimeRange = 'lastYear' as const;
 
   const colors = THEME_COLORS.backtest;
   const Icon = colors.icon;
@@ -72,6 +85,7 @@ export const BacktestTradingWizardPage: React.FC = () => {
     try {
       setIsLoadingData(true);
       setError(null);
+      setChartError(null);
 
       // Fetch backtest exchanges from tiris-bot API
       const exchanges = await getBacktestExchanges();
@@ -80,6 +94,68 @@ export const BacktestTradingWizardPage: React.FC = () => {
       // Auto-select first exchange if available
       if (exchanges.length > 0) {
         setSelectedExchange(exchanges[0]);
+      }
+
+      // Fetch OHLCV chart data
+      try {
+        const startDate2024 = new Date('2024-01-01');
+        const requestEndTime = Date.now();
+
+        const startTime = startDate2024.getTime();
+        const endTime = requestEndTime;
+
+        // Fetch OHLCV data for ETH_USDT with 1d timeframe from binance
+        const ohlcvData = await getOHLCV(
+          'binance',
+          'ETH_USDT',
+          startTime,
+          endTime,
+          '1d',
+          'warmup'
+        );
+
+        // Transform OHLCV data to chart data
+        const transformedData: ChartDataPoint[] = ohlcvData.map((candle) => ({
+          timestamp: new Date(candle.ts).getTime(),
+          price: candle.c, // Close price
+          originalData: candle
+        }));
+
+        // Sort by timestamp
+        transformedData.sort((a, b) => a.timestamp - b.timestamp);
+
+        // Ensure the final data point lines up with the current system time
+        if (transformedData.length > 0) {
+          const latestPoint = transformedData[transformedData.length - 1];
+          const nowTimestamp = Date.now();
+
+          if (latestPoint.timestamp < nowTimestamp) {
+            const syntheticCandle = {
+              ...latestPoint.originalData,
+              ts: new Date(nowTimestamp).toISOString(),
+              o: latestPoint.price,
+              h: latestPoint.price,
+              l: latestPoint.price,
+              c: latestPoint.price,
+              final: false
+            };
+
+            transformedData.push({
+              timestamp: nowTimestamp,
+              price: latestPoint.price,
+              originalData: syntheticCandle
+            });
+          }
+        }
+
+        setChartData(transformedData);
+      } catch (err) {
+        console.error('Failed to fetch chart data:', err);
+        setChartError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to fetch market data. Please try again later.'
+        );
       }
     } catch (err) {
       console.error('Failed to fetch initial data:', err);
@@ -310,10 +386,13 @@ export const BacktestTradingWizardPage: React.FC = () => {
 
             {currentStep === 2 && (
               <BacktestStep2
+                chartData={chartData}
+                chartError={chartError}
                 startDate={startDate}
                 setStartDate={setStartDate}
                 endDate={endDate}
                 setEndDate={setEndDate}
+                defaultTimeRange={defaultTimeRange}
               />
             )}
 

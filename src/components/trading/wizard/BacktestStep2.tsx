@@ -2,20 +2,25 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
-import { getOHLCV, type OHLCVCandle } from '../../../utils/api';
+import { type OHLCVCandle } from '../../../utils/api';
 import { resolveLocale } from '../../../utils/locale';
-
-interface BacktestStep2Props {
-  startDate: Date | null;
-  setStartDate: (date: Date | null) => void;
-  endDate: Date | null;
-  setEndDate: (date: Date | null) => void;
-}
 
 interface ChartDataPoint {
   timestamp: number;
   price: number;
   originalData: OHLCVCandle;
+}
+
+type DefaultTimeRange = 'all' | 'lastYear' | 'thisYear' | 'last3Months' | 'last1Month';
+
+interface BacktestStep2Props {
+  chartData: ChartDataPoint[];
+  chartError: string | null;
+  startDate: Date | null;
+  setStartDate: (date: Date | null) => void;
+  endDate: Date | null;
+  setEndDate: (date: Date | null) => void;
+  defaultTimeRange?: DefaultTimeRange;
 }
 
 type LocalizedChartDataPoint = ChartDataPoint & { date: string };
@@ -26,15 +31,15 @@ interface BrushChangeState {
 }
 
 export const BacktestStep2: React.FC<BacktestStep2Props> = ({
+  chartData,
+  chartError,
   startDate,
   setStartDate,
   endDate,
   setEndDate,
+  defaultTimeRange = 'lastYear',
 }) => {
   const { t, i18n } = useTranslation();
-  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [brushStartIndex, setBrushStartIndex] = useState(0);
   const [brushEndIndex, setBrushEndIndex] = useState(100);
 
@@ -58,96 +63,158 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
     [chartData, dateFormatter]
   );
 
-  // Fetch OHLCV data on component mount
-  useEffect(() => {
-    const fetchChartData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  // Helper function to apply default time range
+  const applyDefaultTimeRange = (range: DefaultTimeRange, data: ChartDataPoint[]) => {
+    if (data.length === 0) return;
 
-        // Set date range: from 2024-01-01 to now
-        const startDate2024 = new Date('2024-01-01');
-        const requestEndTime = Date.now();
+    let startIdx = 0;
+    let endIdx = data.length - 1;
+    let startDateToSet: Date;
+    let endDateToSet: Date;
 
-        const startTime = startDate2024.getTime();
-        const endTime = requestEndTime;
+    const now = new Date();
 
-        // Fetch OHLCV data for ETH_USDT with 1d timeframe from binance
-        const ohlcvData = await getOHLCV(
-          'binance',
-          'ETH_USDT',
-          startTime,
-          endTime,
-          '1d',
-          'warmup'
-        );
+    switch (range) {
+      case 'all':
+        startDateToSet = new Date(data[0].timestamp);
+        endDateToSet = new Date(data[endIdx].timestamp);
+        break;
 
-        // Transform OHLCV data to chart data
-        const transformedData: ChartDataPoint[] = ohlcvData.map((candle) => ({
-          timestamp: new Date(candle.ts).getTime(),
-          price: candle.c, // Close price
-          originalData: candle
-        }));
+      case 'lastYear': {
+        const lastYear = now.getFullYear() - 1;
+        const rangeStart = new Date(lastYear, 0, 1); // Jan 1 of last year
+        const rangeEnd = new Date(lastYear, 11, 31); // Dec 31 of last year
 
-        // Sort by timestamp
-        transformedData.sort((a, b) => a.timestamp - b.timestamp);
-
-        // Ensure the final data point lines up with the current system time so the
-        // date range always ends "now" even if the latest OHLCV candle is older.
-        if (transformedData.length > 0) {
-          const latestPoint = transformedData[transformedData.length - 1];
-          const nowTimestamp = Date.now();
-
-          if (latestPoint.timestamp < nowTimestamp) {
-            const syntheticCandle = {
-              ...latestPoint.originalData,
-              ts: new Date(nowTimestamp).toISOString(),
-              o: latestPoint.price,
-              h: latestPoint.price,
-              l: latestPoint.price,
-              c: latestPoint.price,
-              final: false
-            };
-
-            transformedData.push({
-              timestamp: nowTimestamp,
-              price: latestPoint.price,
-              originalData: syntheticCandle
-            });
+        // Find closest indices
+        for (let i = 0; i < data.length; i++) {
+          if (data[i].timestamp >= rangeStart.getTime()) {
+            startIdx = i;
+            break;
+          }
+        }
+        for (let i = data.length - 1; i >= 0; i--) {
+          if (data[i].timestamp <= rangeEnd.getTime()) {
+            endIdx = i;
+            break;
           }
         }
 
-        setChartData(transformedData);
-
-        // Set initial dates to the first and last candle if no dates are set
-        if (transformedData.length > 0) {
-          if (!startDate) {
-            setStartDate(new Date(transformedData[0].timestamp));
-          }
-          if (!endDate) {
-            const nowTimestamp = transformedData[transformedData.length - 1].timestamp;
-            setEndDate(new Date(nowTimestamp));
-          }
-          // Set initial brush to show full range
-          setBrushStartIndex(0);
-          setBrushEndIndex(transformedData.length - 1);
-        }
-      } catch (err) {
-        console.error('Failed to fetch OHLCV data:', err);
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Failed to fetch market data. Please try again later.'
-        );
-      } finally {
-        setIsLoading(false);
+        startDateToSet = new Date(data[startIdx].timestamp);
+        endDateToSet = new Date(data[endIdx].timestamp);
+        break;
       }
-    };
 
-    fetchChartData();
-    // We intentionally run this only once on mount to bootstrap chart data.
+      case 'thisYear': {
+        const year = now.getFullYear();
+        const rangeStart = new Date(year, 0, 1); // Jan 1 of current year
+        const rangeEnd = now; // Today
+
+        // Find closest indices
+        for (let i = 0; i < data.length; i++) {
+          if (data[i].timestamp >= rangeStart.getTime()) {
+            startIdx = i;
+            break;
+          }
+        }
+        for (let i = data.length - 1; i >= 0; i--) {
+          if (data[i].timestamp <= rangeEnd.getTime()) {
+            endIdx = i;
+            break;
+          }
+        }
+
+        startDateToSet = new Date(data[startIdx].timestamp);
+        endDateToSet = new Date(data[endIdx].timestamp);
+        break;
+      }
+
+      case 'last3Months': {
+        const rangeStart = new Date(now);
+        rangeStart.setDate(rangeStart.getDate() - 90);
+
+        // Find closest index for start
+        for (let i = 0; i < data.length; i++) {
+          if (data[i].timestamp >= rangeStart.getTime()) {
+            startIdx = i;
+            break;
+          }
+        }
+
+        startDateToSet = new Date(data[startIdx].timestamp);
+        endDateToSet = new Date(data[endIdx].timestamp);
+        break;
+      }
+
+      case 'last1Month': {
+        const rangeStart = new Date(now);
+        rangeStart.setDate(rangeStart.getDate() - 30);
+
+        // Find closest index for start
+        for (let i = 0; i < data.length; i++) {
+          if (data[i].timestamp >= rangeStart.getTime()) {
+            startIdx = i;
+            break;
+          }
+        }
+
+        startDateToSet = new Date(data[startIdx].timestamp);
+        endDateToSet = new Date(data[endIdx].timestamp);
+        break;
+      }
+
+      default:
+        startDateToSet = new Date(data[0].timestamp);
+        endDateToSet = new Date(data[endIdx].timestamp);
+    }
+
+    setBrushStartIndex(startIdx);
+    setBrushEndIndex(endIdx);
+    setStartDate(startDateToSet);
+    setEndDate(endDateToSet);
+  };
+
+  // Initialize dates and brush indices when chart data is available
+  useEffect(() => {
+    if (chartData.length > 0 && !startDate && !endDate) {
+      applyDefaultTimeRange(defaultTimeRange, chartData);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [chartData.length]);
+
+  // Update brush indices when dates change (e.g., when navigating back to step 2)
+  useEffect(() => {
+    if (chartData.length > 0 && startDate && endDate) {
+      const startTimestamp = startDate.getTime();
+      const endTimestamp = endDate.getTime();
+
+      // Find the indices that correspond to the selected dates
+      let newStartIndex = 0;
+      let newEndIndex = chartData.length - 1;
+
+      // Find start index
+      for (let i = 0; i < chartData.length; i++) {
+        if (chartData[i].timestamp >= startTimestamp) {
+          newStartIndex = i;
+          break;
+        }
+      }
+
+      // Find end index
+      for (let i = chartData.length - 1; i >= 0; i--) {
+        if (chartData[i].timestamp <= endTimestamp) {
+          newEndIndex = i;
+          break;
+        }
+      }
+
+      // Update brush indices to match the date range
+      if (newStartIndex !== brushStartIndex || newEndIndex !== brushEndIndex) {
+        setBrushStartIndex(newStartIndex);
+        setBrushEndIndex(newEndIndex);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate, chartData.length]);
 
   const handleBrushChange = (state: BrushChangeState | null) => {
     if (state && state.startIndex !== undefined && state.endIndex !== undefined) {
@@ -305,19 +372,19 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
 
       <div className="space-y-6">
         {/* Error Message */}
-        {error && (
+        {chartError && (
           <div className="px-6 py-4 bg-red-50 border-l-4 border-red-400 rounded-lg">
             <div className="flex">
               <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
               <div className="ml-3">
-                <p className="text-red-800">{error}</p>
+                <p className="text-red-800">{chartError}</p>
               </div>
             </div>
           </div>
         )}
 
         {/* Loading State */}
-        {isLoading && (
+        {chartData.length === 0 && !chartError && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tiris-primary-600 mx-auto mb-4"></div>
@@ -327,7 +394,7 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
         )}
 
         {/* Chart */}
-        {!isLoading && chartData.length > 0 && (
+        {chartData.length > 0 && (
           <>
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
               <div className="flex items-center mb-4">
@@ -461,7 +528,7 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
         )}
 
         {/* Empty State */}
-        {!isLoading && chartData.length === 0 && !error && (
+        {chartData.length === 0 && !chartError && (
           <div className="py-12 text-center">
             <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600">{t('common.noData')}</p>
