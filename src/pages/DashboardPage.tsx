@@ -92,18 +92,18 @@ export const DashboardPage: React.FC = () => {
 
   const tradingTypes = [
     {
-      key: 'paper' as const,
-      label: t('trading.type.paper') || 'Paper Trading',
-      icon: THEME_COLORS.paper.icon,
-      colors: THEME_COLORS.paper,
-      description: t('dashboard.paperDescription') || 'Simulated trading with virtual funds'
-    },
-    {
       key: 'backtest' as const,
       label: t('trading.type.backtest') || 'Backtest',
       icon: THEME_COLORS.backtest.icon,
       colors: THEME_COLORS.backtest,
       description: t('dashboard.backtestDescription') || 'Test strategies on historical data'
+    },
+    {
+      key: 'paper' as const,
+      label: t('trading.type.paper') || 'Paper Trading',
+      icon: THEME_COLORS.paper.icon,
+      colors: THEME_COLORS.paper,
+      description: t('dashboard.paperDescription') || 'Simulated trading with virtual funds'
     },
     {
       key: 'real' as const,
@@ -178,79 +178,82 @@ export const DashboardPage: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {tradingTypes.map((type) => {
+            {tradingTypes.map((type, index) => {
               const Icon = type.icon;
               const stats = getTradingTypeStats(type.key);
               const colors = type.colors;
 
               return (
-                <div
-                  key={type.key}
-                  onClick={() => navigate(`/tradings/${type.key}`)}
-                  className="bg-white rounded-lg shadow hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-gray-200"
-                >
-                  {/* Colored Header */}
-                  <div 
-                    style={{ 
-                      background: `linear-gradient(135deg, ${colors.primary}, ${colors.hover})` 
-                    }}
-                    className="p-6 text-white"
+                <React.Fragment key={type.key}>
+                  <div
+                    onClick={() => navigate(`/tradings/${type.key}`)}
+                    className="bg-white rounded-lg shadow hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-gray-200"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <Icon className="w-10 h-10" />
-                      <ChevronRight className="w-5 h-5 opacity-80" />
+                    {/* Colored Header */}
+                    <div
+                      style={{
+                        background: `linear-gradient(135deg, ${colors.primary}, ${colors.hover})`
+                      }}
+                      className="p-6 text-white"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <Icon className="w-10 h-10" />
+                        <ChevronRight className="w-5 h-5 opacity-80" />
+                      </div>
+                      <h3 className="text-xl font-bold mb-1">{type.label}</h3>
+                      <p className="text-sm text-white/80">{type.description}</p>
                     </div>
-                    <h3 className="text-xl font-bold mb-1">{type.label}</h3>
-                    <p className="text-sm text-white/80">{type.description}</p>
+
+                    {/* White Body with Stats */}
+                    <div className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                          <p className="text-xs text-gray-500 mt-1">{t('dashboard.totalTradings')}</p>
+                        </div>
+                        <div className="text-right">
+                          <p style={{ color: colors.primary }} className="text-3xl font-bold">{stats.active}</p>
+                          <p className="text-xs text-gray-500 mt-1">{t('dashboard.activeTradings')}</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* White Body with Stats */}
-                  <div className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-                        <p className="text-xs text-gray-500 mt-1">{t('dashboard.totalTradings')}</p>
+                  {/* Exchanges Card after paper (index 1) */}
+                  {index === 1 && (
+                    <div
+                      onClick={() => navigate('/exchanges')}
+                      className="bg-white rounded-lg shadow hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-gray-200"
+                    >
+                      {/* Colored Header */}
+                      <div
+                        style={{
+                          background: `linear-gradient(135deg, ${THEME_COLORS.exchanges.primary}, ${THEME_COLORS.exchanges.hover})`
+                        }}
+                        className="p-6 text-white"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          {React.createElement(THEME_COLORS.exchanges.icon, { className: "w-10 h-10" })}
+                          <ChevronRight className="w-5 h-5 opacity-80" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-1">{t('dashboard.exchanges')}</h3>
+                        <p className="text-sm text-white/80">{t('dashboard.manageExchanges')}</p>
                       </div>
-                      <div className="text-right">
-                        <p style={{ color: colors.primary }} className="text-3xl font-bold">{stats.active}</p>
-                        <p className="text-xs text-gray-500 mt-1">{t('dashboard.activeTradings')}</p>
+
+                      {/* White Body with Stats */}
+                      <div className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-3xl font-bold text-gray-900">{getExchangeStats().total}</p>
+                            <p className="text-xs text-gray-500 mt-1">{t('dashboard.totalExchanges')}</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
+                  )}
+                </React.Fragment>
               );
             })}
-
-            {/* Exchanges Card */}
-            <div
-              onClick={() => navigate('/exchanges')}
-              className="bg-white rounded-lg shadow hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-gray-200"
-            >
-              {/* Colored Header */}
-              <div
-                style={{
-                  background: `linear-gradient(135deg, ${THEME_COLORS.exchanges.primary}, ${THEME_COLORS.exchanges.hover})`
-                }}
-                className="p-6 text-white"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  {React.createElement(THEME_COLORS.exchanges.icon, { className: "w-10 h-10" })}
-                  <ChevronRight className="w-5 h-5 opacity-80" />
-                </div>
-                <h3 className="text-xl font-bold mb-1">{t('dashboard.exchanges')}</h3>
-                <p className="text-sm text-white/80">{t('dashboard.manageExchanges')}</p>
-              </div>
-
-              {/* White Body with Stats */}
-              <div className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-3xl font-bold text-gray-900">{getExchangeStats().total}</p>
-                    <p className="text-xs text-gray-500 mt-1">{t('dashboard.totalExchanges')}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>
