@@ -5,5 +5,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8081:80"
-    restart: unless-stopped
+    restart: always
+    image: ghcr.io/alexliao/tiris-portal:latest
     container_name: tiris-portal

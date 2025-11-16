@@ -32,3 +32,4 @@ dist-ssr
 # Local Claude debug token (do not commit)
 .claude/*.jwt
 .claude/auth.debug.txt
+deploy.sh

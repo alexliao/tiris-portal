@@ -234,6 +234,97 @@ The application integrates with the TIRIS backend for secure authentication. See
 - Backend OAuth endpoints properly set up for Google/WeChat
 - Environment variable `VITE_API_BASE_URL` configured
 
+## Docker Deployment
+
+### Prerequisites
+- Docker installed locally
+- GitHub account with container registry access
+- GitHub Personal Access Token (PAT) with `write:packages` and `read:packages` scopes
+
+### Manual Deployment Flow
+
+#### Step 1: Create GitHub Personal Access Token (One-time Setup)
+1. Go to GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+2. Click **Generate new token (classic)**
+3. Name: `GHCR_TOKEN`
+4. Select scopes: `write:packages`, `read:packages`
+5. Copy the token and save it securely
+
+#### Step 2: Login to GitHub Container Registry (Local Machine)
+```bash
+echo YOUR_GITHUB_PAT | docker login ghcr.io -u alexliao --password-stdin
+```
+Replace `YOUR_GITHUB_PAT` with your actual token.
+
+#### Step 3: Build the Docker Image
+```bash
+docker build -t ghcr.io/alexliao/tiris-portal:latest .
+```
+Optional: Add version tags for releases:
+```bash
+docker build -t ghcr.io/alexliao/tiris-portal:v1.0.0 .
+docker build -t ghcr.io/alexliao/tiris-portal:latest .
+```
+
+#### Step 4: Push to GitHub Container Registry
+```bash
+docker push ghcr.io/alexliao/tiris-portal:latest
+```
+Or with version:
+```bash
+docker push ghcr.io/alexliao/tiris-portal:v1.0.0
+docker push ghcr.io/alexliao/tiris-portal:latest
+```
+
+#### Step 5: On Production Server - Pull and Run
+```bash
+# Login to GHCR
+echo YOUR_GITHUB_PAT | docker login ghcr.io -u alexliao --password-stdin
+
+# Pull latest image
+docker pull ghcr.io/alexliao/tiris-portal:latest
+
+# Stop old container (if running)
+docker stop tiris-portal
+
+# Run new container
+docker run -d --name tiris-portal -p 80:3000 ghcr.io/alexliao/tiris-portal:latest
+```
+
+### Using Docker Compose (Production)
+Create `docker-compose.yml` on your production server:
+```yaml
+version: '3.8'
+services:
+  portal:
+    image: ghcr.io/alexliao/tiris-portal:latest
+    container_name: tiris-portal
+    ports:
+      - "80:3000"
+    restart: always
+    environment:
+      - VITE_API_BASE_URL=https://your-api-domain.com
+```
+
+Then run:
+```bash
+docker-compose pull
+docker-compose up -d
+```
+
+### Quick Reference Cheatsheet
+```bash
+# Build
+docker build -t ghcr.io/alexliao/tiris-portal:latest .
+
+# Push
+docker push ghcr.io/alexliao/tiris-portal:latest
+
+# Pull & Run (production)
+docker pull ghcr.io/alexliao/tiris-portal:latest
+docker run -d -p 80:3000 ghcr.io/alexliao/tiris-portal:latest
+```
+
 ## Documentation
 
 - **[Authentication Setup](AUTHENTICATION_SETUP.md)**: Complete authentication implementation guide
