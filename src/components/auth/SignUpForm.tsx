@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import { useTranslation } from 'react-i18next';
@@ -205,13 +206,13 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchToLog
       <div className="text-xs text-center text-gray-500">
         <p>
           {t('auth.termsText', 'By creating an account, you agree to our')}{' '}
-          <a href="#" className="text-tiris-primary-600 hover:text-tiris-primary-800">
+          <Link to="/legal/terms" className="text-tiris-primary-600 hover:text-tiris-primary-800">
             {t('auth.termsOfService', 'Terms of Service')}
-          </a>{' '}
+          </Link>{' '}
           {t('auth.and', 'and')}{' '}
-          <a href="#" className="text-tiris-primary-600 hover:text-tiris-primary-800">
+          <Link to="/legal/privacy" className="text-tiris-primary-600 hover:text-tiris-primary-800">
             {t('auth.privacyPolicy', 'Privacy Policy')}
-          </a>
+          </Link>
         </p>
       </div>
     </div>

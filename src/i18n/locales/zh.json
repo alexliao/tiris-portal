@@ -706,6 +706,8 @@
   },
   "footer": {
     "copyright": "© {{year}} Tiris AI",
-    "contact": "alexliao@tiris.ai"
+    "contact": "联系我们",
+    "terms": "服务条款",
+    "privacy": "隐私政策"
   }
 }

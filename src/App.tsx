@@ -14,6 +14,8 @@ import BacktestTradingWizardPage from './pages/BacktestTradingWizardPage';
 import RealTradingWizardPage from './pages/RealTradingWizardPage';
 import { OAuthCallback } from './pages/auth/OAuthCallback';
 import SignInPage from './pages/SignInPage';
+import TermsPage from './pages/legal/TermsPage';
+import PrivacyPage from './pages/legal/PrivacyPage';
 
 function App() {
   return (
@@ -34,6 +36,8 @@ function App() {
             <Route path="/exchanges" element={<ExchangesPage />} />
             <Route path="/exchanges/create" element={<ExchangeBindingWizardPage />} />
             <Route path="/auth/callback" element={<OAuthCallback />} />
+            <Route path="/legal/terms" element={<TermsPage />} />
+            <Route path="/legal/privacy" element={<PrivacyPage />} />
           </Routes>
           <ToastContainer />
         </Router>

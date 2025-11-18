@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { LanguageSelector } from '../ui/LanguageSelector';
 
 interface FooterProps {
@@ -18,16 +19,26 @@ export const Footer: React.FC<FooterProps> = ({
             <div className="text-sm text-[#080404] font-['Nunito']">
               {t('footer.copyright', { year: new Date().getFullYear() })}
             </div>
-            <a 
-              href="mailto:alexliao@tiris.ai" 
-              className="inline-flex items-center text-[#080404] hover:opacity-70 transition-opacity font-['Nunito'] text-sm"
-            >
-              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
-                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
-              </svg>
-              {t('footer.contact')}
-            </a>
+            <div className="flex items-center space-x-4 text-sm font-['Nunito']">
+              <Link to="/legal/terms" className="text-[#080404] hover:opacity-70 transition-opacity">
+                {t('footer.terms')}
+              </Link>
+              <span className="text-gray-300" aria-hidden="true">
+                •
+              </span>
+              <Link to="/legal/privacy" className="text-[#080404] hover:opacity-70 transition-opacity">
+                {t('footer.privacy')}
+              </Link>
+              <span className="text-gray-300" aria-hidden="true">
+                •
+              </span>
+              <a 
+                href="mailto:alexliao@tiris.ai" 
+                className="text-[#080404] hover:opacity-70 transition-opacity"
+              >
+                {t('footer.contact')}
+              </a>
+            </div>
           </div>
           <div className="footer-language-selector">
             <LanguageSelector />
