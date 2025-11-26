@@ -18,6 +18,7 @@ export interface TradingDataPoint {
   event?: {
     type: 'buy' | 'sell' | 'stop_loss' | 'deposit' | 'withdraw';
     description: string;
+    price?: number; // Executed trade price when available
   };
   isPartial?: boolean; // Indicates the point was derived from partial/warmup data
 }
@@ -186,9 +187,13 @@ export function transformNewEquityCurveToChartData(
       return;
     }
 
+    const parsedPrice = parseFloat(log.info?.price?.toString() || '');
+    const price = Number.isFinite(parsedPrice) ? Math.round(parsedPrice * 100) / 100 : undefined;
+
     eventsByTimestamp.set(log.event_time, {
       type: mappedType,
       description: log.message,
+      price,
     });
   });
 
@@ -516,9 +521,13 @@ export function transformEquityCurveToChartData(
   const eventsByTimestamp = new Map<string, TradingDataPoint['event']>();
   tradingLogs.forEach(log => {
     if (log.type === 'long' || log.type === 'short') {
+      const parsedPrice = parseFloat(log.info?.price?.toString() || '');
+      const price = Number.isFinite(parsedPrice) ? Math.round(parsedPrice * 100) / 100 : undefined;
+
       eventsByTimestamp.set(log.event_time, {
         type: log.type === 'long' ? 'buy' : 'sell',
         description: log.message,
+        price,
       });
     }
   });
@@ -611,9 +620,13 @@ export function transformTransactionsToChartData(
   const eventsByTimestamp = new Map<string, TradingDataPoint['event']>();
   tradingLogs.forEach(log => {
     if (log.type === 'long' || log.type === 'short') {
+      const parsedPrice = parseFloat(log.info?.price?.toString() || '');
+      const price = Number.isFinite(parsedPrice) ? Math.round(parsedPrice * 100) / 100 : undefined;
+
       eventsByTimestamp.set(log.event_time, {
         type: log.type === 'long' ? 'buy' : 'sell',
         description: log.message,
+        price,
       });
     }
   });

@@ -539,7 +539,13 @@
         "position": "仓位",
         "roi": "资产收益率",
         "assets": "资产",
-        "benchmark": "基准收益率"
+        "benchmark": "基准收益率",
+        "signalPrice": "信号价格",
+        "signalPriceBuy": "买入价格",
+        "signalPriceSell": "卖出价格",
+        "signalPriceStopLoss": "止损价格",
+        "signalPriceDeposit": "充值价格",
+        "signalPriceWithdraw": "提现价格"
       }
     },
     "tradingDetail": {

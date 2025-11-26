@@ -540,7 +540,13 @@
         "position": "Position",
         "roi": "ROI",
         "assets": "Assets",
-        "benchmark": "Benchmark"
+        "benchmark": "Benchmark",
+        "signalPrice": "Trade price",
+        "signalPriceBuy": "Buy price",
+        "signalPriceSell": "Sell price",
+        "signalPriceStopLoss": "Stop-loss price",
+        "signalPriceDeposit": "Deposit price",
+        "signalPriceWithdraw": "Withdraw price"
       }
     },
     "tradingDetail": {

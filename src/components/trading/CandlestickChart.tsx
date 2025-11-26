@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, Component, type ErrorInfo, type ReactNode } from 'react';
+import React, { useEffect, useMemo, useRef, useState, Component, type ErrorInfo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   createChart,
@@ -7,7 +7,7 @@ import {
   LineSeries,
   AreaSeries,
   HistogramSeries,
-  type SeriesMarkerBar,
+  type SeriesMarker,
   type ISeriesMarkersPluginApi,
   type IChartApi,
   type ISeriesApi,
@@ -22,6 +22,7 @@ import type {
   TradingCandlestickPoint,
   TradingDataPoint,
 } from '../../utils/chartData';
+import { createChartTooltip, positionTooltipAvoidingCrosshair } from './tooltipUtils';
 
 interface CandlestickChartProps {
   candles: TradingCandlestickPoint[];
@@ -131,9 +132,23 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     tradingSignalsVisible ?? true
   );
 
+  const tradingEventsBySecond = useMemo(() => {
+    const map = new Map<number, TradingDataPoint['event']>();
+    benchmarkPoints.forEach((point) => {
+      if (!point.event) {
+        return;
+      }
+      const timeInSeconds = Math.floor(point.timestampNum / 1000);
+      if (Number.isFinite(timeInSeconds)) {
+        map.set(timeInSeconds, point.event);
+      }
+    });
+    return map;
+  }, [benchmarkPoints]);
+
   type TradingEventType = NonNullable<TradingDataPoint['event']>['type'];
 
-  const signalMarkerStyles: Record<TradingEventType, { color: string; shape: 'arrowUp' | 'arrowDown' | 'circle' | 'square'; position: 'aboveBar' | 'belowBar' | 'inBar'; }> = {
+  const signalMarkerStyles: Record<TradingEventType, { color: string; shape: 'arrowUp' | 'arrowDown' | 'circle' | 'square'; position: SeriesMarker<Time>['position']; }> = {
     buy: {
       color: '#3B82F6',
       shape: 'circle',
@@ -490,22 +505,11 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
       applyScaleVisibility();
 
-      const toolTip = document.createElement('div');
-      toolTip.style.position = 'absolute';
-      toolTip.style.display = 'none';
-      toolTip.style.pointerEvents = 'none';
-      toolTip.style.padding = '8px 10px';
-      toolTip.style.borderRadius = '6px';
-      toolTip.style.background = 'rgba(255, 255, 255, 0.95)';
-      toolTip.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-      toolTip.style.border = '1px solid rgba(209, 213, 219, 0.8)';
-      toolTip.style.color = '#111827';
-      toolTip.style.fontSize = '14px';
-      toolTip.style.lineHeight = '1.5';
-      toolTip.style.zIndex = '30';
-      toolTip.style.whiteSpace = 'nowrap';
+      if (!chartContainerRef.current) {
+        throw new Error('Chart container not available for tooltip creation');
+      }
+      const toolTip = createChartTooltip(chartContainerRef.current);
       tooltipRef.current = toolTip;
-      chartContainerRef.current?.appendChild(toolTip);
 
       const formatCrosshairTime = (time: Time) => formatTimeValue(time);
 
@@ -553,6 +557,27 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           tooltipEl.style.display = 'none';
           return;
         }
+
+        const toSeconds = (timeValue: Time): number | null => {
+          if (typeof timeValue === 'number') {
+            return timeValue;
+          }
+          if (typeof timeValue === 'string') {
+            const parsed = new Date(timeValue).getTime();
+            return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null;
+          }
+          const maybeBusinessDay = timeValue as BusinessDay | undefined;
+          if (
+            maybeBusinessDay &&
+            typeof maybeBusinessDay.year === 'number' &&
+            typeof maybeBusinessDay.month === 'number' &&
+            typeof maybeBusinessDay.day === 'number'
+          ) {
+            const parsed = Date.UTC(maybeBusinessDay.year, maybeBusinessDay.month - 1, maybeBusinessDay.day);
+            return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null;
+          }
+          return null;
+        };
 
         const currentVisibility = seriesVisibilityStateRef.current;
 
@@ -647,6 +672,31 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           tooltipLines.push(`<div>${volumeLabel}: ${formattedVolume}</div>`);
         }
 
+        const timeInSeconds = toSeconds(param.time);
+        const tradingEvent = timeInSeconds !== null ? tradingEventsBySecond.get(timeInSeconds) : undefined;
+        if (tradingEvent && typeof tradingEvent.price === 'number' && Number.isFinite(tradingEvent.price)) {
+          const priceLabelKey = (() => {
+            switch (tradingEvent.type) {
+              case 'buy':
+                return 'signalPriceBuy';
+              case 'sell':
+                return 'signalPriceSell';
+              case 'stop_loss':
+                return 'signalPriceStopLoss';
+              case 'deposit':
+                return 'signalPriceDeposit';
+              case 'withdraw':
+                return 'signalPriceWithdraw';
+              default:
+                return 'signalPrice';
+            }
+          })();
+
+          tooltipLines.push(`<hr />`);
+          const signalPriceLabel = t(`trading.chart.tooltipLabels.${priceLabelKey}`);
+          tooltipLines.push(`<div>${signalPriceLabel}: $${tradingEvent.price.toFixed(2)}</div>`);
+        }
+
         if (currentVisibility.position && positionValue !== undefined) {
           const positionLabel = t('trading.chart.tooltipLabels.position');
           const formattedPosition = Number(positionValue).toLocaleString(undefined, {
@@ -660,27 +710,12 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         tooltipEl.innerHTML = tooltipLines.join('');
 
         const { x, y } = param.point;
-        const containerWidth = containerEl.clientWidth;
-        const containerHeight = containerEl.clientHeight;
-
         tooltipEl.style.display = 'block';
-
-        const tooltipWidth = tooltipEl.clientWidth;
-        const tooltipHeight = tooltipEl.clientHeight;
-
-        let left = x + 12;
-        let top = y + 12;
-
-        if (left + tooltipWidth > containerWidth) {
-          left = x - tooltipWidth - 12;
-        }
-
-        if (top + tooltipHeight > containerHeight) {
-          top = y - tooltipHeight - 12;
-        }
-
-        tooltipEl.style.left = `${Math.max(0, left)}px`;
-        tooltipEl.style.top = `${Math.max(0, top)}px`;
+        positionTooltipAvoidingCrosshair({
+          point: { x, y },
+          tooltipEl,
+          container: containerEl,
+        });
       };
 
       chart.subscribeCrosshairMove(handleCrosshairMove);
@@ -985,7 +1020,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       })
       .filter((item): item is { time: Time; value: number } => item !== null);
 
-    const benchmarkMarkers: SeriesMarkerBar<Time>[] = benchmarkPoints
+    const benchmarkMarkers: SeriesMarker<Time>[] = benchmarkPoints
       .filter((point) => point.event)
       .map((point) => {
         const timeInSeconds = point.timestampNum / 1000;
@@ -996,16 +1031,26 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         const event = point.event!;
         const markerStyle = signalMarkerStyles[event.type] ?? signalMarkerStyles.sell;
 
-        const marker: SeriesMarkerBar<Time> = {
+        const markerPrice =
+          typeof event.price === 'number' && Number.isFinite(event.price)
+            ? event.price
+            : typeof point.benchmarkPrice === 'number' && Number.isFinite(point.benchmarkPrice)
+              ? point.benchmarkPrice
+              : typeof resolvedBaselinePrice === 'number' && Number.isFinite(resolvedBaselinePrice)
+                ? resolvedBaselinePrice
+                : undefined;
+
+        const marker: SeriesMarker<Time> = {
           time: timeInSeconds as Time,
-          position: markerStyle.position,
+          position: markerPrice !== undefined ? 'atPriceMiddle' : markerStyle.position,
           color: markerStyle.color,
           shape: markerStyle.shape,
+          ...(markerPrice !== undefined ? { price: markerPrice } : {}),
         };
 
         return marker;
       })
-      .filter((marker): marker is SeriesMarkerBar<Time> => marker !== null)
+      .filter((marker): marker is SeriesMarker<Time> => marker !== null)
       .sort((a, b) => (a.time as number) - (b.time as number));
 
     let sortedBenchmarkData: { time: Time; value: number }[] | undefined;

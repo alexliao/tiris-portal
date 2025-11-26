@@ -23,7 +23,13 @@
       "Bash(node:*)",
       "Read(//Users/alex/tiris/tiris-portal/docs/backend/**)",
       "Read(//Users/alex/tiris/tiris-backend/docs/api/**)",
-      "Read(//Users/alex/tiris/tiris-portal/docs/bot/**)"
+      "Read(//Users/alex/tiris/tiris-portal/docs/bot/**)",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__list_pages",
+      "Bash(pkill:*)",
+      "Skill(example-skills:webapp-testing)",
+      "Bash(python:*)",
+      "Bash(playwright install:*)"
     ],
     "deny": [],
     "ask": []
