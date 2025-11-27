@@ -117,6 +117,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const benchmarkLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const benchmarkMarkersSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const benchmarkMarkersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const benchmarkLabelMarkersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const positionSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
   const rightPriceScaleRef = useRef<IPriceScaleApi | null>(null);
@@ -195,6 +196,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   };
 
   heightRef.current = height;
+  const LABEL_PRICE_OFFSET_RATIO = 0.04; // offset to keep labels from overlapping candles
 
   useEffect(() => {
     if (typeof tradingSignalsVisible === 'boolean') {
@@ -491,6 +493,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
       benchmarkMarkersSeriesRef.current = benchmarkMarkerSeries;
       benchmarkMarkersPluginRef.current = createSeriesMarkers(benchmarkMarkerSeries, []);
+      benchmarkLabelMarkersPluginRef.current = createSeriesMarkers(benchmarkMarkerSeries, []);
 
       const volumeSeries = chart.addSeries(HistogramSeries, {
         priceScaleId: 'volume',
@@ -790,6 +793,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         tooltipRef.current = null;
         benchmarkMarkersPluginRef.current?.detach();
         benchmarkMarkersPluginRef.current = null;
+        benchmarkLabelMarkersPluginRef.current?.detach();
+        benchmarkLabelMarkersPluginRef.current = null;
       };
     } catch (err) {
       console.error('Failed to initialize candlestick chart:', err);
@@ -817,6 +822,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       benchmarkLineSeriesRef.current = null;
       benchmarkMarkersSeriesRef.current = null;
       benchmarkMarkersPluginRef.current = null;
+      benchmarkLabelMarkersPluginRef.current = null;
       volumeSeriesRef.current = null;
       positionSeriesRef.current = null;
       rightPriceScaleRef.current = null;
@@ -1059,46 +1065,88 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       })
       .filter((item): item is { time: Time; value: number } => item !== null);
 
-    const benchmarkMarkers: SeriesMarker<Time>[] = benchmarkPoints
-      .filter((point) => point.event)
-      .map((point) => {
-        const timeInSeconds = point.timestampNum / 1000;
-        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
-          return null;
-        }
+    const benchmarkPriceMarkers: SeriesMarker<Time>[] = [];
+    const benchmarkLabelMarkers: SeriesMarker<Time>[] = [];
+    const buyLabelText = t('performance.tooltip.buy', 'BUY');
+    const sellLabelText = t('performance.tooltip.sell', 'SELL');
 
-        const event = point.event!;
-        const markerStyle = signalMarkerStyles[event.type] ?? signalMarkerStyles.sell;
+    benchmarkPoints.forEach((point) => {
+      if (!point.event) {
+        return;
+      }
+      const timeInSeconds = point.timestampNum / 1000;
+      if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+        return;
+      }
 
-        const markerPrice =
-          typeof event.price === 'number' && Number.isFinite(event.price)
-            ? event.price
-            : typeof point.benchmarkPrice === 'number' && Number.isFinite(point.benchmarkPrice)
-              ? point.benchmarkPrice
-              : typeof resolvedBaselinePrice === 'number' && Number.isFinite(resolvedBaselinePrice)
-                ? resolvedBaselinePrice
-                : undefined;
+      const event = point.event;
+      const markerStyle = signalMarkerStyles[event.type] ?? signalMarkerStyles.sell;
+      const markerPrice =
+        typeof event.price === 'number' && Number.isFinite(event.price)
+          ? event.price
+          : typeof point.benchmarkPrice === 'number' && Number.isFinite(point.benchmarkPrice)
+            ? point.benchmarkPrice
+            : typeof resolvedBaselinePrice === 'number' && Number.isFinite(resolvedBaselinePrice)
+              ? resolvedBaselinePrice
+              : undefined;
 
-        const marker: SeriesMarker<Time> =
+      if (markerPrice !== undefined) {
+        benchmarkPriceMarkers.push({
+          time: timeInSeconds as Time,
+          position: 'atPriceMiddle',
+          color: markerStyle.color,
+          shape: markerStyle.shape,
+          price: markerPrice,
+        });
+      } else {
+        benchmarkPriceMarkers.push({
+          time: timeInSeconds as Time,
+          position: markerStyle.position as SeriesMarkerBarPosition,
+          color: markerStyle.color,
+          shape: markerStyle.shape,
+        });
+      }
+
+      const markerText =
+        event.type === 'buy'
+          ? buyLabelText
+          : event.type === 'sell'
+            ? sellLabelText
+            : undefined;
+
+      if (markerText) {
+        const adjustedPrice =
+          markerPrice !== undefined && markerPrice > 0
+            ? event.type === 'buy'
+              ? markerPrice * (1 - LABEL_PRICE_OFFSET_RATIO)
+              : markerPrice * (1 + LABEL_PRICE_OFFSET_RATIO)
+            : undefined;
+
+        benchmarkLabelMarkers.push(
           markerPrice !== undefined
             ? {
                 time: timeInSeconds as Time,
-                position: 'atPriceMiddle',
+                position: event.type === 'buy' ? 'atPriceBottom' : 'atPriceTop',
                 color: markerStyle.color,
-                shape: markerStyle.shape,
-                price: markerPrice,
+                shape: 'circle',
+                text: markerText,
+                price: adjustedPrice ?? markerPrice,
+                size: 0,
               }
             : {
                 time: timeInSeconds as Time,
-                position: markerStyle.position as SeriesMarkerBarPosition,
+                position: event.type === 'buy' ? 'belowBar' : 'aboveBar',
                 color: markerStyle.color,
-                shape: markerStyle.shape,
-              };
+                shape: 'circle',
+                text: markerText,
+                size: 0,
+              }
+        );
+      }
+    });
 
-        return marker;
-      })
-      .filter((marker): marker is SeriesMarker<Time> => marker !== null)
-      .sort((a, b) => (a.time as number) - (b.time as number));
+    benchmarkPriceMarkers.sort((a, b) => (a.time as number) - (b.time as number));
+    benchmarkLabelMarkers.sort((a, b) => (a.time as number) - (b.time as number));
 
     let sortedBenchmarkData: { time: Time; value: number }[] | undefined;
     if (benchmarkData.length > 0) {
@@ -1123,7 +1171,13 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     if (benchmarkMarkersPluginRef.current) {
       benchmarkMarkersPluginRef.current.setMarkers(
-        signalsVisible ? benchmarkMarkers : []
+        signalsVisible ? benchmarkPriceMarkers : []
+      );
+    }
+
+    if (benchmarkLabelMarkersPluginRef.current) {
+      benchmarkLabelMarkersPluginRef.current.setMarkers(
+        signalsVisible ? benchmarkLabelMarkers : []
       );
     }
 
