@@ -15,62 +15,83 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
   const { t } = useTranslation();
   const [metrics, setMetrics] = useState<LightweightTradingMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isWarmingUp, setIsWarmingUp] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
+    let hasShownFirstResult = false;
+
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const fetchMetrics = async () => {
       try {
         setIsLoading(true);
 
-        // Fetch sub-accounts to determine stock and quote symbols
-        const subAccounts = await getSubAccountsByTrading(trading.id);
+        do {
+          // Fetch sub-accounts to determine stock and quote symbols
+          const subAccounts = await getSubAccountsByTrading(trading.id);
 
-        // Identify stock and quote sub-accounts
-        const stockSubAccount = subAccounts.find(account =>
-          account.info?.account_type === 'stock' ||
-          ['ETH', 'BTC'].includes(account.symbol)
-        );
-        const quoteSubAccount = subAccounts.find(account =>
-          account.info?.account_type === 'balance' ||
-          ['USDT', 'USD', 'USDC'].includes(account.symbol)
-        );
+          // Identify stock and quote sub-accounts
+          const stockSubAccount = subAccounts.find(account =>
+            account.info?.account_type === 'stock' ||
+            ['ETH', 'BTC'].includes(account.symbol)
+          );
+          const quoteSubAccount = subAccounts.find(account =>
+            account.info?.account_type === 'balance' ||
+            ['USDT', 'USD', 'USDC'].includes(account.symbol)
+          );
 
-        // Fallback to defaults if not found
-        const stockSymbol = stockSubAccount?.symbol || 'ETH';
-        const quoteSymbol = quoteSubAccount?.symbol || 'USDT';
+          // Fallback to defaults if not found
+          const stockSymbol = stockSubAccount?.symbol || 'ETH';
+          const quoteSymbol = quoteSubAccount?.symbol || 'USDT';
 
-        const stockBal = typeof stockSubAccount?.balance === 'number'
-          ? stockSubAccount.balance
-          : stockSubAccount?.balance
-            ? parseFloat(stockSubAccount.balance) || 0
-            : 0;
+          const stockBal = typeof stockSubAccount?.balance === 'number'
+            ? stockSubAccount.balance
+            : stockSubAccount?.balance
+              ? parseFloat(stockSubAccount.balance) || 0
+              : 0;
 
-        const quoteBal = typeof quoteSubAccount?.balance === 'number'
-          ? quoteSubAccount.balance
-          : quoteSubAccount?.balance
-            ? parseFloat(quoteSubAccount.balance) || 0
-            : 0;
+          const quoteBal = typeof quoteSubAccount?.balance === 'number'
+            ? quoteSubAccount.balance
+            : quoteSubAccount?.balance
+              ? parseFloat(quoteSubAccount.balance) || 0
+              : 0;
 
-        const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
-        const exchangeType = trading.exchange_binding?.exchange_type;
+          const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
+          const exchangeType = trading.exchange_binding?.exchange_type;
 
-        const result = await fetchLightweightMetrics(
-          trading,
-          stockSymbol,
-          quoteSymbol,
-          '1m',
-          {
-            stockBalance: stockBal,
-            quoteBalance: quoteBal,
-            requireAuth,
-            exchangeType,
+          const result = await fetchLightweightMetrics(
+            trading,
+            stockSymbol,
+            quoteSymbol,
+            '1m',
+            {
+              stockBalance: stockBal,
+              quoteBalance: quoteBal,
+              requireAuth,
+              exchangeType,
+            }
+          );
+
+          if (!isMounted) {
+            return;
           }
-        );
 
-        if (isMounted) {
           setMetrics(result);
-        }
+          setIsWarmingUp(Boolean(result.warmingUp));
+
+          if (!hasShownFirstResult) {
+            setIsLoading(false); // Show values even during warmup
+            hasShownFirstResult = true;
+          }
+
+          // If backend is warming up (HTTP 202), wait then retry until stable (200)
+          if (result.warmingUp) {
+            await delay(2000);
+          } else {
+            break;
+          }
+        } while (isMounted);
       } catch (error) {
         console.error('Failed to fetch trading card metrics:', error);
         if (isMounted) {
@@ -84,10 +105,9 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
             benchmarkReturn: null,
             isLoading: false,
             error: error instanceof Error ? error : new Error('Unknown error'),
+            warmingUp: false,
           });
-        }
-      } finally {
-        if (isMounted) {
+          setIsWarmingUp(false);
           setIsLoading(false);
         }
       }
@@ -124,7 +144,7 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
         {/* Current Assets Value */}
         {metrics.currentEquity !== null && (
           <div className="text-left">
-            <p className="text-2xl font-bold text-gray-900 mb-2">
+            <p className={`text-2xl font-bold text-gray-900 mb-2 ${isWarmingUp ? 'animate-pulse' : ''}`}>
               {formatCurrency(metrics.currentEquity, '$', 0)}
             </p>
             <p className="text-xs text-gray-500 font-medium">{t('performance.chart.assetsValue')}</p>
@@ -133,7 +153,7 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
 
         {/* Current ROI */}
         <div className="text-right">
-          <p className={`text-2xl font-bold mb-2 ${metrics.currentROI > 0 ? 'text-green-600' : metrics.currentROI < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+          <p className={`text-2xl font-bold mb-2 ${metrics.currentROI > 0 ? 'text-green-600' : metrics.currentROI < 0 ? 'text-red-600' : 'text-gray-900'} ${isWarmingUp ? 'animate-pulse' : ''}`}>
             {formatROI(metrics.currentROI)}
           </p>
           <p className="text-xs text-gray-500 font-medium">{t('performance.metrics.totalROI')}</p>

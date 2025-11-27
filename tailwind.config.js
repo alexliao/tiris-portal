@@ -25,6 +25,9 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
+      animation: {
+        pulse: 'pulse 1s cubic-bezier(0.4,0,0.6,1) infinite', // new duration
       }
     },
   },

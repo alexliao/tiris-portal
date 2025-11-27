@@ -10,11 +10,12 @@ export interface LightweightTradingMetrics {
   currentROI: number;
   unrealizedPnL: number;
   quoteBalance: number;
-  stockBalance: number | null;
-  stockPrice: number | null;
+ stockBalance: number | null;
+ stockPrice: number | null;
   benchmarkReturn: number | null;
   isLoading: boolean;
   error: Error | null;
+  warmingUp?: boolean;
 }
 
 /**
@@ -63,6 +64,8 @@ export async function fetchLightweightMetrics(
     // Get the latest data point
     const latestPoint = equityCurveData.data_points[equityCurveData.data_points.length - 1];
 
+    const isWarmingUp = equityCurveData.warming_up === true;
+
     if (!latestPoint) {
       // No data points available yet
       return {
@@ -75,6 +78,7 @@ export async function fetchLightweightMetrics(
         benchmarkReturn: null,
         isLoading: false,
         error: null,
+        warmingUp: isWarmingUp,
       };
     }
 
@@ -129,6 +133,7 @@ export async function fetchLightweightMetrics(
       benchmarkReturn,
       isLoading: false,
       error: null,
+      warmingUp: isWarmingUp,
     };
   } catch (error) {
     console.error('Failed to fetch lightweight metrics:', error);
@@ -143,6 +148,7 @@ export async function fetchLightweightMetrics(
       benchmarkReturn: null,
       isLoading: false,
       error: error instanceof Error ? error : new Error('Unknown error'),
+      warmingUp: false,
     };
   }
 }
