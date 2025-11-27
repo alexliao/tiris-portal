@@ -19,7 +19,6 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
 
   useEffect(() => {
     let isMounted = true;
-    let hasShownFirstResult = false;
 
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -28,6 +27,11 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
         setIsLoading(true);
 
         do {
+          const endTimeMs =
+            trading.type === 'backtest'
+              ? Date.parse((trading.info as { end_date?: string })?.end_date ?? '') || Date.now()
+              : Date.now();
+
           // Fetch sub-accounts to determine stock and quote symbols
           const subAccounts = await getSubAccountsByTrading(trading.id);
 
@@ -70,6 +74,7 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
               quoteBalance: quoteBal,
               requireAuth,
               exchangeType,
+              endTimeMs,
             }
           );
 
@@ -80,15 +85,10 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
           setMetrics(result);
           setIsWarmingUp(Boolean(result.warmingUp));
 
-          if (!hasShownFirstResult) {
-            setIsLoading(false); // Show values even during warmup
-            hasShownFirstResult = true;
-          }
-
-          // If backend is warming up (HTTP 202), wait then retry until stable (200)
           if (result.warmingUp) {
             await delay(2000);
           } else {
+            setIsLoading(false); // Only show metrics once backend is ready (200)
             break;
           }
         } while (isMounted);
@@ -120,17 +120,7 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
     };
   }, [trading]);
 
-  if (isLoading) {
-    return (
-      <div className="p-4 flex items-center justify-center h-20">
-        <div className="animate-pulse flex space-x-2">
-          <div className="h-4 bg-gray-200 rounded w-32"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!metrics) {
+  if (!metrics && !isLoading) {
     return (
       <div className="p-4 text-center text-gray-500 text-sm h-20 flex items-center justify-center">
         No metrics available
@@ -139,13 +129,21 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
   }
 
   return (
-    <div className="p-6">
-      <div className="grid grid-cols-2 gap-6">
+    <div className="relative p-6">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="flex items-center space-x-3 text-gray-500">
+            <div className="h-6 w-6 border-2 border-gray-200 border-tiris-primary-500 border-t-2 rounded-full animate-spin" aria-label="Loading metrics" />
+            <span className="text-sm font-medium">{t('common.loading')}</span>
+          </div>
+        </div>
+      )}
+      <div className={`grid grid-cols-2 gap-6 ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-200`}>
         {/* Current Assets Value */}
-        {metrics.currentEquity !== null && (
+        {metrics?.currentEquity !== null && (
           <div className="text-left">
             <p className={`text-2xl font-bold text-gray-900 mb-2 ${isWarmingUp ? 'animate-pulse' : ''}`}>
-              {formatCurrency(metrics.currentEquity, '$', 0)}
+              {formatCurrency(metrics?.currentEquity ?? 0, '$', 0)}
             </p>
             <p className="text-xs text-gray-500 font-medium">{t('performance.chart.assetsValue')}</p>
           </div>
@@ -153,8 +151,8 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
 
         {/* Current ROI */}
         <div className="text-right">
-          <p className={`text-2xl font-bold mb-2 ${metrics.currentROI > 0 ? 'text-green-600' : metrics.currentROI < 0 ? 'text-red-600' : 'text-gray-900'} ${isWarmingUp ? 'animate-pulse' : ''}`}>
-            {formatROI(metrics.currentROI)}
+          <p className={`text-2xl font-bold mb-2 ${metrics && metrics.currentROI > 0 ? 'text-green-600' : metrics && metrics.currentROI < 0 ? 'text-red-600' : 'text-gray-900'} ${isWarmingUp ? 'animate-pulse' : ''}`}>
+            {formatROI(metrics?.currentROI ?? 0)}
           </p>
           <p className="text-xs text-gray-500 font-medium">{t('performance.metrics.totalROI')}</p>
         </div>

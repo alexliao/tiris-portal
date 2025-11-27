@@ -43,11 +43,13 @@ export async function fetchLightweightMetrics(
     quoteBalance?: number;
     requireAuth?: boolean;
     exchangeType?: string;
+    endTimeMs?: number;
   } = {}
 ): Promise<LightweightTradingMetrics> {
   const initialFunds = (trading.info?.initial_funds as number | undefined) ?? 0;
   const resolvedRequireAuth =
     options.requireAuth ?? (trading.type !== 'paper' && trading.type !== 'backtest');
+  const resolvedEndTime = options.endTimeMs;
 
   try {
     // Fetch only 1 recent timeframe - minimal data transfer (~500 bytes)
@@ -58,7 +60,8 @@ export async function fetchLightweightMetrics(
       stockSymbol,
       quoteSymbol,
       resolvedRequireAuth,
-      options.exchangeType
+      options.exchangeType,
+      resolvedEndTime
     );
 
     // Get the latest data point
