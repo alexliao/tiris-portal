@@ -24,6 +24,7 @@ import type {
   TradingDataPoint,
 } from '../../utils/chartData';
 import { createChartTooltip, positionTooltipAvoidingCrosshair } from './tooltipUtils';
+import { AxisDateTimeFormatOption, createDateTimeFormatter, DateFormatOption, DateTimeFormatOption, resolveLocale } from '../../utils/locale';
 
 interface CandlestickChartProps {
   candles: TradingCandlestickPoint[];
@@ -95,7 +96,19 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   tradingSignalsVisible,
   seriesVisibility: externalSeriesVisibility,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const axisDateTimeFormatter = useMemo(
+    () => (typeof Intl !== 'undefined' ? createDateTimeFormatter(AxisDateTimeFormatOption) : undefined),
+    [i18n.language]
+  );
+  const fullDateTimeFormatter = useMemo(
+    () => (typeof Intl !== 'undefined' ? createDateTimeFormatter(DateTimeFormatOption) : undefined),
+    [i18n.language]
+  );
+  const dateOnlyFormatter = useMemo(
+    () => (typeof Intl !== 'undefined' ? createDateTimeFormatter(DateFormatOption) : undefined),
+    [i18n.language]
+  );
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -270,44 +283,32 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         console.warn(t('trading.chart.containerWidthZero', 'Chart container width is 0, chart may not render properly'));
       }
 
-      const resolvedLocale = typeof Intl !== 'undefined'
-        ? Intl.DateTimeFormat().resolvedOptions()
-        : undefined;
+      const resolvedLocale = resolveLocale(i18n.language);
 
       const pad2 = (value: number) => value.toString().padStart(2, '0');
-
-      const localTimeFormatter = typeof Intl !== 'undefined'
-        ? new Intl.DateTimeFormat(resolvedLocale?.locale, {
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-          timeZone: resolvedLocale?.timeZone,
-        })
-        : undefined;
-
-      const localDateFormatter = typeof Intl !== 'undefined'
-        ? new Intl.DateTimeFormat(resolvedLocale?.locale, {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric',
-          timeZone: resolvedLocale?.timeZone,
-        })
-        : undefined;
 
       const fallbackDateTimeFormat = (date: Date) => `${pad2(date.getMonth() + 1)}/${pad2(date.getDate())} ${pad2(
         date.getHours()
       )}:${pad2(date.getMinutes())}`;
 
+      const fallbackDateTimeFormatWithYear = (date: Date) =>
+        `${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}/${date.getFullYear()} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+
       const fallbackDateFormat = (year: number, month: number, day: number) =>
         `${pad2(month)}/${pad2(day)}/${year.toString()}`;
 
       const formatDateTime = (date: Date) => {
-        if (localTimeFormatter) {
-          return localTimeFormatter.format(date);
+        if (axisDateTimeFormatter) {
+          return axisDateTimeFormatter.format(date);
         }
         return fallbackDateTimeFormat(date);
+      };
+
+      const formatDateTimeWithYear = (date: Date) => {
+        if (fullDateTimeFormatter) {
+          return fullDateTimeFormatter.format(date);
+        }
+        return fallbackDateTimeFormatWithYear(date);
       };
 
       const isBusinessDayTime = (time: Time): time is BusinessDay => {
@@ -322,9 +323,17 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         return formatDateTime(date);
       };
 
+      const formatTimestampSecondsWithYear = (timestamp: number) => {
+        const date = new Date(timestamp * 1000);
+        if (Number.isNaN(date.getTime())) {
+          return '';
+        }
+        return formatDateTimeWithYear(date);
+      };
+
       const formatBusinessDay = (time: BusinessDay) => {
-        if (localDateFormatter) {
-          return localDateFormatter.format(new Date(Date.UTC(time.year, time.month - 1, time.day, 12, 0, 0)));
+        if (dateOnlyFormatter) {
+          return dateOnlyFormatter.format(new Date(Date.UTC(time.year, time.month - 1, time.day, 12, 0, 0)));
         }
         return fallbackDateFormat(time.year, time.month, time.day);
       };
@@ -332,6 +341,18 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       const formatTimeValue = (time: Time) => {
         if (typeof time === 'number') {
           return formatTimestampSeconds(time);
+        }
+
+        if (isBusinessDayTime(time)) {
+          return formatBusinessDay(time);
+        }
+
+        return '';
+      };
+
+      const formatTimeValueWithYear = (time: Time) => {
+        if (typeof time === 'number') {
+          return formatTimestampSecondsWithYear(time);
         }
 
         if (isBusinessDayTime(time)) {
@@ -369,7 +390,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           tickMarkFormatter: (time: Time) => formatTimeValue(time),
         },
         localization: {
-          locale: resolvedLocale?.locale,
+          locale: resolvedLocale,
           timeFormatter: (time: Time) => formatTimeValue(time),
         },
         rightPriceScale: {
@@ -535,7 +556,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       const toolTip = createChartTooltip(chartContainerRef.current);
       tooltipRef.current = toolTip;
 
-      const formatCrosshairTime = (time: Time) => formatTimeValue(time);
+      const formatCrosshairTime = (time: Time) => formatTimeValueWithYear(time);
 
       const extractOhlc = (data: unknown) => {
         if (
@@ -1160,6 +1181,10 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     timeframe,
     baselinePrice,
     signalsVisible,
+    axisDateTimeFormatter,
+    fullDateTimeFormatter,
+    dateOnlyFormatter,
+    i18n.language,
   ]);
 
   useEffect(() => {

@@ -6,6 +6,7 @@ import TradingPerformanceWidget from '../trading/TradingPerformanceWidget';
 import { getTradingById, type Trading } from '../../utils/api';
 import { useAuth } from '../../hooks/useAuth';
 import { getTradingDayCount } from '../../utils/tradingDates';
+import { createDateTimeFormatter, DateFormatOption } from '../../utils/locale';
 import { THEME_COLORS } from '../../config/theme';
 
 const parseNumericValue = (value: unknown): number | null => {
@@ -43,12 +44,7 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
   }, []);
 
   const dateFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(i18n.language || undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      }),
+    () => createDateTimeFormatter(DateFormatOption),
     [i18n.language]
   );
 

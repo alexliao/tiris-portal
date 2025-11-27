@@ -12,7 +12,7 @@ import ConfirmDialog from '../components/common/ConfirmDialog';
 import EditableText from '../components/common/EditableText';
 import UnderConstruction from '../components/common/UnderConstruction';
 import { THEME_COLORS, getTradingTheme, getTradingIcon } from '../config/theme';
-import { createDateTimeFormatter } from '../utils/locale';
+import { createDateTimeFormatter, DateTimeFormatOption } from '../utils/locale';
 import { getTradingDayCount } from '../utils/tradingDates';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
@@ -91,14 +91,7 @@ export const TradingDetailPage: React.FC = () => {
   }, [trading?.type]);
 
   const dateTimeFormatter = useMemo(
-    () =>
-      createDateTimeFormatter(i18n.language, {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
+    () => createDateTimeFormatter(DateTimeFormatOption),
     [i18n.language]
   );
 

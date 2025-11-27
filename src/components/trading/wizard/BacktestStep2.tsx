@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { AlertCircle, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
 import { type OHLCVCandle } from '../../../utils/api';
-import { resolveLocale } from '../../../utils/locale';
+import { AxisDateTimeFormatOption, createDateTimeFormatter, DateFormatOption } from '../../../utils/locale';
 
 interface ChartDataPoint {
   timestamp: number;
@@ -43,24 +43,22 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
   const [brushStartIndex, setBrushStartIndex] = useState(0);
   const [brushEndIndex, setBrushEndIndex] = useState(100);
 
-  const resolvedLocale = useMemo(() => resolveLocale(i18n.language), [i18n.language]);
+  const axisDateFormatter = useMemo(
+    () => createDateTimeFormatter(AxisDateTimeFormatOption),
+    [i18n.language]
+  );
   const dateFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(resolvedLocale, {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }),
-    [resolvedLocale]
+    () => createDateTimeFormatter(DateFormatOption),
+    [i18n.language]
   );
 
   const localizedChartData: LocalizedChartDataPoint[] = useMemo(
     () =>
       chartData.map((dataPoint) => ({
         ...dataPoint,
-        date: dateFormatter.format(new Date(dataPoint.timestamp))
+        date: axisDateFormatter.format(new Date(dataPoint.timestamp))
       })),
-    [chartData, dateFormatter]
+    [axisDateFormatter, chartData]
   );
 
   // Helper function to apply default time range
