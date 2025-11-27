@@ -30,7 +30,6 @@ export function positionTooltipAvoidingCrosshair({
   point,
   tooltipEl,
   container,
-  chart,
 }: TooltipPositionParams) {
   const containerWidth = container.clientWidth;
   const containerHeight = container.clientHeight;

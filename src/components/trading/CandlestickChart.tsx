@@ -8,6 +8,7 @@ import {
   AreaSeries,
   HistogramSeries,
   type SeriesMarker,
+  type SeriesMarkerBarPosition,
   type ISeriesMarkersPluginApi,
   type IChartApi,
   type ISeriesApi,
@@ -103,12 +104,15 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const benchmarkLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const benchmarkMarkersSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const benchmarkMarkersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
-  const equityPercentageSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const positionSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
   const rightPriceScaleRef = useRef<IPriceScaleApi | null>(null);
   const volumePriceScaleRef = useRef<IPriceScaleApi | null>(null);
   const positionPriceScaleRef = useRef<IPriceScaleApi | null>(null);
+  const zeroPriceLineRef = useRef<{
+    line: ReturnType<ISeriesApi<'Area'>['createPriceLine']> | ReturnType<ISeriesApi<'Candlestick'>['createPriceLine']>;
+    series: ISeriesApi<'Area'> | ISeriesApi<'Candlestick'>;
+  } | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const heightRef = useRef(height);
   const benchmarkBaselineRef = useRef<number | undefined>(undefined);
@@ -131,6 +135,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const [localSignalsVisible, setLocalSignalsVisible] = useState(
     tradingSignalsVisible ?? true
   );
+  const roiByTimeRef = useRef<Map<number, number>>(new Map());
 
   const tradingEventsBySecond = useMemo(() => {
     const map = new Map<number, TradingDataPoint['event']>();
@@ -183,6 +188,28 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       setLocalSignalsVisible(tradingSignalsVisible);
     }
   }, [tradingSignalsVisible]);
+
+  const syncZeroLine = (value: number | undefined) => {
+    const targetSeries = equityAreaSeriesRef.current || candlestickSeriesRef.current;
+    if (!targetSeries) {
+      return;
+    }
+    if (zeroPriceLineRef.current) {
+      zeroPriceLineRef.current.series.removePriceLine(zeroPriceLineRef.current.line);
+      zeroPriceLineRef.current = null;
+    }
+    if (value === undefined || !Number.isFinite(value)) {
+      return;
+    }
+    const line = targetSeries.createPriceLine({
+      price: value,
+      color: '#9CA3AF',
+      lineWidth: 1,
+      lineStyle: 0,
+      axisLabelVisible: false,
+    });
+    zeroPriceLineRef.current = { line, series: targetSeries };
+  };
 
   const signalsVisible =
     typeof tradingSignalsVisible === 'boolean'
@@ -314,6 +341,15 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         return '';
       };
 
+      const formatValueAsRoi = (value: number) => {
+        const baseline = benchmarkBaselineRef.current ?? baselinePrice;
+        if (typeof baseline === 'number' && Number.isFinite(baseline) && baseline !== 0) {
+          const roiPercent = ((value - baseline) / baseline) * 100;
+          return `${roiPercent.toFixed(2)}%`;
+        }
+        return `${value.toFixed(2)}`;
+      };
+
       const chart = createChart(chartContainerRef.current, {
         width: containerWidth || 600,
         height: heightRef.current,
@@ -344,12 +380,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           },
         },
         leftPriceScale: {
-          visible: true,
-          borderColor: '#d1d4dc',
-          scaleMargins: {
-            top: 0.2,
-            bottom: 0.1,
-          },
+          visible: false,
         },
       });
 
@@ -379,6 +410,11 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         borderDownColor: '#EF4444',
         wickUpColor: '#10B981',
         wickDownColor: '#EF4444',
+        priceFormat: {
+          type: 'custom',
+          minMove: 0.01,
+          formatter: formatValueAsRoi,
+        },
       });
 
       if (!series) {
@@ -394,7 +430,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         priceFormat: {
           type: 'custom',
           minMove: 0.01,
-          formatter: (value: number) => `$${value.toFixed(2)}`,
+          formatter: formatValueAsRoi,
         },
       });
 
@@ -407,7 +443,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         priceFormat: {
           type: 'custom',
           minMove: 0.01,
-          formatter: (value: number) => `$${value.toFixed(2)}`,
+          formatter: formatValueAsRoi,
         },
       });
 
@@ -418,7 +454,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         priceFormat: {
           type: 'custom',
           minMove: 0.01,
-          formatter: (value: number) => `$${value.toFixed(2)}`,
+          formatter: formatValueAsRoi,
         },
       });
 
@@ -434,17 +470,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
       benchmarkMarkersSeriesRef.current = benchmarkMarkerSeries;
       benchmarkMarkersPluginRef.current = createSeriesMarkers(benchmarkMarkerSeries, []);
-
-      const equityPercentageSeries = chart.addSeries(LineSeries, {
-        priceScaleId: 'left',
-        color: 'rgba(37, 99, 235, 0)',
-        lineWidth: 1,
-        priceFormat: {
-          type: 'custom',
-          minMove: 0.1,
-          formatter: (value: number) => `${value.toFixed(1)}%`,
-        },
-      });
 
       const volumeSeries = chart.addSeries(HistogramSeries, {
         priceScaleId: 'volume',
@@ -497,7 +522,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       if (!benchmarkMarkersSeriesRef.current) {
         benchmarkMarkersSeriesRef.current = benchmarkMarkerSeries;
       }
-      equityPercentageSeriesRef.current = equityPercentageSeries;
       volumeSeriesRef.current = volumeSeries;
       positionSeriesRef.current = positionSeries;
 
@@ -596,8 +620,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         const benchmarkValue = benchmarkLineSeriesRef.current
           ? extractSingleValue(param.seriesData.get(benchmarkLineSeriesRef.current))
           : undefined;
-        const roiValue = equityPercentageSeriesRef.current
-          ? extractSingleValue(param.seriesData.get(equityPercentageSeriesRef.current))
+        const crosshairSeconds = toSeconds(param.time);
+        const roiValue = crosshairSeconds !== null
+          ? roiByTimeRef.current.get(crosshairSeconds)
           : undefined;
         let benchmarkPercent: number | undefined;
 
@@ -749,7 +774,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       console.error('Failed to initialize candlestick chart:', err);
       setError(t('trading.chart.failedToInitialize', `Failed to initialize chart: ${err instanceof Error ? err.message : String(err)}`));
     }
-  }, [initialBalance, t]);
+  }, [initialBalance, baselinePrice, t]);
 
   useEffect(() => {
     if (!chartRef.current) {
@@ -771,12 +796,15 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       benchmarkLineSeriesRef.current = null;
       benchmarkMarkersSeriesRef.current = null;
       benchmarkMarkersPluginRef.current = null;
-      equityPercentageSeriesRef.current = null;
       volumeSeriesRef.current = null;
       positionSeriesRef.current = null;
       rightPriceScaleRef.current = null;
       volumePriceScaleRef.current = null;
       positionPriceScaleRef.current = null;
+      if (zeroPriceLineRef.current) {
+        zeroPriceLineRef.current.series.removePriceLine(zeroPriceLineRef.current.line);
+        zeroPriceLineRef.current = null;
+      }
     };
   }, []);
 
@@ -795,9 +823,10 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       equityAreaSeriesRef.current?.setData([]);
       benchmarkLineSeriesRef.current?.setData([]);
       benchmarkMarkersSeriesRef.current?.setData([]);
-      equityPercentageSeriesRef.current?.setData([]);
       volumeSeriesRef.current?.setData([]);
       positionSeriesRef.current?.setData([]);
+      roiByTimeRef.current = new Map();
+      syncZeroLine(undefined);
       if (!loading) {
         setError(t('trading.chart.noDataAvailable', 'No candlestick data available for this timeframe.'));
       }
@@ -919,6 +948,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         ? baselinePrice
         : undefined;
     benchmarkBaselineRef.current = resolvedBaselinePrice;
+    syncZeroLine(resolvedBaselinePrice);
 
     // Handle before creation equity data
     const beforeCreationData = (beforeCreationEquityPoints || [])
@@ -975,32 +1005,20 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       }
     }
 
-    const equityPercentageData = equityPoints
-      .map((point) => {
-        const timeInSeconds = point.timestampNum / 1000;
-        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
-          return null;
-        }
-
-        if (point.roi === undefined || point.roi === null) {
-          return null;
-        }
-
-        return {
-          time: timeInSeconds as Time,
-          value: point.roi,
-        };
-      })
-      .filter((item): item is { time: Time; value: number } => item !== null);
-
-    if (equityPercentageSeriesRef.current) {
-      if (equityPercentageData.length > 0) {
-        equityPercentageData.sort((a, b) => (a.time as number) - (b.time as number));
-        equityPercentageSeriesRef.current.setData(equityPercentageData);
-      } else {
-        equityPercentageSeriesRef.current.setData([]);
+    const equityRoiMap = new Map<number, number>();
+    equityPoints.forEach((point) => {
+      const timeInSeconds = point.timestampNum / 1000;
+      if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+        return;
       }
-    }
+
+      if (point.roi === undefined || point.roi === null) {
+        return;
+      }
+
+      equityRoiMap.set(timeInSeconds, point.roi);
+    });
+    roiByTimeRef.current = equityRoiMap;
 
     const benchmarkData = benchmarkPoints
       .map((point) => {
@@ -1040,13 +1058,21 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
                 ? resolvedBaselinePrice
                 : undefined;
 
-        const marker: SeriesMarker<Time> = {
-          time: timeInSeconds as Time,
-          position: markerPrice !== undefined ? 'atPriceMiddle' : markerStyle.position,
-          color: markerStyle.color,
-          shape: markerStyle.shape,
-          ...(markerPrice !== undefined ? { price: markerPrice } : {}),
-        };
+        const marker: SeriesMarker<Time> =
+          markerPrice !== undefined
+            ? {
+                time: timeInSeconds as Time,
+                position: 'atPriceMiddle',
+                color: markerStyle.color,
+                shape: markerStyle.shape,
+                price: markerPrice,
+              }
+            : {
+                time: timeInSeconds as Time,
+                position: markerStyle.position as SeriesMarkerBarPosition,
+                color: markerStyle.color,
+                shape: markerStyle.shape,
+              };
 
         return marker;
       })
