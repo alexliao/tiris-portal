@@ -614,7 +614,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         const chunkDurationMs = Math.max(timeframeMs * TOTAL_DATA_TO_LOAD, timeframeMs * 50, 60_000);
         const pointMap = new Map<number, NonNullable<EquityCurveNewData['data_points']>[number]>();
         let lastChunk: EquityCurveNewData | null = null;
-        let cursorStart = backtestStartTime;
+        const backtestWindowStart = Math.max(
+          backtestStartTime,
+          effectiveEndTime - timeframeMs * TOTAL_DATA_TO_LOAD
+        );
+        let cursorStart = backtestWindowStart;
 
         while (cursorStart < effectiveEndTime) {
           const cursorEnd = Math.min(cursorStart + chunkDurationMs, effectiveEndTime);
@@ -680,11 +684,15 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           .sort((a, b) => a[0] - b[0])
           .map(([, point]) => point);
 
+        const limitedPoints = combinedPoints.length > TOTAL_DATA_TO_LOAD
+          ? combinedPoints.slice(combinedPoints.length - TOTAL_DATA_TO_LOAD)
+          : combinedPoints;
+
         return {
           ...lastChunk,
-          data_points: combinedPoints,
-          start_time: combinedPoints[0]?.timestamp ?? lastChunk.start_time,
-          end_time: combinedPoints[combinedPoints.length - 1]?.timestamp ?? lastChunk.end_time,
+          data_points: limitedPoints,
+          start_time: limitedPoints[0]?.timestamp ?? lastChunk.start_time,
+          end_time: limitedPoints[limitedPoints.length - 1]?.timestamp ?? lastChunk.end_time,
         };
       };
 
@@ -999,7 +1007,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         return Number.isFinite(pointTime) && pointTime <= targetEndTime;
       });
 
-      if (trading.type !== 'backtest' && combinedPoints.length > TOTAL_DATA_TO_LOAD) {
+      if (combinedPoints.length > TOTAL_DATA_TO_LOAD) {
         combinedPoints = combinedPoints.slice(combinedPoints.length - TOTAL_DATA_TO_LOAD);
       }
 
