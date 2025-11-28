@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import {
   getEquityCurve,
   getTradingLogs,
-  getSubAccountsByTrading,
   getEquityCurveByTimeRange,
   ApiError,
   type Trading,
@@ -17,7 +16,8 @@ import {
   type TradingMetrics,
   type TradingCandlestickPoint,
 } from '../../utils/chartData';
-import { getFirstValidStockPrice, resolveEffectiveStockPrice } from '../../utils/assetsMetrics';
+import { getFirstValidStockPrice } from '../../utils/assetsMetrics';
+import { fetchMarketSnapshot } from '../../utils/marketSnapshot';
 import CandlestickChart from './CandlestickChart';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
@@ -182,77 +182,6 @@ interface MarketContext {
   stockBalance: number;
   quoteBalance: number;
 }
-
-const parseSymbolPair = (value?: unknown): { stockSymbol: string; quoteSymbol: string } | null => {
-  if (typeof value !== 'string') {
-    return null;
-  }
-
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const separator = trimmed.includes('/') ? '/' : trimmed.includes('_') ? '_' : null;
-  if (!separator) {
-    return null;
-  }
-
-  const [stock, quote] = trimmed.split(separator);
-  if (!stock || !quote) {
-    return null;
-  }
-
-  return {
-    stockSymbol: stock.toUpperCase(),
-    quoteSymbol: quote.toUpperCase(),
-  };
-};
-
-const deriveMarketContextFromTrading = (trading: Trading): MarketContext => {
-  const info = trading.info ?? {};
-  const candidates: unknown[] = [
-    info.market_symbol,
-    info.symbol,
-    info.trading_pair,
-    info.pair,
-    info.bot_symbol,
-    info.strategy_symbol,
-  ];
-
-  let parsedPair: { stockSymbol: string; quoteSymbol: string } | null = null;
-  for (const candidate of candidates) {
-    parsedPair = parseSymbolPair(candidate);
-    if (parsedPair) {
-      break;
-    }
-  }
-
-  const rawStockSymbol = (info.stock_symbol || info.stockSymbol || info.asset_symbol) as string | undefined;
-  const rawQuoteSymbol = (info.quote_symbol || info.quoteSymbol || info.quote_currency) as string | undefined;
-
-  const stockSymbol = (parsedPair?.stockSymbol || rawStockSymbol || 'ETH').toString().toUpperCase();
-  const quoteSymbol = (parsedPair?.quoteSymbol || rawQuoteSymbol || 'USDT').toString().toUpperCase();
-
-  const stockBalanceCandidate =
-    info.initial_stock_balance ?? info.initial_asset_balance ?? info.initial_position ?? info.stock_balance;
-  const quoteBalanceCandidate =
-    info.initial_balance ?? info.initial_funds ?? info.initial_quote_balance ?? info.quote_balance ?? info.balance;
-
-  const stockBalance = typeof stockBalanceCandidate === 'number'
-    ? stockBalanceCandidate
-    : Number(stockBalanceCandidate) || 0;
-  const quoteBalance = typeof quoteBalanceCandidate === 'number'
-    ? quoteBalanceCandidate
-    : Number(quoteBalanceCandidate) || 0;
-
-  return {
-    stockSymbol,
-    quoteSymbol,
-    stockBalance,
-    quoteBalance,
-  };
-};
 
 const shouldRetryWithAuth = (error: unknown): boolean =>
   error instanceof ApiError && (error.status === 401 || error.status === 403);
@@ -593,6 +522,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [warmupRetryTrigger, setWarmupRetryTrigger] = useState(0); // Force effect re-run after retry
   const apiRequestCountRef = useRef(0);
   const [isWarmingUp, setIsWarmingUp] = useState(false);
+  const oneMinutePriceRef = useRef<number | undefined>(undefined);
 
   const beginApiCall = useCallback(() => {
     apiRequestCountRef.current += 1;
@@ -616,6 +546,24 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
   }, [isAuthenticated]);
 
+  const loadMarketSnapshot = useCallback(async (endTimeMs?: number): Promise<MarketContext & { price: number | null; warmingUp: boolean }> => {
+    const snapshot = await fetchMarketSnapshot(trading, {
+      attemptPublicFirst,
+      endTimeMs,
+    });
+
+    setStockSymbol(snapshot.stockSymbol);
+    setQuoteSymbol(snapshot.quoteSymbol);
+    setStockBalance(snapshot.stockBalance);
+    setQuoteBalance(snapshot.quoteBalance);
+    oneMinutePriceRef.current =
+      typeof snapshot.price === 'number' && Number.isFinite(snapshot.price) && snapshot.price > 0
+        ? snapshot.price
+        : undefined;
+
+    return snapshot;
+  }, [attemptPublicFirst, trading]);
+
 
   const fetchTradingData = useCallback(async (isInitialLoad = false, silentRefresh = false) => {
     let is202Error = false;
@@ -631,54 +579,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       beginApiCall();
 
-      const fallbackMarketContext = deriveMarketContextFromTrading(trading);
-
-      let resolvedStockSymbol = fallbackMarketContext.stockSymbol;
-      let resolvedQuoteSymbol = fallbackMarketContext.quoteSymbol;
-      let resolvedStockBalance = fallbackMarketContext.stockBalance;
-      let resolvedQuoteBalance = fallbackMarketContext.quoteBalance;
-
-      let subAccounts: Awaited<ReturnType<typeof getSubAccountsByTrading>> | null = null;
-      try {
-        subAccounts = await attemptPublicFirst(useAuth => getSubAccountsByTrading(trading.id, useAuth));
-        console.log('Sub-accounts:', subAccounts);
-      } catch (subAccountError) {
-        console.warn('Failed to fetch sub-accounts; falling back to trading info snapshot', subAccountError);
-      }
-
-      if (subAccounts && subAccounts.length > 0) {
-        const stockSubAccount = subAccounts.find(account =>
-          account.info?.account_type === 'stock' ||
-          ['ETH', 'BTC'].includes(account.symbol)
-        );
-        const balanceSubAccount = subAccounts.find(account =>
-          account.info?.account_type === 'balance' ||
-          ['USDT', 'USD', 'USDC'].includes(account.symbol)
-        );
-
-        if (stockSubAccount && balanceSubAccount) {
-          resolvedStockSymbol = stockSubAccount.symbol;
-          resolvedQuoteSymbol = balanceSubAccount.symbol;
-          resolvedStockBalance = typeof stockSubAccount.balance === 'number'
-            ? stockSubAccount.balance
-            : (parseFloat(stockSubAccount.balance) || 0);
-          resolvedQuoteBalance = typeof balanceSubAccount.balance === 'number'
-            ? balanceSubAccount.balance
-            : (parseFloat(balanceSubAccount.balance) || 0);
-        } else {
-          console.warn('Sub-accounts fetched but missing required stock/balance entries; using fallback context');
-        }
-      }
-
-      setStockSymbol(resolvedStockSymbol);
-      setQuoteSymbol(resolvedQuoteSymbol);
-      setStockBalance(resolvedStockBalance);
-      setQuoteBalance(resolvedQuoteBalance);
-
-      const exchangeType = trading.exchange_binding?.exchange_type;
       const tradingEndTime = parseTimestamp(trading.info?.end_date);
       const effectiveEndTime = resolveEffectiveEndTime(dataEndTime, tradingEndTime);
 
+      const marketContext = await loadMarketSnapshot(effectiveEndTime);
+      const resolvedStockSymbol = marketContext.stockSymbol;
+      const resolvedQuoteSymbol = marketContext.quoteSymbol;
+
+      const exchangeType = trading.exchange_binding?.exchange_type;
       const isBacktest = trading.type === 'backtest';
       const backtestStartTime = isBacktest ? tradingStartTimestamp : undefined;
 
@@ -997,6 +905,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     dataEndTime,
     tradingStartDateIso,
     tradingStartTimestamp,
+    loadMarketSnapshot,
   ]);
 
 
@@ -1016,34 +925,37 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
 
     const exchangeType = trading.exchange_binding?.exchange_type;
-
-    const lastCachedTimestamp = cacheEntry.lastUpdateTimestamp
-      ?? new Date(existingEquityCurve.data_points[existingEquityCurve.data_points.length - 1].timestamp).getTime();
-    const timeframeMs = timeframeToMilliseconds(selectedTimeframe);
-    const earliestAllowedTimestamp = new Date(existingEquityCurve.start_time).getTime();
-    const startTime = Math.max(lastCachedTimestamp - timeframeMs, earliestAllowedTimestamp);
-    const endTime = targetEndTime;
-
-    if (typeof tradingEndTime === 'number' && lastCachedTimestamp >= tradingEndTime) {
-      return;
-    }
-
-    if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
-      return;
-    }
-
     incrementalUpdateInProgressRef.current = true;
     beginApiCall();
 
     try {
+      const marketContext = await loadMarketSnapshot(targetEndTime);
+      const resolvedStockSymbol = marketContext.stockSymbol;
+      const resolvedQuoteSymbol = marketContext.quoteSymbol;
+
+      const lastCachedTimestamp = cacheEntry.lastUpdateTimestamp
+        ?? new Date(existingEquityCurve.data_points[existingEquityCurve.data_points.length - 1].timestamp).getTime();
+      const timeframeMs = timeframeToMilliseconds(selectedTimeframe);
+      const earliestAllowedTimestamp = new Date(existingEquityCurve.start_time).getTime();
+      const startTime = Math.max(lastCachedTimestamp - timeframeMs, earliestAllowedTimestamp);
+      const endTime = targetEndTime;
+
+      if (typeof tradingEndTime === 'number' && lastCachedTimestamp >= tradingEndTime) {
+        return;
+      }
+
+      if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
+        return;
+      }
+
       const incrementalEquity = await attemptPublicFirst(useAuth =>
         getEquityCurveByTimeRange(
           trading.id,
           selectedTimeframe,
           startTime,
           endTime,
-          stockSymbol,
-          quoteSymbol,
+          resolvedStockSymbol,
+          resolvedQuoteSymbol,
           useAuth,
           exchangeType
         )
@@ -1276,15 +1188,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
   }, [
     attemptPublicFirst,
-    quoteSymbol,
     selectedTimeframe,
-    stockSymbol,
     trading,
     beginApiCall,
     endApiCall,
     dataEndTime,
     tradingStartDateIso,
     tradingStartTimestamp,
+    loadMarketSnapshot,
   ]);
 
 
@@ -1483,40 +1394,17 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }).format(parseFloat(value.toFixed(decimalPlaces)));
   };
 
-  const preferredPriceTimeframes: Timeframe[] = ['1m', '1h', '4h', '8h', '1d', '1w'];
-  let cachedEffectivePrice: number | undefined;
-
-  for (const timeframe of preferredPriceTimeframes) {
-    const cacheEntry = timeframeDataCacheRef.current[timeframe];
-    if (!cacheEntry) {
-      continue;
-    }
-
-    const candidatePrice = resolveEffectiveStockPrice({
-      candlestickData: cacheEntry.candlestickData,
-      fallbackPrice: cacheEntry.baselinePrice,
-      equityCurve: cacheEntry.equityCurve,
-    });
-
-    if (typeof candidatePrice === 'number' && Number.isFinite(candidatePrice) && candidatePrice > 0) {
-      cachedEffectivePrice = candidatePrice;
-      break;
-    }
-  }
-
-  const fallbackBenchmarkPrice =
-    filteredData.length > 0 ? filteredData[filteredData.length - 1]?.benchmarkPrice : undefined;
-
   const normalizedBaselinePrice =
     typeof chartState.baselinePrice === 'number' && Number.isFinite(chartState.baselinePrice)
       ? chartState.baselinePrice
       : undefined;
 
-  const effectiveStockPrice = resolveEffectiveStockPrice({
-    candlestickData: chartState.candlestickData,
-    fallbackPrice: typeof cachedEffectivePrice === 'number' ? cachedEffectivePrice : fallbackBenchmarkPrice,
-    equityCurve: timeframeDataCacheRef.current[selectedTimeframe]?.equityCurve,
-  }) ?? normalizedBaselinePrice ?? cachedEffectivePrice;
+  const effectiveStockPrice =
+    typeof oneMinutePriceRef.current === 'number' &&
+    Number.isFinite(oneMinutePriceRef.current) &&
+    oneMinutePriceRef.current > 0
+      ? oneMinutePriceRef.current
+      : undefined;
 
   const normalizedQuoteBalance = Number.isFinite(quoteBalance) ? quoteBalance : 0;
   const normalizedStockBalance = Number.isFinite(stockBalance) ? stockBalance : 0;
@@ -1533,30 +1421,16 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       ? initialStockPriceRef.current
       : normalizedBaselinePrice;
 
-  const latestNetValue = (() => {
-    if (filteredData.length === 0) {
-      return undefined;
-    }
-    const candidate = filteredData[filteredData.length - 1]?.netValue;
-    return typeof candidate === 'number' && Number.isFinite(candidate) ? candidate : undefined;
-  })();
+  const derivedAssetsValue =
+    typeof effectiveStockPrice === 'number'
+      ? normalizedQuoteBalance + normalizedStockBalance * effectiveStockPrice
+      : undefined;
 
-  const derivedAssetsValue = (() => {
-    if (typeof latestNetValue === 'number') {
-      return latestNetValue;
-    }
-
-    if (typeof effectiveStockPrice === 'number' && Number.isFinite(effectiveStockPrice)) {
-      return normalizedQuoteBalance + normalizedStockBalance * effectiveStockPrice;
-    }
-
-    return normalizedQuoteBalance;
-  })();
-
-  const fallbackTotalROI = typeof chartState.metrics.totalROI === 'number' ? chartState.metrics.totalROI : 0;
-  const derivedTotalROI = normalizedInitialBalance
-    ? ((derivedAssetsValue - normalizedInitialBalance) / normalizedInitialBalance) * 100
-    : fallbackTotalROI;
+  const fallbackTotalROI = 0;
+  const derivedTotalROI =
+    normalizedInitialBalance && typeof derivedAssetsValue === 'number'
+      ? ((derivedAssetsValue - normalizedInitialBalance) / normalizedInitialBalance) * 100
+      : fallbackTotalROI;
 
   const fallbackBenchmarkPercentage = (() => {
     const lastBenchmarkPoint =
@@ -1635,7 +1509,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         <div className="bg-white p-3 rounded-lg shadow-sm flex flex-wrap items-stretch gap-0.5">
           <div className={METRIC_VALUE_BLOCK_CLASS}>
             <div className="text-3xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
-              ${formatSignificantDigits(derivedAssetsValue, 4)}
+              {typeof derivedAssetsValue === 'number'
+                ? `$${formatSignificantDigits(derivedAssetsValue, 4)}`
+                : '--'}
             </div>
             <div className="text-sm text-gray-600">{t('trading.chart.assetsValue')}</div>
           </div>
@@ -1657,12 +1533,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           <div className="text-sm font-bold text-gray-400 mx-2 self-end">×</div>
           <div className={METRIC_VALUE_BLOCK_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-green-600">
-              ${formatSignificantDigits(
-                    typeof effectiveStockPrice === 'number' && Number.isFinite(effectiveStockPrice)
-                      ? effectiveStockPrice
-                      : 0,
-                    4
-                  )}
+              {typeof effectiveStockPrice === 'number'
+                ? `$${formatSignificantDigits(effectiveStockPrice, 4)}`
+                : '--'}
             </div>
             <div className="text-sm text-gray-600">{t('trading.chart.ethPrice')}</div>
           </div>

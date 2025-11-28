@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type Trading, getSubAccountsByTrading } from '../../utils/api';
-import { fetchLightweightMetrics, type LightweightTradingMetrics, formatROI, formatCurrency } from '../../utils/tradingMetrics';
+import { type Trading } from '../../utils/api';
+import { formatROI, formatCurrency } from '../../utils/tradingMetrics';
+import { fetchMarketSnapshot, type MarketSnapshot } from '../../utils/marketSnapshot';
 
 interface TradingCardMetricsProps {
   trading: Trading;
@@ -13,7 +14,7 @@ interface TradingCardMetricsProps {
  */
 export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading }) => {
   const { t } = useTranslation();
-  const [metrics, setMetrics] = useState<LightweightTradingMetrics | null>(null);
+  const [metrics, setMetrics] = useState<{ currentEquity: number | null; currentROI: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isWarmingUp, setIsWarmingUp] = useState(false);
 
@@ -21,6 +22,7 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
     let isMounted = true;
 
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    const initialFunds = (trading.info?.initial_funds as number | undefined) ?? 0;
 
     const fetchMetrics = async () => {
       try {
@@ -32,60 +34,25 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
               ? Date.parse((trading.info as { end_date?: string })?.end_date ?? '') || Date.now()
               : Date.now();
 
-          // Fetch sub-accounts to determine stock and quote symbols
-          const subAccounts = await getSubAccountsByTrading(trading.id);
-
-          // Identify stock and quote sub-accounts
-          const stockSubAccount = subAccounts.find(account =>
-            account.info?.account_type === 'stock' ||
-            ['ETH', 'BTC'].includes(account.symbol)
-          );
-          const quoteSubAccount = subAccounts.find(account =>
-            account.info?.account_type === 'balance' ||
-            ['USDT', 'USD', 'USDC'].includes(account.symbol)
-          );
-
-          // Fallback to defaults if not found
-          const stockSymbol = stockSubAccount?.symbol || 'ETH';
-          const quoteSymbol = quoteSubAccount?.symbol || 'USDT';
-
-          const stockBal = typeof stockSubAccount?.balance === 'number'
-            ? stockSubAccount.balance
-            : stockSubAccount?.balance
-              ? parseFloat(stockSubAccount.balance) || 0
+          const snapshot: MarketSnapshot = await fetchMarketSnapshot(trading, { endTimeMs });
+          const price = typeof snapshot.price === 'number' ? snapshot.price : null;
+          const assetsValue =
+            price !== null
+              ? snapshot.quoteBalance + snapshot.stockBalance * price
+              : null;
+          const roi =
+            assetsValue !== null && initialFunds > 0
+              ? ((assetsValue - initialFunds) / initialFunds) * 100
               : 0;
-
-          const quoteBal = typeof quoteSubAccount?.balance === 'number'
-            ? quoteSubAccount.balance
-            : quoteSubAccount?.balance
-              ? parseFloat(quoteSubAccount.balance) || 0
-              : 0;
-
-          const requireAuth = trading.type !== 'paper' && trading.type !== 'backtest';
-          const exchangeType = trading.exchange_binding?.exchange_type;
-
-          const result = await fetchLightweightMetrics(
-            trading,
-            stockSymbol,
-            quoteSymbol,
-            '1m',
-            {
-              stockBalance: stockBal,
-              quoteBalance: quoteBal,
-              requireAuth,
-              exchangeType,
-              endTimeMs,
-            }
-          );
 
           if (!isMounted) {
             return;
           }
 
-          setMetrics(result);
-          setIsWarmingUp(Boolean(result.warmingUp));
+          setMetrics({ currentEquity: assetsValue, currentROI: roi });
+          setIsWarmingUp(Boolean(snapshot.warmingUp));
 
-          if (result.warmingUp) {
+          if (snapshot.warmingUp) {
             await delay(2000);
           } else {
             setIsLoading(false); // Only show metrics once backend is ready (200)
@@ -95,18 +62,7 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
       } catch (error) {
         console.error('Failed to fetch trading card metrics:', error);
         if (isMounted) {
-          setMetrics({
-            currentEquity: null,
-            currentROI: 0,
-            unrealizedPnL: 0,
-            quoteBalance: 0,
-            stockBalance: null,
-            stockPrice: null,
-            benchmarkReturn: null,
-            isLoading: false,
-            error: error instanceof Error ? error : new Error('Unknown error'),
-            warmingUp: false,
-          });
+          setMetrics({ currentEquity: null, currentROI: 0 });
           setIsWarmingUp(false);
           setIsLoading(false);
         }
