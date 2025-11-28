@@ -41,12 +41,7 @@ export interface TradingMetrics {
   totalROI: number;
   benchmarkROI?: number;
   excessROI?: number;
-  annualizedReturnRate: number;
-  winRate: number;
-  sharpeRatio: number;
-  maxDrawdown: number;
   totalTrades: number;
-  initialPrice: number;
 }
 
 
@@ -67,14 +62,6 @@ function timeframeToMilliseconds(timeframe: string): number {
     '1w': 7 * 24 * 60 * 60 * 1000,
   };
   return timeframeMap[timeframe] || 60 * 1000; // Default to 1 minute
-}
-
-interface TransformNewEquityCurveOptions {
-  tradingStartTimestamp?: number | null;
-}
-
-interface MetricsCalculationOptions {
-  tradingStartTimestamp?: number | null;
 }
 
 /**
@@ -143,8 +130,7 @@ export function splitEquityDataByCreationTime(
 export function transformNewEquityCurveToChartData(
   equityCurve: EquityCurveNewData,
   tradingLogs: TradingLog[] = [],
-  timeframe: string = '1m',
-  options: TransformNewEquityCurveOptions = {}
+  timeframe: string = '1m'
 ): {
   data: TradingDataPoint[];
   metrics: TradingMetrics;
@@ -159,12 +145,7 @@ export function transformNewEquityCurveToChartData(
       data: [],
       metrics: {
         totalROI: 0,
-        annualizedReturnRate: 0,
-        winRate: 0,
-        sharpeRatio: 0,
-        maxDrawdown: 0,
         totalTrades: 0,
-        initialPrice: 0,
       },
       candlestickData: [],
       initialBalance: 0,
@@ -202,12 +183,7 @@ export function transformNewEquityCurveToChartData(
       data: [],
       metrics: {
         totalROI: 0,
-        annualizedReturnRate: 0,
-        winRate: 0,
-        sharpeRatio: 0,
-        maxDrawdown: 0,
         totalTrades: 0,
-        initialPrice: 0,
       },
       candlestickData: [],
       initialBalance: 0,
@@ -348,9 +324,7 @@ export function transformNewEquityCurveToChartData(
   }
 
   // Calculate metrics using the new chart data
-  const metrics = calculateMetricsFromNewData(chartData, tradingLogs, initialAssetsValue, {
-    tradingStartTimestamp: options.tradingStartTimestamp,
-  });
+  const metrics = calculateMetricsFromNewData(chartData, tradingLogs, initialAssetsValue);
 
   return { data: chartData, metrics, candlestickData, initialBalance: initialAssetsValue, baselinePrice };
 }
@@ -397,18 +371,12 @@ function normalizeOhlcv(
 function calculateMetricsFromNewData(
   chartData: TradingDataPoint[],
   tradingLogs: TradingLog[],
-  initialEquity: number,
-  options: MetricsCalculationOptions = {}
+  initialEquity: number
 ): TradingMetrics {
   if (chartData.length === 0) {
     return {
       totalROI: 0,
-      annualizedReturnRate: 0,
-      winRate: 0,
-      sharpeRatio: 0,
-      maxDrawdown: 0,
       totalTrades: 0,
-      initialPrice: 0,
     };
   }
 
@@ -421,95 +389,9 @@ function calculateMetricsFromNewData(
   );
   const totalTrades = tradeLogs.length;
 
-  // Calculate win rate by matching long/short trading pairs
-  let winRate = 0;
-  if (totalTrades > 0) {
-    const longTrades = tradingLogs.filter(log => log.type === 'long');
-    const shortTrades = tradingLogs.filter(log => log.type === 'short');
-
-    let completedTrades = 0;
-    let winningTrades = 0;
-
-    // Match long positions with their corresponding short (exit) positions
-    for (const longTrade of longTrades) {
-      const longTime = new Date(longTrade.event_time).getTime();
-      const correspondingShort = shortTrades.find(shortTrade => {
-        const shortTime = new Date(shortTrade.event_time).getTime();
-        return shortTime > longTime;
-      });
-
-      if (correspondingShort && longTrade.info && correspondingShort.info) {
-        const entryPrice = parseFloat(longTrade.info.price?.toString() || '0');
-        const exitPrice = parseFloat(correspondingShort.info.price?.toString() || '0');
-
-        if (entryPrice > 0 && exitPrice > 0) {
-          completedTrades++;
-          if (exitPrice > entryPrice) {
-            winningTrades++;
-          }
-        }
-      }
-    }
-
-    winRate = completedTrades > 0 ? (winningTrades / completedTrades) * 100 : 0;
-  }
-
-  // Calculate max drawdown
-  let peak = initialEquity;
-  let maxDrawdown = 0;
-  chartData.forEach(point => {
-    if (point.netValue > peak) {
-      peak = point.netValue;
-    }
-    const drawdown = ((peak - point.netValue) / peak) * 100;
-    if (drawdown > maxDrawdown) {
-      maxDrawdown = drawdown;
-    }
-  });
-
-  // Simplified Sharpe ratio calculation
-  const dailyReturns = chartData.slice(1).map((point, index) => {
-    const prevValue = chartData[index].netValue;
-    return (point.netValue - prevValue) / prevValue;
-  });
-
-  const avgReturn = dailyReturns.length > 0 ? dailyReturns.reduce((sum, r) => sum + r, 0) / dailyReturns.length : 0;
-  const volatility = dailyReturns.length > 0 ? Math.sqrt(
-    dailyReturns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / dailyReturns.length
-  ) : 0;
-  const sharpeRatio = volatility > 0 ? (avgReturn / volatility) * Math.sqrt(252) : 0;
-
-  // Calculate annualized return rate
-  let annualizedReturnRate = 0;
-  if (chartData.length > 0) {
-    const lastTimestamp = new Date(chartData[chartData.length - 1].timestamp).getTime();
-    const providedStart = options.tradingStartTimestamp;
-    const fallbackStart = new Date(chartData[0].timestamp).getTime();
-    const startTimestamp =
-      typeof providedStart === 'number' && Number.isFinite(providedStart)
-        ? providedStart
-        : fallbackStart;
-
-    const millisecondsInDay = 1000 * 60 * 60 * 24;
-    const days = (lastTimestamp - startTimestamp) / millisecondsInDay;
-
-    if (days > 0) {
-      const years = days / 365;
-      const totalROIDecimal = totalROI / 100;
-      annualizedReturnRate = (Math.pow(1 + totalROIDecimal, 1 / years) - 1) * 100;
-    } else {
-      annualizedReturnRate = totalROI;
-    }
-  }
-
   return {
     totalROI: Math.round(totalROI * 100) / 100,
-    annualizedReturnRate: Math.round(annualizedReturnRate * 100) / 100,
-    winRate: Math.round(winRate * 100) / 100,
-    sharpeRatio: Math.round(sharpeRatio * 100) / 100,
-    maxDrawdown: -Math.round(maxDrawdown * 100) / 100,
     totalTrades,
-    initialPrice: chartData[0]?.benchmarkPrice ?? 0,
   };
 }
 
@@ -602,7 +484,7 @@ export function transformEquityCurveToChartData(
   }
 
   // Calculate metrics using the equity curve data
-  const metrics = calculateMetrics(chartData, tradingLogs, equityCurve.initial_value, equityCurve.initial_market_price);
+  const metrics = calculateMetrics(chartData, tradingLogs, equityCurve.initial_value);
 
   return { data: chartData, metrics };
 }
@@ -746,7 +628,7 @@ export function transformTransactionsToChartData(
   }
 
   // Calculate metrics
-  const metrics = calculateMetrics(chartData, tradingLogs, initialAssetsValue, 0);
+  const metrics = calculateMetrics(chartData, tradingLogs, initialAssetsValue);
 
   return { data: chartData, metrics };
 }
@@ -754,18 +636,12 @@ export function transformTransactionsToChartData(
 function calculateMetrics(
   chartData: TradingDataPoint[],
   tradingLogs: TradingLog[],
-  initialBalance: number,
-  initialPrice: number = 0
+  initialBalance: number
 ): TradingMetrics {
   if (chartData.length === 0) {
     return {
       totalROI: 0,
-      annualizedReturnRate: 0,
-      winRate: 0,
-      sharpeRatio: 0,
-      maxDrawdown: 0,
       totalTrades: 0,
-      initialPrice: initialPrice,
     };
   }
 
@@ -778,92 +654,8 @@ function calculateMetrics(
   );
   const totalTrades = tradeLogs.length;
 
-  // Calculate win rate by matching long/short trading pairs
-  let winRate = 0;
-  if (totalTrades > 0) {
-    const longTrades = tradingLogs.filter(log => log.type === 'long');
-    const shortTrades = tradingLogs.filter(log => log.type === 'short');
-    
-    let completedTrades = 0;
-    let winningTrades = 0;
-    
-    // Match long positions with their corresponding short (exit) positions
-    for (const longTrade of longTrades) {
-      // Find the next short trade after this long trade (chronologically)
-      const longTime = new Date(longTrade.event_time).getTime();
-      const correspondingShort = shortTrades.find(shortTrade => {
-        const shortTime = new Date(shortTrade.event_time).getTime();
-        return shortTime > longTime;
-      });
-      
-      if (correspondingShort && longTrade.info && correspondingShort.info) {
-        const entryPrice = parseFloat(longTrade.info.price?.toString() || '0');
-        const exitPrice = parseFloat(correspondingShort.info.price?.toString() || '0');
-        
-        if (entryPrice > 0 && exitPrice > 0) {
-          completedTrades++;
-          
-          // For long positions: profit if exit price > entry price
-          if (exitPrice > entryPrice) {
-            winningTrades++;
-          }
-        }
-      }
-    }
-    
-    // Calculate win rate from completed trades
-    winRate = completedTrades > 0 ? (winningTrades / completedTrades) * 100 : 0;
-  }
-
-  // Calculate max drawdown
-  let peak = initialBalance;
-  let maxDrawdown = 0;
-  chartData.forEach(point => {
-    if (point.netValue > peak) {
-      peak = point.netValue;
-    }
-    const drawdown = ((peak - point.netValue) / peak) * 100;
-    if (drawdown > maxDrawdown) {
-      maxDrawdown = drawdown;
-    }
-  });
-
-  // Simplified Sharpe ratio calculation
-  // In reality, you'd need risk-free rate and calculate volatility properly
-  const dailyReturns = chartData.slice(1).map((point, index) => {
-    const prevValue = chartData[index].netValue;
-    return (point.netValue - prevValue) / prevValue;
-  });
-  
-  const avgReturn = dailyReturns.reduce((sum, r) => sum + r, 0) / dailyReturns.length;
-  const volatility = Math.sqrt(
-    dailyReturns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / dailyReturns.length
-  );
-  const sharpeRatio = volatility > 0 ? (avgReturn / volatility) * Math.sqrt(252) : 0; // Annualized
-
-  // Calculate annualized return rate
-  let annualizedReturnRate = 0;
-  if (chartData.length > 1) {
-    const firstTimestamp = new Date(chartData[0].timestamp).getTime();
-    const lastTimestamp = new Date(chartData[chartData.length - 1].timestamp).getTime();
-    const days = (lastTimestamp - firstTimestamp) / (1000 * 60 * 60 * 24);
-
-    if (days > 0) {
-      const years = days / 365;
-      const totalROIDecimal = totalROI / 100;
-      annualizedReturnRate = (Math.pow(1 + totalROIDecimal, 1 / years) - 1) * 100;
-    } else {
-      annualizedReturnRate = totalROI;
-    }
-  }
-
   return {
     totalROI: Math.round(totalROI * 100) / 100,
-    annualizedReturnRate: Math.round(annualizedReturnRate * 100) / 100,
-    winRate: Math.round(winRate * 100) / 100,
-    sharpeRatio: Math.round(sharpeRatio * 100) / 100,
-    maxDrawdown: -Math.round(maxDrawdown * 100) / 100, // Negative for display
     totalTrades,
-    initialPrice: initialPrice,
   };
 }

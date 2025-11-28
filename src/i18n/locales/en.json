@@ -48,9 +48,6 @@
     },
     "metrics": {
       "totalROI": "Total ROI",
-      "winRate": "Win Rate",
-      "sharpeRatio": "Sharpe Ratio",
-      "maxDrawdown": "Max Drawdown",
       "totalTrades": "Trades"
     },
     "legend": {
@@ -489,9 +486,6 @@
       "benchmarkROI": "Benchmark",
       "excessROI": "Excess ROI",
       "annualizedReturnRate": "Annualized ROI",
-      "winRate": "Win Rate",
-      "maxDrawdown": "Max Drawdown",
-      "sharpeRatio": "Sharpe Ratio",
       "totalTrades": "Trades",
       "groupAccount": "Account",
       "groupTradingStatus": "Trading Status"

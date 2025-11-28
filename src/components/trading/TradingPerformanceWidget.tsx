@@ -16,7 +16,6 @@ import {
   type TradingMetrics,
   type TradingCandlestickPoint,
 } from '../../utils/chartData';
-import { getFirstValidStockPrice } from '../../utils/assetsMetrics';
 import { fetchMarketSnapshot } from '../../utils/marketSnapshot';
 import CandlestickChart from './CandlestickChart';
 import { useToast } from '../../hooks/useToast';
@@ -207,14 +206,7 @@ const areTradingPointsEqual = (a: TradingDataPoint, b: TradingDataPoint): boolea
 };
 
 const areMetricsEqual = (prev: TradingMetrics, next: TradingMetrics): boolean => {
-  return (
-    prev.totalROI === next.totalROI &&
-    prev.winRate === next.winRate &&
-    prev.sharpeRatio === next.sharpeRatio &&
-    prev.maxDrawdown === next.maxDrawdown &&
-    prev.totalTrades === next.totalTrades &&
-    prev.initialPrice === next.initialPrice
-  );
+  return prev.totalROI === next.totalROI && prev.totalTrades === next.totalTrades;
 };
 
 const mergeTradingLogs = (existing: TradingLog[], incoming: TradingLog[]): TradingLog[] => {
@@ -488,6 +480,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     typeof tradingStartTimestampRaw === 'number' && Number.isFinite(tradingStartTimestampRaw)
       ? tradingStartTimestampRaw
       : undefined;
+  const tradingInitialPriceFromInfo = (() => {
+    const raw = trading.info?.baseline_price ?? trading.info?.initial_price ?? trading.info?.price;
+    const parsed = typeof raw === 'number' ? raw : Number.parseFloat(raw as string);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  })();
 
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>(resolvedDefaultTimeframe);
   const [stockSymbol, setStockSymbol] = useState<string>('ETH');
@@ -511,7 +508,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const incrementalUpdateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const incrementalUpdateInProgressRef = useRef(false);
 
-  const [initialBalance, setInitialBalance] = useState<number | undefined>(undefined);
+  const tradingInitialBalanceFromInfo = (() => {
+    const raw = trading.info?.initial_funds ?? trading.info?.initialBalance;
+    const parsed = typeof raw === 'number' ? raw : Number.parseFloat(raw as string);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  })();
+  const [initialBalance, setInitialBalance] = useState<number | undefined>(tradingInitialBalanceFromInfo);
   const [stockBalance, setStockBalance] = useState<number>(0);
   const [quoteBalance, setQuoteBalance] = useState<number>(0);
   const warmupRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -724,26 +726,17 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       } = transformNewEquityCurveToChartData(
         constrainedEquityCurve,
         tradingLogs,
-        selectedTimeframe,
-        {
-          tradingStartTimestamp,
-        }
+        selectedTimeframe
       );
 
-      setInitialBalance(resolvedInitialBalance);
+      if (initialBalance === undefined && tradingInitialBalanceFromInfo !== undefined) {
+        setInitialBalance(tradingInitialBalanceFromInfo);
+      } else if (resolvedInitialBalance && resolvedInitialBalance > 0 && initialBalance === undefined) {
+        setInitialBalance(resolvedInitialBalance);
+      }
 
-      if (initialStockPriceRef.current === undefined) {
-        const initialPriceCandidate =
-          typeof baselinePrice === 'number' && Number.isFinite(baselinePrice) && baselinePrice > 0
-            ? baselinePrice
-            : getFirstValidStockPrice(constrainedEquityCurve);
-        if (
-          typeof initialPriceCandidate === 'number' &&
-          Number.isFinite(initialPriceCandidate) &&
-          initialPriceCandidate > 0
-        ) {
-          initialStockPriceRef.current = initialPriceCandidate;
-        }
+      if (initialStockPriceRef.current === undefined && tradingInitialPriceFromInfo !== undefined) {
+        initialStockPriceRef.current = tradingInitialPriceFromInfo;
       }
 
       const normalizedCandles = normalizeCandlesticks(candlestickData);
@@ -1093,26 +1086,17 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       } = transformNewEquityCurveToChartData(
         updatedEquityCurve,
         tradingLogsRef.current,
-        selectedTimeframe,
-        {
-          tradingStartTimestamp,
-        }
+        selectedTimeframe
       );
 
-      setInitialBalance(resolvedInitialBalance);
+      if (initialBalance === undefined && tradingInitialBalanceFromInfo !== undefined) {
+        setInitialBalance(tradingInitialBalanceFromInfo);
+      } else if (resolvedInitialBalance && resolvedInitialBalance > 0 && initialBalance === undefined) {
+        setInitialBalance(resolvedInitialBalance);
+      }
 
-      if (initialStockPriceRef.current === undefined) {
-        const initialPriceCandidate =
-          typeof baselinePrice === 'number' && Number.isFinite(baselinePrice) && baselinePrice > 0
-            ? baselinePrice
-            : getFirstValidStockPrice(updatedEquityCurve);
-        if (
-          typeof initialPriceCandidate === 'number' &&
-          Number.isFinite(initialPriceCandidate) &&
-          initialPriceCandidate > 0
-        ) {
-          initialStockPriceRef.current = initialPriceCandidate;
-        }
+      if (initialStockPriceRef.current === undefined && tradingInitialPriceFromInfo !== undefined) {
+        initialStockPriceRef.current = tradingInitialPriceFromInfo;
       }
 
       const normalizedCandles = normalizeCandlesticks(candlestickData);
@@ -1378,9 +1362,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   }, [chartState.data.length, fetchIncrementalUpdates, selectedTimeframe, trading.type]);
 
 
-  // Data is already filtered by the API with the selected timeframe
-  // Show all data on the equity chart (no panning/slicing)
-  const filteredData = chartState.data;
   const visibleBenchmarkData = chartState.benchmarkData;
 
   // Handle timeframe selection
@@ -1402,11 +1383,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }).format(parseFloat(value.toFixed(decimalPlaces)));
   };
 
-  const normalizedBaselinePrice =
-    typeof chartState.baselinePrice === 'number' && Number.isFinite(chartState.baselinePrice)
-      ? chartState.baselinePrice
-      : undefined;
-
   const effectiveStockPrice =
     typeof oneMinutePriceRef.current === 'number' &&
     Number.isFinite(oneMinutePriceRef.current) &&
@@ -1427,7 +1403,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     Number.isFinite(initialStockPriceRef.current) &&
     initialStockPriceRef.current > 0
       ? initialStockPriceRef.current
-      : normalizedBaselinePrice;
+      : tradingInitialPriceFromInfo;
 
   const derivedAssetsValue =
     typeof effectiveStockPrice === 'number'
@@ -1440,27 +1416,49 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       ? ((derivedAssetsValue - normalizedInitialBalance) / normalizedInitialBalance) * 100
       : fallbackTotalROI;
 
-  const fallbackBenchmarkPercentage = (() => {
-    const lastBenchmarkPoint =
-      visibleBenchmarkData.length > 0 ? visibleBenchmarkData[visibleBenchmarkData.length - 1] : undefined;
-    if (lastBenchmarkPoint && typeof lastBenchmarkPoint.benchmark === 'number') {
-      return lastBenchmarkPoint.benchmark;
+  // Keep annualized ROI consistent across timeframe changes by reusing the same total ROI source
+  const effectiveEndTimestamp = useMemo(() => {
+    if (typeof dataEndTime === 'number' && Number.isFinite(dataEndTime)) {
+      return dataEndTime;
     }
-    const lastFilteredBenchmark =
-      filteredData.length > 0 ? filteredData[filteredData.length - 1]?.benchmark : undefined;
-    return typeof lastFilteredBenchmark === 'number' ? lastFilteredBenchmark : 0;
-  })();
+    const lastPoint = chartState.data[chartState.data.length - 1];
+    if (lastPoint && typeof lastPoint.timestampNum === 'number' && Number.isFinite(lastPoint.timestampNum)) {
+      return lastPoint.timestampNum;
+    }
+    return Date.now();
+  }, [chartState.data, dataEndTime]);
+
+  const stableAnnualizedROI = useMemo(() => {
+    const start = tradingStartTimestamp;
+    if (typeof start !== 'number' || !Number.isFinite(start)) {
+      return derivedTotalROI;
+    }
+
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const days = (effectiveEndTimestamp - start) / msPerDay;
+    if (days <= 0) {
+      return derivedTotalROI;
+    }
+
+    const years = days / 365;
+    const totalDecimal = derivedTotalROI / 100;
+    const annualized = (Math.pow(1 + totalDecimal, 1 / years) - 1) * 100;
+    return Math.round(annualized * 100) / 100;
+  }, [derivedTotalROI, effectiveEndTimestamp, tradingStartTimestamp]);
+
+  // Benchmark ROI decoupled from chart slice: use current price vs initial price
+  const fallbackBenchmarkPercentage = 0;
 
   const derivedBenchmarkROI = (() => {
-    if (
-      typeof initialStockPrice === 'number' &&
-      Number.isFinite(initialStockPrice) &&
-      initialStockPrice > 0 &&
-      typeof effectiveStockPrice === 'number' &&
-      Number.isFinite(effectiveStockPrice)
-    ) {
+    const hasInitialPrice =
+      typeof initialStockPrice === 'number' && Number.isFinite(initialStockPrice) && initialStockPrice > 0;
+    const hasCurrentPrice =
+      typeof effectiveStockPrice === 'number' && Number.isFinite(effectiveStockPrice) && effectiveStockPrice > 0;
+
+    if (hasInitialPrice && hasCurrentPrice) {
       return ((effectiveStockPrice / initialStockPrice) - 1) * 100;
     }
+
     return fallbackBenchmarkPercentage;
   })();
 
@@ -1577,7 +1575,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         {/* Annualized Return Rate */}
         <div className={SECONDARY_METRIC_CARD_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-green-600">
-              {formatPercentage(chartState.metrics.annualizedReturnRate ?? 0)}
+              {formatPercentage(stableAnnualizedROI ?? 0)}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.annualizedReturnRate')}</div>
         </div>
