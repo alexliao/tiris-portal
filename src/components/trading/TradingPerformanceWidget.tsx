@@ -558,10 +558,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     setQuoteSymbol(snapshot.quoteSymbol);
     setStockBalance(snapshot.stockBalance);
     setQuoteBalance(snapshot.quoteBalance);
-    oneMinutePriceRef.current =
+    const snapshotPrice =
       typeof snapshot.price === 'number' && Number.isFinite(snapshot.price) && snapshot.price > 0
         ? snapshot.price
         : undefined;
+
+    // Keep showing the last known valid price if the backend returns an invalid value
+    oneMinutePriceRef.current = snapshotPrice ?? oneMinutePriceRef.current;
 
     return snapshot;
   }, [attemptPublicFirst, trading]);
