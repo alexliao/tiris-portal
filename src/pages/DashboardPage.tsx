@@ -9,6 +9,8 @@ import Footer from '../components/layout/Footer';
 import { THEME_COLORS } from '../config/theme';
 import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
 
+const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
+
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -89,6 +91,52 @@ export const DashboardPage: React.FC = () => {
     const active = exchanges.filter(e => e.status === 'active').length;
     return { total, active };
   };
+
+  const renderExchangeIcons = (bindings: ExchangeBinding[]) => {
+    const ExchangeFallbackIcon = THEME_COLORS.exchanges.icon;
+    const { total } = getExchangeStats();
+    return (
+      <div className="flex items-center flex-wrap gap-2 mt-2" aria-label={`${t('dashboard.totalExchanges')}: ${total}`}>
+        <span className="sr-only">{`${t('dashboard.totalExchanges')}: ${total}`}</span>
+        {bindings.map((binding, idx) => {
+          const iconUrl = ICON_SERVICE_BASE_URL && binding.exchange_type
+            ? `${ICON_SERVICE_BASE_URL}/icons/${binding.exchange_type}.png`
+            : null;
+          return iconUrl ? (
+            <img
+              key={`exchange-icon-${binding.id}-${idx}`}
+              src={iconUrl}
+              alt={binding.exchange_type}
+              className="w-7 h-7 rounded-full bg-white/10 p-0.5"
+            />
+          ) : (
+            <ExchangeFallbackIcon key={`exchange-icon-fallback-${binding.id}-${idx}`} className="w-6 h-6 text-white" />
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderIconRow = (goldCount: number, grayCount: number, keyPrefix: string, ariaLabel: string) => (
+    <div className="flex items-center flex-wrap gap-2 mt-2" aria-label={ariaLabel}>
+      {Array.from({ length: goldCount }).map((_, idx) => (
+        <img
+          key={`${keyPrefix}-gold-${idx}`}
+          src="/tiris-gold.png"
+          alt={t('dashboard.activeTradings')}
+          className="w-8 h-8"
+        />
+      ))}
+      {Array.from({ length: grayCount }).map((_, idx) => (
+        <img
+          key={`${keyPrefix}-gray-${idx}`}
+          src="/tiris-gray.png"
+          alt={t('dashboard.totalTradings')}
+          className="w-8 h-8 opacity-30"
+        />
+      ))}
+    </div>
+  );
 
   const tradingTypes = [
     {
@@ -182,19 +230,21 @@ export const DashboardPage: React.FC = () => {
               const Icon = type.icon;
               const stats = getTradingTypeStats(type.key);
               const colors = type.colors;
+              const activeCount = Math.max(0, Math.min(stats.active, stats.total));
+              const remainingCount = Math.max(0, stats.total - activeCount);
 
               return (
                 <React.Fragment key={type.key}>
                   <div
                     onClick={() => navigate(`/tradings/${type.key}`)}
-                    className="bg-white rounded-lg shadow hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-gray-200"
-                  >
+                    className="py-6 rounded-lg shadow hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-gray-200"
+                    style={{
+                      background: `linear-gradient(90deg, ${colors.primary}, ${colors.hover})`
+                    }}
+                >
                     {/* Colored Header */}
                     <div
-                      style={{
-                        background: `linear-gradient(135deg, ${colors.primary}, ${colors.hover})`
-                      }}
-                      className="p-6 text-white"
+                      className="px-6 pb-6 text-white"
                     >
                       <div className="flex items-center justify-between mb-3">
                         <Icon className="w-10 h-10" />
@@ -204,18 +254,16 @@ export const DashboardPage: React.FC = () => {
                       <p className="text-sm text-white/80">{type.description}</p>
                     </div>
 
-                    {/* White Body with Stats */}
-                    <div className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-                          <p className="text-xs text-gray-500 mt-1">{t('dashboard.totalTradings')}</p>
-                        </div>
-                        <div className="text-right">
-                          <p style={{ color: colors.primary }} className="text-3xl font-bold">{stats.active}</p>
-                          <p className="text-xs text-gray-500 mt-1">{t('dashboard.activeTradings')}</p>
-                        </div>
-                      </div>
+                    {/* Icon Row */}
+                    <div
+                      className="px-6 text-white"
+                    >
+                      {renderIconRow(
+                        activeCount,
+                        remainingCount,
+                        `${type.key}-total`,
+                        `${type.label} ${t('dashboard.totalTradings')}: ${stats.total}`
+                      )}
                     </div>
                   </div>
 
@@ -223,14 +271,13 @@ export const DashboardPage: React.FC = () => {
                   {index === 1 && (
                     <div
                       onClick={() => navigate('/exchanges')}
-                      className="bg-white rounded-lg shadow hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-gray-200"
+                      className="py-6 rounded-lg shadow hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-gray-200"
+                      style={{
+                        background: `linear-gradient(90deg, ${THEME_COLORS.exchanges.primary}, ${THEME_COLORS.exchanges.hover})`
+                      }}
                     >
-                      {/* Colored Header */}
                       <div
-                        style={{
-                          background: `linear-gradient(135deg, ${THEME_COLORS.exchanges.primary}, ${THEME_COLORS.exchanges.hover})`
-                        }}
-                        className="p-6 text-white"
+                        className="px-6 pb-6 text-white"
                       >
                         <div className="flex items-center justify-between mb-3">
                           {React.createElement(THEME_COLORS.exchanges.icon, { className: "w-10 h-10" })}
@@ -239,15 +286,8 @@ export const DashboardPage: React.FC = () => {
                         <h3 className="text-xl font-bold mb-1">{t('dashboard.exchanges')}</h3>
                         <p className="text-sm text-white/80">{t('dashboard.manageExchanges')}</p>
                       </div>
-
-                      {/* White Body with Stats */}
-                      <div className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-3xl font-bold text-gray-900">{getExchangeStats().total}</p>
-                            <p className="text-xs text-gray-500 mt-1">{t('dashboard.totalExchanges')}</p>
-                          </div>
-                        </div>
+                      <div className="px-6 text-white">
+                        {renderExchangeIcons(exchanges)}
                       </div>
                     </div>
                   )}

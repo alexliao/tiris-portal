@@ -34,3 +34,4 @@ dist-ssr
 .claude/auth.debug.txt
 deploy.sh
 .env.*
+._*
