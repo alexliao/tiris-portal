@@ -8,3 +8,5 @@ tests
 docs
 *.md
 .gitignore
+.DS_Store
+._*

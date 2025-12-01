@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, type Trading, ApiError, getBots, type Bot, getExchangeBindings, type ExchangeBinding } from '../utils/api';
-import { AlertCircle, ChevronRight } from 'lucide-react';
+import { AlertCircle, ChevronRight, Zap } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
-import { THEME_COLORS } from '../config/theme';
+import { THEME_COLORS, getTradingTheme } from '../config/theme';
 import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
+import TradingCardMetrics from '../components/trading/TradingCardMetrics';
+import { getTradingDayCount } from '../utils/tradingDates';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
@@ -162,6 +164,22 @@ export const DashboardPage: React.FC = () => {
     }
   ];
 
+  const onlineTradings = useMemo(() => {
+    return bots
+      .filter(bot => bot.alive)
+      .map(bot => {
+        const trading = tradings.find(t => t.id === bot.record.spec.trading.id);
+        if (!trading) return null;
+        return {
+          trading,
+          bot,
+          updatedAt: bot.record.updated_at ?? ''
+        };
+      })
+      .filter((entry): entry is { trading: Trading; bot: Bot; updatedAt: string } => entry !== null)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [bots, tradings]);
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -225,7 +243,97 @@ export const DashboardPage: React.FC = () => {
             <p className="text-gray-600">{t('dashboard.loadingTradings')}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <>
+            {onlineTradings.length > 0 && (
+              <div className="mb-8">
+                {/* <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">{t('dashboard.activeTradings')}</h2>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
+                    {onlineTradings.length}
+                  </span>
+                </div> */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {onlineTradings.map(({ trading, bot }) => {
+                    const colors = THEME_COLORS[getTradingTheme(trading.type)];
+                    const dayCount = getTradingDayCount(trading);
+                    const dayCountLabel = dayCount !== null ? t('trading.detail.dayCount', { count: dayCount }) : null;
+                    const exchangeType = (trading.type === 'paper' || trading.type === 'backtest')
+                      ? (trading.info as { exchange_type?: string; exchange_ccxt_id?: string; exchange_name?: string })?.exchange_type
+                      : trading.exchange_binding?.exchange_type;
+                    const exchangeName = (trading.type === 'paper' || trading.type === 'backtest')
+                      ? (trading.info as { exchange_name?: string })?.exchange_name
+                      : trading.exchange_binding?.name;
+                    const exchangeIconUrl = exchangeType && ICON_SERVICE_BASE_URL
+                      ? `${ICON_SERVICE_BASE_URL}/icons/${exchangeType}.png`
+                      : null;
+
+                    return (
+                      <div
+                        key={trading.id}
+                        onClick={() => navigate(`/trading/${trading.id}`)}
+                        className="bg-white rounded-lg shadow hover:shadow-xl transition-shadow cursor-pointer border border-gray-200 overflow-hidden"
+                      >
+                        {/* Card Header */}
+                        <div
+                          style={{
+                            background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+                          }}
+                          className="p-4"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-lg font-semibold text-white truncate">
+                                {trading.name}
+                              </h3>
+                              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                {(exchangeName) && (
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/90 gap-1.5">
+                                    {exchangeType && exchangeIconUrl && (
+                                      <img
+                                        src={exchangeIconUrl}
+                                        alt={exchangeType}
+                                        className="w-4 h-4 rounded"
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).style.display = 'none';
+                                        }}
+                                      />
+                                    )}
+                                    {exchangeName}
+                                  </span>
+                                )}
+                                {dayCountLabel && (
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/90">
+                                    {dayCountLabel}
+                                  </span>
+                                )}
+                                {(bot?.record.spec.params?.timeframe || trading.info?.timeframe) === '5m' && (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/90 cursor-help"
+                                    title={t('trading.badges.minuteLevelTooltip')}
+                                  >
+                                    <Zap className="w-3.5 h-3.5" />
+                                  </span>
+                                )}
+                                <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-200 text-green-900">
+                                  {t('dashboard.botStatus.online')}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card Body - Metrics */}
+                        <TradingCardMetrics trading={trading} />
+                      </div>
+                    );
+                  })}
+                </div>
+                <hr className="my-8 border-gray-300" />
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {tradingTypes.map((type, index) => {
               const Icon = type.icon;
               const stats = getTradingTypeStats(type.key);
@@ -294,7 +402,8 @@ export const DashboardPage: React.FC = () => {
                 </React.Fragment>
               );
             })}
-          </div>
+            </div>
+          </>
         )}
       </div>
       </div>
