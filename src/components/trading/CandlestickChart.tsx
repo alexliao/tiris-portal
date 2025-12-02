@@ -196,7 +196,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   };
 
   heightRef.current = height;
-  const LABEL_PRICE_OFFSET_RATIO = 0.04; // offset to keep labels from overlapping candles
+  const LABEL_PRICE_OFFSET_PX = 18; // fixed pixel offset to keep labels from overlapping candles
 
   useEffect(() => {
     if (typeof tradingSignalsVisible === 'boolean') {
@@ -1115,11 +1115,16 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
             : undefined;
 
       if (markerText) {
+        const markerSeries = benchmarkMarkersSeriesRef.current;
+        const markerCoordinate =
+          markerSeries && markerPrice !== undefined && Number.isFinite(markerPrice)
+            ? markerSeries.priceToCoordinate(markerPrice)
+            : null;
+
+        const pixelOffset = event.type === 'buy' ? LABEL_PRICE_OFFSET_PX : -LABEL_PRICE_OFFSET_PX;
         const adjustedPrice =
-          markerPrice !== undefined && markerPrice > 0
-            ? event.type === 'buy'
-              ? markerPrice * (1 - LABEL_PRICE_OFFSET_RATIO)
-              : markerPrice * (1 + LABEL_PRICE_OFFSET_RATIO)
+          markerSeries && markerCoordinate !== null && markerCoordinate !== undefined
+            ? markerSeries.coordinateToPrice(markerCoordinate + pixelOffset)
             : undefined;
 
         benchmarkLabelMarkers.push(
