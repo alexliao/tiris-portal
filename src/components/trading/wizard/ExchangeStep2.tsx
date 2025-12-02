@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Info, CheckCircle, AlertCircle } from 'lucide-react';
+import { Info, CheckCircle, AlertCircle, BookOpen, X } from 'lucide-react';
 import { validateExchangeCredentials } from '../../../utils/api';
+import { StaticMarkdownDocument } from '../../legal/StaticMarkdownDocument';
 
 interface ExchangeStep2Props {
   apiKey: string;
@@ -32,6 +33,12 @@ export const ExchangeStep2: React.FC<ExchangeStep2Props> = ({
   const [isValidating, setIsValidating] = useState(false);
   const [validationStatus, setValidationStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+
+  const tutorialSlugMap: Record<string, string> = {
+    gate: 'tutorials/gate',
+  };
+  const tutorialSlug = tutorialSlugMap[exchangeType?.toLowerCase?.() || ''];
 
   const handleValidateCredentials = async () => {
     setIsValidating(true);
@@ -73,14 +80,28 @@ export const ExchangeStep2: React.FC<ExchangeStep2Props> = ({
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-2">
-        {t('exchanges.wizard.step2.title')}
-      </h2>
-      <p className="text-gray-600 mb-6">
-        {t('exchanges.wizard.step2.description', { exchange: exchangeName })}
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">
+            {t('exchanges.wizard.step2.title')}
+          </h2>
+          <p className="text-gray-600">
+            {t('exchanges.wizard.step2.description', { exchange: exchangeName })}
+          </p>
+        </div>
+        {tutorialSlug && (
+          <button
+            type="button"
+            onClick={() => setIsTutorialOpen(true)}
+            className="inline-flex items-center gap-2 text-sm font-medium text-tiris-primary-700 hover:text-tiris-primary-800 px-3 py-2 rounded-md border border-tiris-primary-100 bg-tiris-primary-50"
+          >
+            <BookOpen className="w-4 h-4" />
+            {t('exchanges.wizard.step2.viewTutorial', { exchange: exchangeName })}
+          </button>
+        )}
+      </div>
 
-      <div className="flex flex-col gap-6 lg:flex-row">
+      <div className="flex flex-col gap-6 lg:flex-row mt-4">
         <div className="flex-1">
           <div className="flex flex-col gap-6">
             {/* API Key */}
@@ -199,6 +220,36 @@ export const ExchangeStep2: React.FC<ExchangeStep2Props> = ({
           </div>
         </div>
       </div>
+
+      {isTutorialOpen && tutorialSlug && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl mt-16 mb-10 mx-4 sm:mx-6">
+            <div className="flex items-start justify-between px-6 py-4 border-b border-gray-200">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5">
+                  <BookOpen className="w-5 h-5 text-tiris-primary-600" />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {t('exchanges.wizard.step2.tutorialTitle', { exchange: exchangeName })}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTutorialOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label={t('common.close')}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
+              <StaticMarkdownDocument slug={tutorialSlug} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

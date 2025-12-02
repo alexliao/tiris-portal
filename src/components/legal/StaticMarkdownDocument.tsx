@@ -122,7 +122,12 @@ export const StaticMarkdownDocument: React.FC<StaticMarkdownDocumentProps> = ({
       <li className="leading-relaxed" {...props} />
     ),
     a: ({ ...props }) => (
-      <a className="text-[#1B4D3E] underline" {...props} />
+      <a
+        className="text-[#1B4D3E] underline"
+        target="_blank"
+        rel="noopener noreferrer"
+        {...props}
+      />
     ),
     strong: ({ ...props }) => (
       <strong className="font-semibold text-[#080404]" {...props} />
