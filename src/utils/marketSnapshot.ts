@@ -1,4 +1,5 @@
 import {
+  getOHLCV,
   getEquityCurve,
   getSubAccountsByTrading,
   type EquityCurveNewData,
@@ -20,6 +21,30 @@ export interface MarketSnapshotOptions {
   attemptPublicFirst?: AttemptPublicFirst;
   endTimeMs?: number;
 }
+
+type CachedPriceEntry = {
+  status: 'warming' | 'ready';
+  price: number | null;
+  warmingUp: boolean;
+  promise?: Promise<void>;
+};
+
+type PriceCache = Record<string, Record<number, CachedPriceEntry>>;
+const latestPriceCache: PriceCache = {};
+
+const getPriceEntry = (market: string, minuteKey: number): CachedPriceEntry | null => {
+  return latestPriceCache[market]?.[minuteKey] ?? null;
+};
+
+const ensurePriceEntry = (market: string, minuteKey: number): CachedPriceEntry => {
+  if (!latestPriceCache[market]) {
+    latestPriceCache[market] = {};
+  }
+  if (!latestPriceCache[market][minuteKey]) {
+    latestPriceCache[market][minuteKey] = { status: 'warming', price: null, warmingUp: false };
+  }
+  return latestPriceCache[market][minuteKey];
+};
 
 const parseSymbolPair = (value?: unknown): { stockSymbol: string; quoteSymbol: string } | null => {
   if (typeof value !== 'string') {
@@ -160,36 +185,90 @@ export async function fetchMarketSnapshot(
     console.warn('fetchMarketSnapshot: failed to fetch sub-accounts; using fallback context', error);
   }
 
-  let price: number | null = null;
-  let warmingUp = false;
   const effectiveEndTime = options.endTimeMs ?? Date.now();
+  const minuteKey = Math.floor(effectiveEndTime / 60000) * 60; // seconds precision per minute
+  const market = `${resolvedStockSymbol}_${resolvedQuoteSymbol}`;
 
-  try {
-    const equityCurve = await requestWithAuthFallback(useAuth =>
-      getEquityCurve(
-        trading.id,
-        '1m',
-        1,
-        resolvedStockSymbol,
-        resolvedQuoteSymbol,
-        useAuth,
-        trading.exchange_binding?.exchange_type,
-        effectiveEndTime
-      )
-    );
+  const fetchPrice = async (entry: CachedPriceEntry): Promise<void> => {
+    let fetchedPrice: number | null = null;
+    let fetchedWarming = false;
 
-    price = extractPriceFromEquityCurve(equityCurve);
-    warmingUp = equityCurve?.warming_up === true;
-  } catch (error) {
-    console.warn('fetchMarketSnapshot: failed to fetch 1m price', error);
+    // Try the cheaper OHLCV endpoint first for the latest 1m close
+    try {
+      const exchangeType = trading.exchange_binding?.exchange_type;
+      if (exchangeType) {
+        const startTime = effectiveEndTime - 60_000; // 1 minute window
+        const ohlcv = await getOHLCV(exchangeType, market, startTime, effectiveEndTime, '1m', 'warmup', Number.POSITIVE_INFINITY);
+        const latestCandle = ohlcv.length > 0 ? ohlcv[ohlcv.length - 1] : null;
+        const latestClose = latestCandle?.c;
+        if (typeof latestClose === 'number' && Number.isFinite(latestClose) && latestClose > 0) {
+          fetchedPrice = latestClose;
+        } else {
+          fetchedWarming = true;
+        }
+      }
+    } catch (error) {
+      console.warn('fetchMarketSnapshot: failed to fetch OHLCV price; falling back to equity curve', error);
+    }
+
+    // Fallback to equity curve if OHLCV price is unavailable
+    if (fetchedPrice === null) {
+      try {
+        const equityCurve = await requestWithAuthFallback(useAuth =>
+          getEquityCurve(
+            trading.id,
+            '1m',
+            1,
+            resolvedStockSymbol,
+            resolvedQuoteSymbol,
+            useAuth,
+            trading.exchange_binding?.exchange_type,
+            effectiveEndTime
+          )
+        );
+
+        fetchedPrice = extractPriceFromEquityCurve(equityCurve);
+        fetchedWarming = equityCurve?.warming_up === true;
+      } catch (error) {
+        console.warn('fetchMarketSnapshot: failed to fetch 1m price', error);
+      }
+    }
+
+    entry.price = Number.isFinite(fetchedPrice ?? NaN) && (fetchedPrice ?? 0) > 0 ? fetchedPrice : null;
+    entry.warmingUp = fetchedWarming || fetchedPrice === null;
+    entry.status = entry.price === null ? 'warming' : 'ready';
+  };
+
+  const triggerFetchIfNeeded = (entry: CachedPriceEntry): void => {
+    if (entry.promise) {
+      return;
+    }
+    entry.promise = fetchPrice(entry).finally(() => {
+      entry.promise = undefined;
+    });
+  };
+
+  const entry = getPriceEntry(market, minuteKey);
+  if (entry && entry.status === 'ready') {
+    return {
+      stockSymbol: resolvedStockSymbol,
+      quoteSymbol: resolvedQuoteSymbol,
+      stockBalance: resolvedStockBalance,
+      quoteBalance: resolvedQuoteBalance,
+      price: entry.price,
+      warmingUp: entry.warmingUp,
+    };
   }
+
+  const workingEntry = entry ?? ensurePriceEntry(market, minuteKey);
+  triggerFetchIfNeeded(workingEntry);
 
   return {
     stockSymbol: resolvedStockSymbol,
     quoteSymbol: resolvedQuoteSymbol,
     stockBalance: resolvedStockBalance,
     quoteBalance: resolvedQuoteBalance,
-    price,
-    warmingUp,
+    price: workingEntry.price,
+    warmingUp: workingEntry.status === 'warming' || workingEntry.warmingUp,
   };
 }

@@ -1716,8 +1716,11 @@ export async function getOHLCV(
   startTime: number,
   endTime: number,
   timeframe: string = '1m',
-  onMiss: 'warmup' | 'none' = 'warmup'
+  onMiss: 'warmup' | 'none' = 'warmup',
+  maxRetries: number = 3
 ): Promise<OHLCVCandle[]> {
+  const unlimitedRetries = !Number.isFinite(maxRetries) || maxRetries < 0;
+  const effectiveMaxRetries = unlimitedRetries ? Number.POSITIVE_INFINITY : Math.max(0, Math.floor(maxRetries));
   const params = new URLSearchParams({
     ex: exchangeType.toLowerCase(),
     market: market,
@@ -1731,10 +1734,11 @@ export async function getOHLCV(
 
   console.log(`getOHLCV API request: ${API_BASE_URL}${endpoint}`);
 
-  const maxRetries = 3;
   let retryCount = 0;
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  const retryDelay = 2000; // 2 seconds as per API spec
 
-  while (retryCount < maxRetries) {
+  while (true) {
     try {
       const data = await apiRequest<OHLCVCandle[]>(endpoint);
       console.log(`✅ getOHLCV response: received ${data.length} candles`);
@@ -1743,13 +1747,13 @@ export async function getOHLCV(
       // Handle 202 Accepted (warming) response - data is being fetched
       if (error instanceof ApiError && error.status === 202) {
         retryCount++;
-        if (retryCount < maxRetries) {
-          const retryDelay = 2000; // 2 seconds as per API spec
-          console.log(`⏳ OHLCV data is warming (attempt ${retryCount}/${maxRetries}), retrying after ${retryDelay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        if (unlimitedRetries || retryCount <= effectiveMaxRetries) {
+          const attemptLabel = unlimitedRetries ? `${retryCount}` : `${retryCount}/${effectiveMaxRetries}`;
+          console.log(`⏳ OHLCV data is warming (attempt ${attemptLabel}), retrying after ${retryDelay}ms...`);
+          await sleep(retryDelay);
           continue;
         } else {
-          console.warn(`⚠️ OHLCV data warming exceeded max retries (${maxRetries})`);
+          console.warn(`⚠️ OHLCV data warming exceeded max retries (${effectiveMaxRetries})`);
           return [];
         }
       }

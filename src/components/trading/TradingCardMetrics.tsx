@@ -53,7 +53,7 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
           setIsWarmingUp(Boolean(snapshot.warmingUp));
 
           if (snapshot.warmingUp) {
-            await delay(2000);
+            await delay(1000);
           } else {
             setIsLoading(false); // Only show metrics once backend is ready (200)
             break;
