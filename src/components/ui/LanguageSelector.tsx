@@ -30,7 +30,7 @@ export const LanguageSelector: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 bottom-full mb-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+        <div className="absolute right-0 bottom-full mb-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-50 text-[#080404]">
           {languages.map((language) => (
             <button
               key={language.code}

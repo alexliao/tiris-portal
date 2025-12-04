@@ -1,12 +1,59 @@
 {
   "nav": {
-    "home": "主页",
+    "guide": "向导",
     "performance": "绩效",
     "highlights": "亮点"
   },
   "hero": {
     "title": "TIRIS",
-    "subtitle": "盈利的加密货币交易机器人"
+    "subtitle": "盈利的加密货币交易机器人",
+    "getStarted": "开始使用"
+  },
+  "guidePage": {
+    "title": "上线向导",
+    "subtitle": "按照下面的步骤，从第一次访问到上线实盘。每完成一步会解锁下一步。",
+    "progressLabel": "进度",
+    "progressStatus": "已完成 {{completed}}/{{total}}",
+    "saving": "正在保存进度...",
+    "loading": "加载中...",
+    "errors": {
+      "saveFailedTitle": "保存失败",
+      "saveUnknown": "无法保存进度",
+      "loadFailedTitle": "加载失败",
+      "loadUnknown": "无法加载清单"
+    },
+    "tasks": {
+      "reviewPerformance": {
+        "title": "查看绩效",
+        "description": "查看实时指标和权益曲线，了解收益与风险。",
+        "action": "查看绩效"
+      },
+      "signIn": {
+        "title": "创建账户",
+        "description": "注册或登录，以便保存进度和交易设置。",
+        "action": "注册 / 登录"
+      },
+      "runBacktest": {
+        "title": "运行回测",
+        "description": "在历史行情中验证策略的盈利能力。",
+        "action": "创建回测"
+      },
+      "startPaperTrade": {
+        "title": "开始模拟交易",
+        "description": "用模拟资金测试实时执行情况。",
+        "action": "开始模拟交易"
+      },
+      "linkExchange": {
+        "title": "连接交易所",
+        "description": "绑定 API 密钥以便机器人下单。",
+        "action": "绑定交易所"
+      },
+      "launchLiveTrade": {
+        "title": "上线实盘",
+        "description": "投入资金进行自动交易并监控运行状况。",
+        "action": "创建实盘"
+      }
+    }
   },
   "about": {
     "title": "Tiris是什么",

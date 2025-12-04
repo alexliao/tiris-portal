@@ -1,12 +1,59 @@
 {
   "nav": {
-    "home": "Home",
+    "guide": "Guide",
     "performance": "Performance",
     "highlights": "Highlights"
   },
   "hero": {
     "title": "TIRIS",
-    "subtitle": "Profitable Crypto Trading Bot"
+    "subtitle": "Profitable Crypto Trading Bot",
+    "getStarted": "Get Started"
+  },
+  "guidePage": {
+    "title": "Launch with confidence",
+    "subtitle": "Follow the steps below to move from first visit to a live strategy. Each step unlocks the next.",
+    "progressLabel": "Progress",
+    "progressStatus": "{{completed}}/{{total}} done",
+    "saving": "Saving progress...",
+    "loading": "Loading...",
+    "errors": {
+      "saveFailedTitle": "Save failed",
+      "saveUnknown": "Unable to save progress",
+      "loadFailedTitle": "Load failed",
+      "loadUnknown": "Unable to load your checklist"
+    },
+    "tasks": {
+      "reviewPerformance": {
+        "title": "Review performance",
+        "description": "Open live metrics and the equity curve to understand profitability and risk.",
+        "action": "Open performance"
+      },
+      "signIn": {
+        "title": "Create an account",
+        "description": "Sign up or sign in so we can save progress and your trading setups.",
+        "action": "Sign up / Sign in"
+      },
+      "runBacktest": {
+        "title": "Run a backtest",
+        "description": "Validate the strategy across historical regimes.",
+        "action": "Create backtest"
+      },
+      "startPaperTrade": {
+        "title": "Start a paper trade",
+        "description": "Test real-time execution with simulated funds.",
+        "action": "Start paper trade"
+      },
+      "linkExchange": {
+        "title": "Connect an exchange",
+        "description": "Link API keys so the bot can execute orders.",
+        "action": "Link exchange"
+      },
+      "launchLiveTrade": {
+        "title": "Launch a live trade",
+        "description": "Deploy with capital, set alerts, and monitor early fills.",
+        "action": "Go live"
+      }
+    }
   },
   "about": {
     "title": "WHAT TIRIS DOES",

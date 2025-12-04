@@ -26,9 +26,7 @@ export const HighlightsSection: React.FC<HighlightsSectionProps> = ({
     {
       titleKey: 'features.profitable.title',
       descriptionKey: 'features.profitable.description',
-      bgColor: THEME_COLORS.backtest.primary,  // Backtest - Profitable
-      ctaKey: 'features.profitable.cta',
-      ctaHref: '/performance'
+      bgColor: THEME_COLORS.backtest.primary  // Backtest - Profitable
     },
     {
       titleKey: 'features.secure.title',
@@ -44,9 +42,8 @@ export const HighlightsSection: React.FC<HighlightsSectionProps> = ({
       titleKey: 'features.simple.title',
       descriptionKey: 'features.simple.description',
       bgColor: THEME_COLORS.real.primary,  // Real - Simple
-      ctaKey: 'performance.cta',
-      ctaHref: '/backtest-trading/create',
-      mobileOnly: true
+      ctaKey: 'hero.getStarted',
+      ctaHref: '/guide'
     }
   ];
 
@@ -86,7 +83,7 @@ export const HighlightsSection: React.FC<HighlightsSectionProps> = ({
             {feature.ctaKey && feature.ctaHref && (
               <Link
                 to={feature.ctaHref}
-                className={`mt-8 inline-flex items-center justify-center px-5 py-2 text-sm font-semibold font-['Nunito'] text-white border border-white rounded-full hover:bg-white/10 transition-colors ${feature.mobileOnly ? 'md:hidden' : ''}`}
+                className={`mt-8 inline-flex items-center justify-center px-6 py-3 rounded-full bg-white text-[#1a1a1a] font-['Nunito'] font-semibold shadow-lg shadow-black/20 hover:-translate-y-[1px] transition-transform ${feature.mobileOnly ? 'md:hidden' : ''}`}
               >
                 {t(feature.ctaKey)}
               </Link>

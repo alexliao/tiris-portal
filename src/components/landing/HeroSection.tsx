@@ -10,10 +10,18 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   
+  const handleScrollDown = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    const target = document.getElementById('highlights');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+  
   return (
     <section 
       id="home"
-      className={`min-h-screen flex items-center justify-center bg-cover bg-center ${className}`}
+      className={`relative min-h-screen flex items-center justify-center bg-cover bg-center ${className}`}
       style={{
         backgroundImage: 'url(/hero-bg.png)'
       }}
@@ -33,6 +41,35 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           {t('hero.subtitle')}
         </p>
       </div>
+
+      <a
+        href="#highlights"
+        aria-label={t('hero.scrollDown')}
+        onClick={handleScrollDown}
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 inline-flex flex-col items-center text-white/80 hover:text-white transition-colors"
+      >
+        <svg
+          className="w-8 h-8 animate-bounce"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M6 8l6 6 6-6"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M6 12l6 6 6-6"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </a>
     </section>
   );
 };
