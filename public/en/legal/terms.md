@@ -1,6 +1,6 @@
 # Terms of Service
 
-*Last updated November 18, 2025*
+*Last updated December 03, 2025*
 
 ## 1. Acceptance of Terms
 Tiris Portal ("Tiris", "we", "us") is a web application that introduces machine-learning powered quantitative trading strategies through educational content, performance analytics, and onboarding workflows. By accessing the site, using the performance demonstrations, or authenticating to begin onboarding, you agree to these Terms of Service and any policies referenced here.
