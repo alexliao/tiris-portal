@@ -10,11 +10,11 @@ import Footer from '../components/layout/Footer';
 import { THEME_COLORS } from '../config/theme';
 import PaperStep1 from '../components/trading/wizard/PaperStep1';
 import PaperStep2 from '../components/trading/wizard/PaperStep2';
-import PaperStep3 from '../components/trading/wizard/PaperStep3';
 import PaperWizardStepIndicator from '../components/trading/wizard/PaperWizardStepIndicator';
 import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
+const PAPER_FREQUENCY: '8h' = '8h'; // Paper trading always uses hour-level frequency
 
 export const PaperTradingWizardPage: React.FC = () => {
   const { t } = useTranslation();
@@ -29,7 +29,6 @@ export const PaperTradingWizardPage: React.FC = () => {
   // Form data
   const [tradingName, setTradingName] = useState('');
   const [selectedExchange, setSelectedExchange] = useState<ExchangeConfigResponse | null>(null);
-  const [selectedFrequency, setSelectedFrequency] = useState<'5m' | '8h'>('5m');
 
   // Available data
   const [paperExchanges, setPaperExchanges] = useState<ExchangeConfigResponse[]>([]);
@@ -105,14 +104,6 @@ export const PaperTradingWizardPage: React.FC = () => {
     }
 
     if (step === 2) {
-      if (!selectedFrequency) {
-        setError(t('trading.create.frequencyRequired'));
-        return false;
-      }
-      return true;
-    }
-
-    if (step === 3) {
       if (!tradingName.trim()) {
         setError(t('trading.create.nameRequired'));
         return false;
@@ -144,7 +135,7 @@ export const PaperTradingWizardPage: React.FC = () => {
       setError(null);
 
       // Determine strategy name based on frequency
-      const strategyName = selectedFrequency === '5m' ? 'TirisML.5m' : 'TirisML';
+      const strategyName = 'TirisML';
 
       // Prepare request data for paper trading
       // Note: exchange_binding_id is omitted for paper trading per backend spec
@@ -159,7 +150,7 @@ export const PaperTradingWizardPage: React.FC = () => {
           exchange_ccxt_id: selectedExchange?.ccxt_id,
           exchange_sandbox: selectedExchange?.sandbox,
           exchange_virtual_fee: selectedExchange?.virtual_exchange_fee,
-          timeframe: selectedFrequency,
+          timeframe: PAPER_FREQUENCY,
           start_date: new Date().toISOString(),
           end_date: null,
         },
@@ -294,7 +285,7 @@ export const PaperTradingWizardPage: React.FC = () => {
             </div>
 
             {/* Step Indicator */}
-            <PaperWizardStepIndicator currentStep={currentStep} totalSteps={3} />
+            <PaperWizardStepIndicator currentStep={currentStep} />
           </div>
         </div>
 
@@ -323,13 +314,6 @@ export const PaperTradingWizardPage: React.FC = () => {
             )}
 
             {currentStep === 2 && (
-              <PaperStep3
-                selectedFrequency={selectedFrequency}
-                setSelectedFrequency={setSelectedFrequency}
-              />
-            )}
-
-            {currentStep === 3 && (
               <PaperStep1
                 tradingName={tradingName}
                 setTradingName={setTradingName}
@@ -356,7 +340,7 @@ export const PaperTradingWizardPage: React.FC = () => {
 
               <div className="flex-1" />
 
-              {currentStep === 3 ? (
+              {currentStep === 2 ? (
                 <button
                   onClick={handleSubmit}
                   disabled={isLoading}

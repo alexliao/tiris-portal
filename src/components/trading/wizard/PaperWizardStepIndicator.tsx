@@ -3,18 +3,14 @@ import { useTranslation } from 'react-i18next';
 
 interface PaperWizardStepIndicatorProps {
   currentStep: number;
-  totalSteps?: number;
 }
 
-export const PaperWizardStepIndicator: React.FC<PaperWizardStepIndicatorProps> = ({
-  currentStep,
-}) => {
+export const PaperWizardStepIndicator: React.FC<PaperWizardStepIndicatorProps> = ({ currentStep }) => {
   const { t } = useTranslation();
 
   const steps = [
     { number: 1, label: t('trading.wizard.paperStep2.label') || 'Select Exchange' },
-    { number: 2, label: t('trading.wizard.paperStep3.label') || 'Choose Frequency' },
-    { number: 3, label: t('trading.wizard.paperStep1.label') || 'Trading Details' },
+    { number: 2, label: t('trading.wizard.paperStep1.label') || 'Trading Details' },
   ];
 
   return (
