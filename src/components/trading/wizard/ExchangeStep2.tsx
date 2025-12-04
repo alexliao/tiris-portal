@@ -37,6 +37,10 @@ export const ExchangeStep2: React.FC<ExchangeStep2Props> = ({
 
   const tutorialSlugMap: Record<string, string> = {
     gate: 'tutorials/gate',
+    coinbase: 'tutorials/coinbase',
+    kraken: 'tutorials/kraken',
+    okx: 'tutorials/okx',
+    okx_demo: 'tutorials/okx',
   };
   const tutorialSlug = tutorialSlugMap[exchangeType?.toLowerCase?.() || ''];
 

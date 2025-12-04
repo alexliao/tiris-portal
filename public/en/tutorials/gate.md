@@ -2,7 +2,7 @@
 
 This flow is only for Tiris binding: keep permissions minimal—spot account read and trading only. No withdrawals, transfers, futures, or other abilities.
 
-## Prep
+## Prerequisites
 - A Gate account with KYC completed and 2FA (Google/SMS) enabled.
 - Use desktop web to avoid mobile layout differences.
 
@@ -10,7 +10,7 @@ This flow is only for Tiris binding: keep permissions minimal—spot account rea
 1) After logging in, click your avatar (top right) → “API Management”. Direct link: https://www.gate.com/zh/myaccount/profile/api-key/manage  
 2) Click “Create API Key”.  
 3) Add a note for identification (e.g., “Tiris Only”).  
-4) IP whitelist: leave unrestricted for now if you don’t want to limit the IP; you can add it later.  
+4) IP whitelist: leave blank for now if you don’t want to limit the IP; you can add it later.  
 5) Permissions (keep minimal):  
    - Check “Spot”.  
    - Check “Read/Write”.  
