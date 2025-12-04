@@ -99,6 +99,8 @@ export const StaticMarkdownDocument: React.FC<StaticMarkdownDocumentProps> = ({
     );
   }
 
+  type CodeProps = React.ComponentPropsWithoutRef<'code'> & { inline?: boolean };
+
   const components: Components = {
     h1: ({ ...props }) => (
       <h1 className="text-3xl font-['Bebas_Neue'] text-[#080404] mb-3" {...props} />
@@ -135,6 +137,28 @@ export const StaticMarkdownDocument: React.FC<StaticMarkdownDocumentProps> = ({
     em: ({ ...props }) => (
       <em className="italic" {...props} />
     ),
+    code: ({ inline, className = '', children, ...props }: CodeProps) => {
+      const isInline = inline ?? !className?.includes('language-');
+
+      if (isInline) {
+        return (
+          <code
+            className={`inline bg-gray-200 text-[#080404] px-1 py-[2px] rounded font-['Nunito'] text-sm ${className}`}
+            {...props}
+          >
+            {children}
+          </code>
+        );
+      }
+
+      return (
+        <pre className="bg-gray-100 rounded p-4 overflow-x-auto mb-4">
+          <code className={`font-mono text-sm ${className}`} {...props}>
+            {children}
+          </code>
+        </pre>
+      );
+    },
     blockquote: ({ ...props }) => (
       <blockquote
         className="border-l-4 border-gray-300 pl-4 italic text-gray-600 font-['Nunito'] mb-4"
