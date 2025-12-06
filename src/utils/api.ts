@@ -28,6 +28,8 @@ type AnyRecord = Record<string, unknown>;
 
 export interface Trading {
   id: string;
+  user_id?: string;
+  owner_id?: string;
   name: string;
   exchange_binding_id: string;
   exchange_binding?: {

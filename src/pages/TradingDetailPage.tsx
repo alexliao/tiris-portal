@@ -57,7 +57,7 @@ export const TradingDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const [trading, setTrading] = useState<Trading | null>(null);
   const [bot, setBot] = useState<Bot | null>(null);
   const [exchangeBinding, setExchangeBinding] = useState<ExchangeBinding | null>(null);
@@ -85,6 +85,9 @@ export const TradingDetailPage: React.FC = () => {
   const [dataRefreshInterval, setDataRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const isRefreshing2 = useRef(false);
+  const [isTradingOwner, setIsTradingOwner] = useState(false);
+
+  const canManageTrading = isAuthenticated && isTradingOwner;
 
   useEffect(() => {
     tradingTypeRef.current = trading?.type ?? null;
@@ -275,11 +278,13 @@ export const TradingDetailPage: React.FC = () => {
       }
 
       let foundTrading: Trading | null = null;
+      let ownedByCurrentUser = false;
 
       // Try to fetch trading by ID first (works for both authenticated and unauthenticated)
       if (isAuthenticated) {
         // For authenticated users, first try to find in their own tradings
         const tradings = await getTradings();
+        ownedByCurrentUser = tradings.some(t => t.id === id);
         foundTrading = tradings.find(t => t.id === id) || null;
 
         // If not found in user's own tradings, try to fetch by ID (might be another user's public trading)
@@ -294,9 +299,15 @@ export const TradingDetailPage: React.FC = () => {
 
       if (!foundTrading) {
         setError(t('trading.detail.notFound'));
+        setIsTradingOwner(false);
         return;
       }
 
+      const infoOwnerId = typeof foundTrading.info?.user_id === 'string' ? foundTrading.info.user_id : undefined;
+      const ownerIdFromTrading = foundTrading.user_id || foundTrading.owner_id || infoOwnerId;
+      const ownerMatchesUser = Boolean(user?.id && ownerIdFromTrading && ownerIdFromTrading === user.id);
+
+      setIsTradingOwner(isAuthenticated ? ownedByCurrentUser || ownerMatchesUser : false);
       setTrading(foundTrading);
 
       // Try to fetch associated bot (requires authentication)
@@ -645,7 +656,7 @@ export const TradingDetailPage: React.FC = () => {
   }, [statusCheckInterval, dataRefreshInterval]);
 
   const handleStartBot = async () => {
-    if (!trading) return;
+    if (!trading || !canManageTrading) return;
 
     console.log('Starting bot for trading:', trading.id);
     setBotLoading(true);
@@ -849,7 +860,7 @@ export const TradingDetailPage: React.FC = () => {
   };
 
   const handleStopBot = async () => {
-    if (!bot) return;
+    if (!bot || !canManageTrading) return;
 
     setBotLoading(true);
     try {
@@ -933,6 +944,10 @@ export const TradingDetailPage: React.FC = () => {
   const handleTitleSave = async (nextName: string) => {
     if (!trading) {
       return nextName;
+    }
+
+    if (!canManageTrading) {
+      return trading.name;
     }
 
     const updatedTrading = await updateTrading(trading.id, { name: nextName });
@@ -1068,7 +1083,7 @@ export const TradingDetailPage: React.FC = () => {
                   <EditableText
                     value={trading.name}
                     onSave={handleTitleSave}
-                    disabled={!isAuthenticated}
+                    disabled={!canManageTrading}
                     className="flex-1 min-w-0"
                     textClassName="truncate text-lg sm:text-2xl font-bold text-white"
                     inputClassName="text-lg sm:text-2xl font-bold text-white placeholder-white/60"
@@ -1081,7 +1096,7 @@ export const TradingDetailPage: React.FC = () => {
                     }}
                     as="h1"
                   />
-                  {isAuthenticated && (
+                  {canManageTrading && (
                     <button
                       onClick={handleDeleteClick}
                       className="ml-auto shrink-0 p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
@@ -1180,7 +1195,7 @@ export const TradingDetailPage: React.FC = () => {
                     </div>
                   )}
                   {/* Bot Controls - Mobile Only */}
-                  {isAuthenticated && (
+                  {canManageTrading && (
                     <div className="flex lg:hidden items-center gap-2">
                       {bot && bot.record.enabled && bot.alive ? (
                         <button
@@ -1220,7 +1235,7 @@ export const TradingDetailPage: React.FC = () => {
                   )}
                 </div>
                 {/* Bot Controls for Desktop - Right Aligned */}
-                {isAuthenticated && (
+                {canManageTrading && (
                   <div className="hidden lg:flex items-center justify-end gap-2">
                     {bot && bot.record.enabled && bot.alive ? (
                       <button
