@@ -1631,14 +1631,41 @@ export async function validateExchangeCredentials(
   });
 }
 
-// Get sub-accounts for a trading
+// Cache for sub-accounts to reduce backend requests (sub-accounts don't change frequently)
+const subAccountsCache: Record<string, { data: SubAccount[]; timestamp: number }> = {};
+const SUB_ACCOUNTS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Invalidate sub-accounts cache for a specific trading (call after create/delete operations)
+export function invalidateSubAccountsCache(tradingId?: string): void {
+  if (tradingId) {
+    delete subAccountsCache[tradingId];
+  } else {
+    // Clear all cache entries
+    Object.keys(subAccountsCache).forEach(key => delete subAccountsCache[key]);
+  }
+}
+
+// Get sub-accounts for a trading (with caching)
 export async function getSubAccountsByTrading(tradingId: string, requireAuth: boolean = true): Promise<SubAccount[]> {
+  const now = Date.now();
+  const cached = subAccountsCache[tradingId];
+
+  // Return cached data if still valid
+  if (cached && (now - cached.timestamp) < SUB_ACCOUNTS_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   const response = await apiRequest<{ sub_accounts: SubAccount[] }>(
     `/sub-accounts?trading_id=${tradingId}`,
     {},
     requireAuth
   );
-  return response.sub_accounts || [];
+  const subAccounts = response.sub_accounts || [];
+
+  // Cache the result
+  subAccountsCache[tradingId] = { data: subAccounts, timestamp: now };
+
+  return subAccounts;
 }
 
 // Delete individual sub-account

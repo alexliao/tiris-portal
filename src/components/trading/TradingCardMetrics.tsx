@@ -29,12 +29,17 @@ export const TradingCardMetrics: React.FC<TradingCardMetricsProps> = ({ trading 
         setIsLoading(true);
 
         do {
-          const endTimeMs =
+          // Only pass endTimeMs for backtest trades (to use specific historical end date).
+          // Live/paper trades use the default (previous minute) from fetchMarketSnapshot.
+          const backtestEndTime =
             trading.type === 'backtest'
-              ? Date.parse((trading.info as { end_date?: string })?.end_date ?? '') || Date.now()
-              : Date.now();
+              ? Date.parse((trading.info as { end_date?: string })?.end_date ?? '') || undefined
+              : undefined;
 
-          const snapshot: MarketSnapshot = await fetchMarketSnapshot(trading, { endTimeMs });
+          const snapshot: MarketSnapshot = await fetchMarketSnapshot(
+            trading,
+            backtestEndTime ? { endTimeMs: backtestEndTime } : {}
+          );
           const price = typeof snapshot.price === 'number' ? snapshot.price : null;
           const assetsValue =
             price !== null

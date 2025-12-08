@@ -185,7 +185,10 @@ export async function fetchMarketSnapshot(
     console.warn('fetchMarketSnapshot: failed to fetch sub-accounts; using fallback context', error);
   }
 
-  const effectiveEndTime = options.endTimeMs ?? Date.now();
+  // Use the previous minute's data (current time - 60s) to avoid backend warmup delays.
+  // The current minute's candle is still forming, causing the backend to warm up on every request.
+  // The previous minute's data is finalized and can be returned immediately from the database.
+  const effectiveEndTime = options.endTimeMs ?? (Date.now() - 60_000);
   const minuteKey = Math.floor(effectiveEndTime / 60000) * 60; // seconds precision per minute
   const market = `${resolvedStockSymbol}_${resolvedQuoteSymbol}`;
 
