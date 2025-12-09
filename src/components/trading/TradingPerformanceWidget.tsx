@@ -549,9 +549,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   }, [isAuthenticated]);
 
   const loadMarketSnapshot = useCallback(async (endTimeMs?: number): Promise<MarketContext & { price: number | null; warmingUp: boolean }> => {
+    // If endTimeMs is very close to current time (within 5 seconds), don't pass it
+    // to let fetchMarketSnapshot use its default (previous minute's finalized data)
+    // and avoid backend warmup delays.
+    const isCurrentTime = typeof endTimeMs === 'number' && Math.abs(Date.now() - endTimeMs) < 5000;
     const snapshot = await fetchMarketSnapshot(trading, {
       attemptPublicFirst,
-      endTimeMs,
+      endTimeMs: isCurrentTime ? undefined : endTimeMs,
     });
 
     setStockSymbol(snapshot.stockSymbol);
