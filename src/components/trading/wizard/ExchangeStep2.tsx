@@ -36,6 +36,7 @@ export const ExchangeStep2: React.FC<ExchangeStep2Props> = ({
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
 
   const tutorialSlugMap: Record<string, string> = {
+    binance: 'tutorials/binance',
     gate: 'tutorials/gate',
     coinbase: 'tutorials/coinbase',
     kraken: 'tutorials/kraken',
