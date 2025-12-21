@@ -844,6 +844,16 @@ export const TradingDetailPage: React.FC = () => {
       console.log('Refreshing trading data...');
       await fetchTradingData(false);
 
+      if ((trading.type === 'paper' || trading.type === 'real') && trading.info?.end_date) {
+        const updatedTrading = await updateTrading(trading.id, {
+          info: {
+            ...(trading.info ?? {}),
+            end_date: null,
+          },
+        });
+        setTrading(updatedTrading);
+      }
+
       // Start monitoring bot status if the bot is now running
       if (refreshedBot.record.enabled && refreshedBot.alive) {
         startBotStatusMonitoring(refreshedBot.record.id);
@@ -860,7 +870,7 @@ export const TradingDetailPage: React.FC = () => {
   };
 
   const handleStopBot = async () => {
-    if (!bot || !canManageTrading) return;
+    if (!bot || !canManageTrading || !trading) return;
 
     setBotLoading(true);
     try {
@@ -869,6 +879,16 @@ export const TradingDetailPage: React.FC = () => {
 
       // Stop monitoring when bot is stopped
       stopBotStatusMonitoring();
+
+      if ((trading.type === 'paper' || trading.type === 'real') && !trading.info?.end_date) {
+        const updatedTrading = await updateTrading(trading.id, {
+          info: {
+            ...(trading.info ?? {}),
+            end_date: new Date().toISOString(),
+          },
+        });
+        setTrading(updatedTrading);
+      }
     } catch (err) {
       console.error('Failed to stop bot:', err);
       // Could add a toast notification here
