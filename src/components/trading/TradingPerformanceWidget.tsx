@@ -185,6 +185,30 @@ interface MarketContext {
 const shouldRetryWithAuth = (error: unknown): boolean =>
   error instanceof ApiError && (error.status === 401 || error.status === 403);
 
+const isValidPrice = (value: number | null | undefined): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0;
+
+const derivePriceFromChartData = (
+  data: TradingDataPoint[],
+  candlesticks: TradingCandlestickPoint[]
+): number | undefined => {
+  for (let i = data.length - 1; i >= 0; i -= 1) {
+    const price = data[i].benchmarkPrice;
+    if (isValidPrice(price)) {
+      return price;
+    }
+  }
+
+  for (let i = candlesticks.length - 1; i >= 0; i -= 1) {
+    const price = candlesticks[i].close;
+    if (isValidPrice(price)) {
+      return price;
+    }
+  }
+
+  return undefined;
+};
+
 const areTradingPointsEqual = (a: TradingDataPoint, b: TradingDataPoint): boolean => {
   if (a.timestampNum !== b.timestampNum) return false;
   if (a.netValue !== b.netValue) return false;
@@ -755,6 +779,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         );
       }
 
+      if (!isValidPrice(oneMinutePriceRef.current)) {
+        const derivedPrice = derivePriceFromChartData(data, constrainedCandles);
+        if (isValidPrice(derivedPrice)) {
+          oneMinutePriceRef.current = derivedPrice;
+        }
+      }
+
       const benchmarkDataFromApi: TradingDataPoint[] = data.map(point => ({
         date: point.date,
         timestamp: point.timestamp,
@@ -1117,6 +1148,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         console.debug(
           `Candles after incremental update (${selectedTimeframe}): count=${constrainedCandles.length}, last=${new Date(lastCandle.timestamp).toISOString()} O:${lastCandle.open} H:${lastCandle.high} L:${lastCandle.low} C:${lastCandle.close}`
         );
+      }
+
+      if (!isValidPrice(oneMinutePriceRef.current)) {
+        const derivedPrice = derivePriceFromChartData(data, constrainedCandles);
+        if (isValidPrice(derivedPrice)) {
+          oneMinutePriceRef.current = derivedPrice;
+        }
       }
 
       const benchmarkData: TradingDataPoint[] = data.map(point => ({
