@@ -12,20 +12,20 @@ export const THEME_COLORS = {
   paper: {
     name: 'Paper Trading',
     icon: NotebookPen,
-    primary: '#7A1F3D',      // Burgundy - Secure
-    light: '#F7E8ED',        // Very light burgundy
-    medium: '#B04A6E',       // Medium burgundy
-    border: '#E0B3C5',       // Light burgundy border
-    hover: '#5A1729',        // Darker burgundy for hover
-  },
-  backtest: {
-    name: 'Backtest',
-    icon: LineChart,
     primary: '#8B6914',      // Gold - Profitable
     light: '#FFF8E7',        // Very light gold
     medium: '#C4A04A',       // Medium gold
     border: '#E5D4A0',       // Light gold border
     hover: '#6B5010',        // Darker gold for hover
+  },
+  backtest: {
+    name: 'Backtest',
+    icon: LineChart,
+    primary: '#7A1F3D',      // Burgundy - Secure
+    light: '#F7E8ED',        // Very light burgundy
+    medium: '#B04A6E',       // Medium burgundy
+    border: '#E0B3C5',       // Light burgundy border
+    hover: '#5A1729',        // Darker burgundy for hover
   },
   real: {
     name: 'Real Trading',
