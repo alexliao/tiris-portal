@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
 import { getTradings, getTradingById, type Trading, type Bot, type BotCreateRequest, type BotSpec, type ExchangeBinding, ApiError, getBotByTradingId, startBot, stopBot, createBot, getExchangeBindings, getExchangeBindingById, getBot, getSubAccountsByTrading, deleteTrading, updateTrading } from '../utils/api';
@@ -57,6 +57,7 @@ export const TradingDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const [trading, setTrading] = useState<Trading | null>(null);
   const [bot, setBot] = useState<Bot | null>(null);
@@ -86,8 +87,17 @@ export const TradingDetailPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const isRefreshing2 = useRef(false);
   const [isTradingOwner, setIsTradingOwner] = useState(false);
+  const hasAutoStartedRef = useRef(false);
 
   const canManageTrading = isAuthenticated && isTradingOwner;
+  const shouldAutoStartBacktest = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('autostart') === '1';
+  }, [location.search]);
+
+  useEffect(() => {
+    hasAutoStartedRef.current = false;
+  }, [id]);
 
   useEffect(() => {
     tradingTypeRef.current = trading?.type ?? null;
@@ -654,6 +664,30 @@ export const TradingDetailPage: React.FC = () => {
       }
     };
   }, [statusCheckInterval, dataRefreshInterval]);
+
+  useEffect(() => {
+    if (!shouldAutoStartBacktest || hasAutoStartedRef.current) return;
+    if (!trading || trading.type !== 'backtest') return;
+    if (!canManageTrading || botLoading) return;
+
+    hasAutoStartedRef.current = true;
+
+    if (bot?.record.enabled && bot.alive) {
+      navigate(`/trading/${trading.id}`, { replace: true });
+      return;
+    }
+
+    const autoStart = async () => {
+      try {
+        await handleStartBot();
+      } finally {
+        navigate(`/trading/${trading.id}`, { replace: true });
+      }
+    };
+
+    void autoStart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldAutoStartBacktest, trading?.id, trading?.type, bot?.record.enabled, bot?.alive, canManageTrading, botLoading, navigate]);
 
   const handleStartBot = async () => {
     if (!trading || !canManageTrading) return;

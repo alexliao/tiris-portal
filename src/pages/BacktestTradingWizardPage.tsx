@@ -249,8 +249,8 @@ export const BacktestTradingWizardPage: React.FC = () => {
 
       console.log('✅ [WIZARD DEBUG] Backtest trading created:', newTrading);
 
-      // Navigate to the newly created trading's details page
-      navigate(`/trading/${newTrading.id}`);
+      // Navigate to the newly created trading's details page (auto-start backtest bot)
+      navigate(`/trading/${newTrading.id}?autostart=1`);
     } catch (err) {
       console.error('Failed to create backtest trading:', err);
       let errorMessage = 'Unknown error';
