@@ -13,6 +13,7 @@ import {
   transformNewEquityCurveToChartData,
   splitEquityDataByCreationTime,
   type TradingDataPoint,
+  type TradingEvent,
   type TradingMetrics,
   type TradingCandlestickPoint,
 } from '../../utils/chartData';
@@ -209,6 +210,25 @@ const derivePriceFromChartData = (
   return undefined;
 };
 
+const areTradingEventsEqual = (
+  a: TradingEvent[] | undefined,
+  b: TradingEvent[] | undefined
+): boolean => {
+  const aEvents = a ?? [];
+  const bEvents = b ?? [];
+  if (aEvents.length !== bEvents.length) return false;
+
+  return aEvents.every((event, index) => {
+    const other = bEvents[index];
+    if (!other) return false;
+    if (event.type !== other.type) return false;
+    if (event.description !== other.description) return false;
+    if ((event.price ?? null) !== (other.price ?? null)) return false;
+    if ((event.timestamp ?? null) !== (other.timestamp ?? null)) return false;
+    return true;
+  });
+};
+
 const areTradingPointsEqual = (a: TradingDataPoint, b: TradingDataPoint): boolean => {
   if (a.timestampNum !== b.timestampNum) return false;
   if (a.netValue !== b.netValue) return false;
@@ -217,14 +237,7 @@ const areTradingPointsEqual = (a: TradingDataPoint, b: TradingDataPoint): boolea
   if ((a.benchmarkPrice ?? null) !== (b.benchmarkPrice ?? null)) return false;
   if ((a.position ?? null) !== (b.position ?? null)) return false;
   if ((a.isPartial ?? false) !== (b.isPartial ?? false)) return false;
-
-  const aEventType = a.event?.type ?? null;
-  const bEventType = b.event?.type ?? null;
-  if (aEventType !== bEventType) return false;
-
-  const aEventDescription = a.event?.description ?? null;
-  const bEventDescription = b.event?.description ?? null;
-  if (aEventDescription !== bEventDescription) return false;
+  if (!areTradingEventsEqual(a.events, b.events)) return false;
 
   return true;
 };
@@ -794,7 +807,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         roi: 0,
         benchmark: point.benchmark ?? 0,
         benchmarkPrice: point.benchmarkPrice ?? 0,
-        event: point.event,
+        events: point.events,
       }));
 
       const benchmarkData: TradingDataPoint[] = benchmarkDataFromApi;
@@ -1165,7 +1178,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         roi: 0,
         benchmark: point.benchmark ?? 0,
         benchmarkPrice: point.benchmarkPrice ?? 0,
-        event: point.event,
+        events: point.events,
       }));
 
       // Split equity data into before and after start time (using start_date from trading.info if available, otherwise created_at)

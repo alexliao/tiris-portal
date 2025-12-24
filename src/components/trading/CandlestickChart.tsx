@@ -152,20 +152,21 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const roiByTimeRef = useRef<Map<number, number>>(new Map());
 
   const tradingEventsBySecond = useMemo(() => {
-    const map = new Map<number, TradingDataPoint['event']>();
+    const map = new Map<number, NonNullable<TradingDataPoint['events']>>();
     benchmarkPoints.forEach((point) => {
-      if (!point.event) {
+      if (!point.events || point.events.length === 0) {
         return;
       }
       const timeInSeconds = Math.floor(point.timestampNum / 1000);
       if (Number.isFinite(timeInSeconds)) {
-        map.set(timeInSeconds, point.event);
+        const existingEvents = map.get(timeInSeconds) ?? [];
+        map.set(timeInSeconds, existingEvents.concat(point.events));
       }
     });
     return map;
   }, [benchmarkPoints]);
 
-  type TradingEventType = NonNullable<TradingDataPoint['event']>['type'];
+  type TradingEventType = NonNullable<TradingDataPoint['events']>[number]['type'];
 
   const signalMarkerStyles: Record<TradingEventType, { color: string; shape: 'arrowUp' | 'arrowDown' | 'circle' | 'square'; position: SeriesMarker<Time>['position']; }> = {
     buy: {
@@ -608,7 +609,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
         const toSeconds = (timeValue: Time): number | null => {
           if (typeof timeValue === 'number') {
-            return timeValue;
+            return Math.floor(timeValue);
           }
           if (typeof timeValue === 'string') {
             const parsed = new Date(timeValue).getTime();
@@ -722,28 +723,41 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         }
 
         const timeInSeconds = toSeconds(param.time);
-        const tradingEvent = timeInSeconds !== null ? tradingEventsBySecond.get(timeInSeconds) : undefined;
-        if (tradingEvent && typeof tradingEvent.price === 'number' && Number.isFinite(tradingEvent.price)) {
-          const priceLabelKey = (() => {
-            switch (tradingEvent.type) {
-              case 'buy':
-                return 'signalPriceBuy';
-              case 'sell':
-                return 'signalPriceSell';
-              case 'stop_loss':
-                return 'signalPriceStopLoss';
-              case 'deposit':
-                return 'signalPriceDeposit';
-              case 'withdraw':
-                return 'signalPriceWithdraw';
-              default:
-                return 'signalPrice';
-            }
-          })();
-
+        const tradingEvents = timeInSeconds !== null ? tradingEventsBySecond.get(timeInSeconds) : undefined;
+        if (tradingEvents && tradingEvents.length > 0) {
           tooltipLines.push(`<hr />`);
-          const signalPriceLabel = t(`trading.chart.tooltipLabels.${priceLabelKey}`);
-          tooltipLines.push(`<div>${signalPriceLabel}: $${tradingEvent.price.toFixed(2)}</div>`);
+          const signalsLabel = t('trading.tradingDetail.signalsLabel', 'Signals');
+          tooltipLines.push(`<div style="font-weight: 600; margin-bottom: 2px;">${signalsLabel}</div>`);
+
+          tradingEvents.forEach((tradingEvent) => {
+            const priceLabelKey = (() => {
+              switch (tradingEvent.type) {
+                case 'buy':
+                  return 'signalPriceBuy';
+                case 'sell':
+                  return 'signalPriceSell';
+                case 'stop_loss':
+                  return 'signalPriceStopLoss';
+                case 'deposit':
+                  return 'signalPriceDeposit';
+                case 'withdraw':
+                  return 'signalPriceWithdraw';
+                default:
+                  return 'signalPrice';
+              }
+            })();
+
+            if (typeof tradingEvent.price === 'number' && Number.isFinite(tradingEvent.price)) {
+              const signalPriceLabel = t(`trading.chart.tooltipLabels.${priceLabelKey}`);
+              tooltipLines.push(`<div>${signalPriceLabel}: $${tradingEvent.price.toFixed(2)}</div>`);
+              return;
+            }
+
+            const signalLabel = t('trading.chart.tooltipLabels.signal', 'Signal');
+            const eventLabel = t(`trading.events.${tradingEvent.type}`, tradingEvent.type);
+            const description = tradingEvent.description ? ` - ${tradingEvent.description}` : '';
+            tooltipLines.push(`<div>${signalLabel}: ${eventLabel}${description}</div>`);
+          });
         }
 
         if (currentVisibility.position && positionValue !== undefined) {
@@ -1071,7 +1085,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     const sellLabelText = t('performance.tooltip.sell', 'SELL');
 
     benchmarkPoints.forEach((point) => {
-      if (!point.event) {
+      if (!point.events || point.events.length === 0) {
         return;
       }
       const timeInSeconds = point.timestampNum / 1000;
@@ -1079,75 +1093,76 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         return;
       }
 
-      const event = point.event;
-      const markerStyle = signalMarkerStyles[event.type] ?? signalMarkerStyles.sell;
-      const markerPrice =
-        typeof event.price === 'number' && Number.isFinite(event.price)
-          ? event.price
-          : typeof point.benchmarkPrice === 'number' && Number.isFinite(point.benchmarkPrice)
-            ? point.benchmarkPrice
-            : typeof resolvedBaselinePrice === 'number' && Number.isFinite(resolvedBaselinePrice)
-              ? resolvedBaselinePrice
+      point.events.forEach((event) => {
+        const markerStyle = signalMarkerStyles[event.type] ?? signalMarkerStyles.sell;
+        const markerPrice =
+          typeof event.price === 'number' && Number.isFinite(event.price)
+            ? event.price
+            : typeof point.benchmarkPrice === 'number' && Number.isFinite(point.benchmarkPrice)
+              ? point.benchmarkPrice
+              : typeof resolvedBaselinePrice === 'number' && Number.isFinite(resolvedBaselinePrice)
+                ? resolvedBaselinePrice
+                : undefined;
+
+        if (markerPrice !== undefined) {
+          benchmarkPriceMarkers.push({
+            time: timeInSeconds as Time,
+            position: 'atPriceMiddle',
+            color: markerStyle.color,
+            shape: markerStyle.shape,
+            price: markerPrice,
+          });
+        } else {
+          benchmarkPriceMarkers.push({
+            time: timeInSeconds as Time,
+            position: markerStyle.position as SeriesMarkerBarPosition,
+            color: markerStyle.color,
+            shape: markerStyle.shape,
+          });
+        }
+
+        const markerText =
+          event.type === 'buy'
+            ? buyLabelText
+            : event.type === 'sell'
+              ? sellLabelText
               : undefined;
 
-      if (markerPrice !== undefined) {
-        benchmarkPriceMarkers.push({
-          time: timeInSeconds as Time,
-          position: 'atPriceMiddle',
-          color: markerStyle.color,
-          shape: markerStyle.shape,
-          price: markerPrice,
-        });
-      } else {
-        benchmarkPriceMarkers.push({
-          time: timeInSeconds as Time,
-          position: markerStyle.position as SeriesMarkerBarPosition,
-          color: markerStyle.color,
-          shape: markerStyle.shape,
-        });
-      }
+        if (markerText) {
+          const markerSeries = benchmarkMarkersSeriesRef.current;
+          const markerCoordinate =
+            markerSeries && markerPrice !== undefined && Number.isFinite(markerPrice)
+              ? markerSeries.priceToCoordinate(markerPrice)
+              : null;
 
-      const markerText =
-        event.type === 'buy'
-          ? buyLabelText
-          : event.type === 'sell'
-            ? sellLabelText
-            : undefined;
+          const pixelOffset = event.type === 'buy' ? LABEL_PRICE_OFFSET_PX : -LABEL_PRICE_OFFSET_PX;
+          const adjustedPrice =
+            markerSeries && markerCoordinate !== null && markerCoordinate !== undefined
+              ? markerSeries.coordinateToPrice(markerCoordinate + pixelOffset)
+              : undefined;
 
-      if (markerText) {
-        const markerSeries = benchmarkMarkersSeriesRef.current;
-        const markerCoordinate =
-          markerSeries && markerPrice !== undefined && Number.isFinite(markerPrice)
-            ? markerSeries.priceToCoordinate(markerPrice)
-            : null;
-
-        const pixelOffset = event.type === 'buy' ? LABEL_PRICE_OFFSET_PX : -LABEL_PRICE_OFFSET_PX;
-        const adjustedPrice =
-          markerSeries && markerCoordinate !== null && markerCoordinate !== undefined
-            ? markerSeries.coordinateToPrice(markerCoordinate + pixelOffset)
-            : undefined;
-
-        benchmarkLabelMarkers.push(
-          markerPrice !== undefined
-            ? {
-                time: timeInSeconds as Time,
-                position: event.type === 'buy' ? 'atPriceBottom' : 'atPriceTop',
-                color: markerStyle.color,
-                shape: 'circle',
-                text: markerText,
-                price: adjustedPrice ?? markerPrice,
-                size: 0,
-              }
-            : {
-                time: timeInSeconds as Time,
-                position: event.type === 'buy' ? 'belowBar' : 'aboveBar',
-                color: markerStyle.color,
-                shape: 'circle',
-                text: markerText,
-                size: 0,
-              }
-        );
-      }
+          benchmarkLabelMarkers.push(
+            markerPrice !== undefined
+              ? {
+                  time: timeInSeconds as Time,
+                  position: event.type === 'buy' ? 'atPriceBottom' : 'atPriceTop',
+                  color: markerStyle.color,
+                  shape: 'circle',
+                  text: markerText,
+                  price: adjustedPrice ?? markerPrice,
+                  size: 0,
+                }
+              : {
+                  time: timeInSeconds as Time,
+                  position: event.type === 'buy' ? 'belowBar' : 'aboveBar',
+                  color: markerStyle.color,
+                  shape: 'circle',
+                  text: markerText,
+                  size: 0,
+                }
+          );
+        }
+      });
     });
 
     benchmarkPriceMarkers.sort((a, b) => (a.time as number) - (b.time as number));

@@ -584,6 +584,7 @@
         "assets": "资产",
         "benchmark": "基准收益率",
         "signalPrice": "信号价格",
+        "signal": "信号",
         "signalPriceBuy": "买入价格",
         "signalPriceSell": "卖出价格",
         "signalPriceStopLoss": "止损价格",
@@ -613,6 +614,9 @@
     "events": {
       "buy": "买入",
       "sell": "卖出",
+      "stop_loss": "止损",
+      "deposit": "充值",
+      "withdraw": "提现",
       "long": "做多",
       "short": "做空"
     },

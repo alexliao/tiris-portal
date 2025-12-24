@@ -585,6 +585,7 @@
         "assets": "Assets",
         "benchmark": "Benchmark",
         "signalPrice": "Trade price",
+        "signal": "Signal",
         "signalPriceBuy": "Buy price",
         "signalPriceSell": "Sell price",
         "signalPriceStopLoss": "Stop-loss price",
@@ -614,6 +615,9 @@
     "events": {
       "buy": "buy",
       "sell": "sell",
+      "stop_loss": "stop-loss",
+      "deposit": "deposit",
+      "withdraw": "withdraw",
       "long": "long",
       "short": "short"
     },
