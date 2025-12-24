@@ -738,8 +738,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         const tradingEvents = timeInSeconds !== null ? tradingEventsBySecondRef.current.get(timeInSeconds) : undefined;
         if (tradingEvents && tradingEvents.length > 0) {
           tooltipLines.push(`<hr />`);
-          const signalsLabel = t('trading.tradingDetail.signalsLabel', 'Signals');
-          tooltipLines.push(`<div style="font-weight: 600; margin-bottom: 2px;">${signalsLabel}</div>`);
 
           tradingEvents.forEach((tradingEvent) => {
             const priceLabelKey = (() => {
