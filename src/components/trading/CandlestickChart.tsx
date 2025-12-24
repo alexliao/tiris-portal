@@ -26,6 +26,13 @@ import type {
 import { createChartTooltip, positionTooltipAvoidingCrosshair } from './tooltipUtils';
 import { AxisDateTimeFormatOption, createDateTimeFormatter, DateFormatOption, DateTimeFormatOption, resolveLocale } from '../../utils/locale';
 
+const toTimeKeySeconds = (timestampSeconds: number): number | null => {
+  if (!Number.isFinite(timestampSeconds) || timestampSeconds <= 0) {
+    return null;
+  }
+  return Math.floor(timestampSeconds);
+};
+
 interface CandlestickChartProps {
   candles: TradingCandlestickPoint[];
   equityPoints: TradingDataPoint[];
@@ -150,6 +157,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     tradingSignalsVisible ?? true
   );
   const roiByTimeRef = useRef<Map<number, number>>(new Map());
+  const tradingEventsBySecondRef = useRef<Map<number, NonNullable<TradingDataPoint['events']>>>(new Map());
 
   const tradingEventsBySecond = useMemo(() => {
     const map = new Map<number, NonNullable<TradingDataPoint['events']>>();
@@ -157,14 +165,18 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       if (!point.events || point.events.length === 0) {
         return;
       }
-      const timeInSeconds = Math.floor(point.timestampNum / 1000);
-      if (Number.isFinite(timeInSeconds)) {
+      const timeInSeconds = toTimeKeySeconds(point.timestampNum / 1000);
+      if (timeInSeconds !== null) {
         const existingEvents = map.get(timeInSeconds) ?? [];
         map.set(timeInSeconds, existingEvents.concat(point.events));
       }
     });
     return map;
   }, [benchmarkPoints]);
+
+  useEffect(() => {
+    tradingEventsBySecondRef.current = tradingEventsBySecond;
+  }, [tradingEventsBySecond]);
 
   type TradingEventType = NonNullable<TradingDataPoint['events']>[number]['type'];
 
@@ -723,7 +735,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         }
 
         const timeInSeconds = toSeconds(param.time);
-        const tradingEvents = timeInSeconds !== null ? tradingEventsBySecond.get(timeInSeconds) : undefined;
+        const tradingEvents = timeInSeconds !== null ? tradingEventsBySecondRef.current.get(timeInSeconds) : undefined;
         if (tradingEvents && tradingEvents.length > 0) {
           tooltipLines.push(`<hr />`);
           const signalsLabel = t('trading.tradingDetail.signalsLabel', 'Signals');
@@ -876,9 +888,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     const chartData: CandlestickData<Time>[] = [];
     for (const candle of candles) {
-      const timeInSeconds = candle.timestampNum / 1000;
+      const timeInSeconds = toTimeKeySeconds(candle.timestampNum / 1000);
 
-      if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+      if (timeInSeconds === null) {
         console.error(t('trading.chart.invalidCandle', `Skipping invalid candle with timestamp: ${candle.timestamp}`));
         continue;
       }
@@ -923,8 +935,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     const volumeData = candles
       .map((candle) => {
-        const timeInSeconds = candle.timestampNum / 1000;
-        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+        const timeInSeconds = toTimeKeySeconds(candle.timestampNum / 1000);
+        if (timeInSeconds === null) {
           return null;
         }
 
@@ -956,8 +968,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     const positionData = equityPoints
       .map((point) => {
-        const timeInSeconds = point.timestampNum / 1000;
-        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+        const timeInSeconds = toTimeKeySeconds(point.timestampNum / 1000);
+        if (timeInSeconds === null) {
           return null;
         }
 
@@ -994,8 +1006,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     // Handle before creation equity data
     const beforeCreationData = (beforeCreationEquityPoints || [])
       .map((point: TradingDataPoint) => {
-        const timeInSeconds = point.timestampNum / 1000;
-        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+        const timeInSeconds = toTimeKeySeconds(point.timestampNum / 1000);
+        if (timeInSeconds === null) {
           return null;
         }
 
@@ -1021,8 +1033,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     const equityData = equityPoints
       .map((point) => {
-        const timeInSeconds = point.timestampNum / 1000;
-        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+        const timeInSeconds = toTimeKeySeconds(point.timestampNum / 1000);
+        if (timeInSeconds === null) {
           return null;
         }
 
@@ -1048,8 +1060,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     const equityRoiMap = new Map<number, number>();
     equityPoints.forEach((point) => {
-      const timeInSeconds = point.timestampNum / 1000;
-      if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+      const timeInSeconds = toTimeKeySeconds(point.timestampNum / 1000);
+      if (timeInSeconds === null) {
         return;
       }
 
@@ -1063,8 +1075,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     const benchmarkData = benchmarkPoints
       .map((point) => {
-        const timeInSeconds = point.timestampNum / 1000;
-        if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+        const timeInSeconds = toTimeKeySeconds(point.timestampNum / 1000);
+        if (timeInSeconds === null) {
           return null;
         }
 
@@ -1088,8 +1100,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       if (!point.events || point.events.length === 0) {
         return;
       }
-      const timeInSeconds = point.timestampNum / 1000;
-      if (!Number.isFinite(timeInSeconds) || timeInSeconds <= 0) {
+      const timeInSeconds = toTimeKeySeconds(point.timestampNum / 1000);
+      if (timeInSeconds === null) {
         return;
       }
 
