@@ -481,6 +481,9 @@ export function transformEquityCurveToChartData(
     let closestPoint: TradingDataPoint | undefined;
     let closestTimeDiff = Infinity;
     let closestIndex = -1;
+    let closestWindowPoint: TradingDataPoint | undefined;
+    let closestWindowDiff = Infinity;
+    let closestWindowIndex = -1;
 
     // Find the closest equity curve point to this event
     chartData.forEach((point, index) => {

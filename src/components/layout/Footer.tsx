@@ -33,7 +33,7 @@ export const Footer: React.FC<FooterProps> = ({
                 •
               </span>
               <a 
-                href="mailto:alexliao@tiris.ai" 
+                href="mailto:support@tiris.ai" 
                 className="text-[#080404] hover:opacity-70 transition-opacity"
               >
                 {t('footer.contact')}
