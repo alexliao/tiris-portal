@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Plus } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { useAuth } from '../hooks/useAuth';
@@ -123,6 +123,16 @@ export const PortfoliosListPage: React.FC = () => {
             <h2 className="text-xl font-semibold text-gray-900">
               {t('portfolios.allPortfolios')}
             </h2>
+            <button
+              onClick={() => navigate('/portfolios/create')}
+              style={{
+                background: `linear-gradient(to right, ${colors.primary}, ${colors.hover})`
+              }}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm text-white hover:opacity-90 transition-opacity"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {t('portfolios.createPortfolio')}
+            </button>
           </div>
 
           {error && (

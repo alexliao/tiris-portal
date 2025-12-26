@@ -250,6 +250,28 @@ export async function getPortfolios(): Promise<Portfolio[]> {
   return response.portfolios || [];
 }
 
+export async function createPortfolio(payload: {
+  name: string;
+  memo?: string;
+  info?: Record<string, unknown>;
+}): Promise<Portfolio> {
+  const response = await apiRequest<{ portfolio: Portfolio }>('/portfolios', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return response.portfolio;
+}
+
+export async function addPortfolioTradings(
+  portfolioId: string,
+  tradingIds: string[]
+): Promise<{ added: string[]; skipped: string[] }> {
+  return apiRequest<{ added: string[]; skipped: string[] }>(`/portfolios/${portfolioId}/tradings`, {
+    method: 'POST',
+    body: JSON.stringify({ trading_ids: tradingIds }),
+  });
+}
+
 // Get a single trading by ID (supports both authenticated and unauthenticated access)
 // For unauthenticated access, the backend must support public access to paper/backtest tradings
 export async function getTradingById(tradingId: string, requireAuth: boolean = true): Promise<Trading | null> {

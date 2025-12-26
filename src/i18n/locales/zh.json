@@ -307,11 +307,41 @@
     "noPortfoliosDescription": "创建投资组合以分组您的交易。",
     "memberTradings": "成员交易数",
     "lastUpdated": "最近更新",
+    "createPortfolio": "创建投资组合",
     "failedToLoad": "加载投资组合数据失败",
     "failedToLoadWithError": "加载投资组合数据失败：{{error}}",
     "status": {
       "active": "活跃",
       "archived": "已归档"
+    },
+    "wizard": {
+      "title": "创建投资组合",
+      "subtitle": "将交易归类到投资组合中",
+      "step1": {
+        "label": "选择交易",
+        "title": "选择要包含的交易",
+        "description": "选择要归入同一组合的交易。"
+      },
+      "step2": {
+        "label": "组合信息",
+        "title": "名称与备注",
+        "description": "填写投资组合名称与可选备注。"
+      },
+      "selectedCount": "已选择 {{count}} 个",
+      "selectedSummary": "已选择 {{count}} 个交易加入该投资组合。",
+      "noTradingsInTab": "暂无{{type}}交易",
+      "noTradingsHint": "请先创建交易，再将它们分组到投资组合中。",
+      "selectAtLeastOne": "请选择至少一个交易以继续。",
+      "nameLabel": "投资组合名称",
+      "namePlaceholder": "例如：核心策略",
+      "memoLabel": "备注",
+      "memoPlaceholder": "关于该投资组合的说明（可选）",
+      "nameRequired": "投资组合名称为必填项。",
+      "create": "创建投资组合",
+      "failedToLoad": "加载交易失败",
+      "failedToLoadWithError": "加载交易失败：{{error}}",
+      "createFailed": "创建投资组合失败",
+      "createFailedWithError": "创建投资组合失败：{{error}}"
     }
   },
   "exchanges": {

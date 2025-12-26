@@ -307,11 +307,41 @@
     "noPortfoliosDescription": "Create a portfolio to group your tradings together.",
     "memberTradings": "Member Tradings",
     "lastUpdated": "Last updated",
+    "createPortfolio": "Create Portfolio",
     "failedToLoad": "Failed to load portfolio data",
     "failedToLoadWithError": "Failed to load portfolio data: {{error}}",
     "status": {
       "active": "Active",
       "archived": "Archived"
+    },
+    "wizard": {
+      "title": "Create Portfolio",
+      "subtitle": "Group tradings into a portfolio",
+      "step1": {
+        "label": "Select Tradings",
+        "title": "Select tradings to include",
+        "description": "Choose the tradings you want to group together."
+      },
+      "step2": {
+        "label": "Portfolio Details",
+        "title": "Name and memo",
+        "description": "Add a portfolio name and an optional memo."
+      },
+      "selectedCount": "{{count}} selected",
+      "selectedSummary": "You selected {{count}} tradings for this portfolio.",
+      "noTradingsInTab": "No {{type}} tradings available",
+      "noTradingsHint": "Create tradings first so you can group them into portfolios.",
+      "selectAtLeastOne": "Select at least one trading to continue.",
+      "nameLabel": "Portfolio Name",
+      "namePlaceholder": "e.g., Core Strategies",
+      "memoLabel": "Memo",
+      "memoPlaceholder": "Optional notes about this portfolio",
+      "nameRequired": "Portfolio name is required.",
+      "create": "Create Portfolio",
+      "failedToLoad": "Failed to load tradings",
+      "failedToLoadWithError": "Failed to load tradings: {{error}}",
+      "createFailed": "Failed to create portfolio",
+      "createFailedWithError": "Failed to create portfolio: {{error}}"
     }
   },
   "exchanges": {
