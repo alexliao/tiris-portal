@@ -285,6 +285,12 @@ export async function addPortfolioTradings(
   });
 }
 
+export async function deletePortfolio(portfolioId: string): Promise<void> {
+  await apiRequest<void>(`/portfolios/${portfolioId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function getPortfolioEquityCurve(
   portfolioId: string,
   timeframe: string = '1h',

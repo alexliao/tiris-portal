@@ -309,6 +309,9 @@
     "lastUpdated": "Last updated",
     "createPortfolio": "Create Portfolio",
     "backToList": "Back to Portfolios",
+    "deleteTitle": "Delete Portfolio",
+    "deleteMessage": "Are you sure you want to delete '{{name}}'? This will permanently remove the portfolio and its membership records.",
+    "deleteFailed": "Failed to delete portfolio: {{error}}",
     "failedToLoad": "Failed to load portfolio data",
     "failedToLoadWithError": "Failed to load portfolio data: {{error}}",
     "status": {

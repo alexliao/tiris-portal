@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, Plus } from 'lucide-react';
+import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 import { useAuth } from '../hooks/useAuth';
 import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
-import { ApiError, getPortfolios, type Portfolio } from '../utils/api';
+import { ApiError, deletePortfolio, getPortfolios, type Portfolio } from '../utils/api';
 import { THEME_COLORS } from '../config/theme';
 
 export const PortfoliosListPage: React.FC = () => {
@@ -16,6 +17,15 @@ export const PortfoliosListPage: React.FC = () => {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    portfolio: Portfolio | null;
+    isDeleting: boolean;
+  }>({
+    isOpen: false,
+    portfolio: null,
+    isDeleting: false,
+  });
 
   const fetchPortfolios = async () => {
     try {
@@ -42,6 +52,54 @@ export const PortfoliosListPage: React.FC = () => {
   }, [isAuthenticated, authLoading]);
 
   useRequireAuthRedirect({ isAuthenticated, isLoading: authLoading });
+
+  const handleDeleteClick = (portfolio: Portfolio, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setDeleteConfirmation({
+      isOpen: true,
+      portfolio,
+      isDeleting: false,
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmation.portfolio) {
+      return;
+    }
+
+    try {
+      setDeleteConfirmation(prev => ({ ...prev, isDeleting: true }));
+      await deletePortfolio(deleteConfirmation.portfolio.id);
+      setPortfolios(prev => prev.filter(portfolio => portfolio.id !== deleteConfirmation.portfolio?.id));
+      setDeleteConfirmation({
+        isOpen: false,
+        portfolio: null,
+        isDeleting: false,
+      });
+    } catch (err) {
+      console.error('Failed to delete portfolio:', err);
+      let errorMessage = 'Unknown error';
+      if (err instanceof ApiError) {
+        errorMessage = err.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setDeleteConfirmation({
+        isOpen: false,
+        portfolio: null,
+        isDeleting: false,
+      });
+      setError(t('portfolios.deleteFailed', { error: errorMessage }));
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmation({
+      isOpen: false,
+      portfolio: null,
+      isDeleting: false,
+    });
+  };
 
   const colors = THEME_COLORS.portfolio;
   const Icon = colors.icon;
@@ -189,12 +247,18 @@ export const PortfoliosListPage: React.FC = () => {
                             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusBadgeClass}`}>
                               {statusLabel}
                             </span>
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/90">
+                              {t('portfolios.detail.tradingCount', { count: portfolio.trading_count ?? 0 })}
+                            </span>
                           </div>
                         </div>
-                        <div className="ml-3 text-right">
-                          <p className="text-xs text-white/80">{t('portfolios.memberTradings')}</p>
-                          <p className="text-2xl font-bold text-white">{portfolio.trading_count ?? 0}</p>
-                        </div>
+                        <button
+                          onClick={(event) => handleDeleteClick(portfolio, event)}
+                          className="ml-2 p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors flex-shrink-0 self-start"
+                          title={t('common.delete')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
 
@@ -217,6 +281,18 @@ export const PortfoliosListPage: React.FC = () => {
         </div>
       </div>
       <Footer />
+
+      <ConfirmDialog
+        isOpen={deleteConfirmation.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title={t('portfolios.deleteTitle')}
+        message={t('portfolios.deleteMessage', { name: deleteConfirmation.portfolio?.name || '' })}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        isDestructive={true}
+        isLoading={deleteConfirmation.isDeleting}
+      />
     </div>
   );
 };

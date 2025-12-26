@@ -309,6 +309,9 @@
     "lastUpdated": "最近更新",
     "createPortfolio": "创建投资组合",
     "backToList": "返回投资组合",
+    "deleteTitle": "删除投资组合",
+    "deleteMessage": "确定要删除“{{name}}”吗？这将永久移除该投资组合及其成员记录。",
+    "deleteFailed": "删除投资组合失败：{{error}}",
     "failedToLoad": "加载投资组合数据失败",
     "failedToLoadWithError": "加载投资组合数据失败：{{error}}",
     "status": {

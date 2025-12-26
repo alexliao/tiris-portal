@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, Check, Copy } from 'lucide-react';
+import { AlertCircle, Check, Copy, Trash2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
 import { useAuth } from '../hooks/useAuth';
 import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
-import { getPortfolioById, getPortfolioEquityCurve, type EquityCurveNewData, type Portfolio, type PortfolioTradingSummary, type Trading } from '../utils/api';
+import ConfirmDialog from '../components/common/ConfirmDialog';
+import { deletePortfolio, getPortfolioById, getPortfolioEquityCurve, type EquityCurveNewData, type Portfolio, type PortfolioTradingSummary, type Trading } from '../utils/api';
 import { THEME_COLORS } from '../config/theme';
 import { createDateTimeFormatter, DateTimeFormatOption } from '../utils/locale';
 
@@ -22,6 +23,13 @@ export const PortfolioDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    isDeleting: boolean;
+  }>({
+    isOpen: false,
+    isDeleting: false,
+  });
 
   const dateTimeFormatter = useMemo(
     () => createDateTimeFormatter(DateTimeFormatOption),
@@ -73,6 +81,39 @@ export const PortfolioDetailPage: React.FC = () => {
       setTimeout(() => setCopiedId(false), 1200);
     } catch (err) {
       console.error('Copy failed:', err);
+    }
+  };
+
+  const handleDeleteClick = () => {
+    setDeleteConfirmation({
+      isOpen: true,
+      isDeleting: false,
+    });
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmation({
+      isOpen: false,
+      isDeleting: false,
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!portfolio) {
+      return;
+    }
+
+    try {
+      setDeleteConfirmation(prev => ({ ...prev, isDeleting: true }));
+      await deletePortfolio(portfolio.id);
+      navigate('/portfolios');
+    } catch (err) {
+      console.error('Failed to delete portfolio:', err);
+      setError(t('portfolios.deleteFailed', { error: err instanceof Error ? err.message : 'Unknown error' }));
+      setDeleteConfirmation({
+        isOpen: false,
+        isDeleting: false,
+      });
     }
   };
 
@@ -204,6 +245,13 @@ export const PortfolioDetailPage: React.FC = () => {
                   <h1 className="flex-1 min-w-0 truncate text-lg sm:text-2xl font-bold text-white">
                     {portfolio.name}
                   </h1>
+                  <button
+                    onClick={handleDeleteClick}
+                    className="ml-auto shrink-0 p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                    title={t('common.delete')}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
                 {portfolio.memo && (
                   <p className="text-white/80 mt-1">{portfolio.memo}</p>
@@ -285,6 +333,18 @@ export const PortfolioDetailPage: React.FC = () => {
         </div>
       </div>
       <Footer />
+
+      <ConfirmDialog
+        isOpen={deleteConfirmation.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title={t('portfolios.deleteTitle')}
+        message={t('portfolios.deleteMessage', { name: portfolio.name })}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        isDestructive={true}
+        isLoading={deleteConfirmation.isDeleting}
+      />
     </div>
   );
 };
