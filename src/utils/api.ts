@@ -263,6 +263,22 @@ export async function getPortfolioById(
   return apiRequest<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] }>(`/portfolios/${portfolioId}`);
 }
 
+export async function updatePortfolio(
+  portfolioId: string,
+  payload: {
+    name?: string;
+    memo?: string | null;
+    status?: string;
+    info?: Record<string, unknown>;
+  }
+): Promise<Portfolio> {
+  const response = await apiRequest<{ portfolio: Portfolio }>(`/portfolios/${portfolioId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+  return response.portfolio;
+}
+
 export async function createPortfolio(payload: {
   name: string;
   memo?: string;
@@ -282,6 +298,15 @@ export async function addPortfolioTradings(
   return apiRequest<{ added: string[]; skipped: string[] }>(`/portfolios/${portfolioId}/tradings`, {
     method: 'POST',
     body: JSON.stringify({ trading_ids: tradingIds }),
+  });
+}
+
+export async function removePortfolioTrading(
+  portfolioId: string,
+  tradingId: string
+): Promise<void> {
+  await apiRequest<void>(`/portfolios/${portfolioId}/tradings/${tradingId}`, {
+    method: 'DELETE',
   });
 }
 

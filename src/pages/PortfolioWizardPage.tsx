@@ -1,12 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AlertCircle, ChevronLeft } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { useAuth } from '../hooks/useAuth';
 import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
-import { ApiError, createPortfolio, addPortfolioTradings, getTradings, type Trading } from '../utils/api';
+import {
+  ApiError,
+  addPortfolioTradings,
+  createPortfolio,
+  getPortfolioById,
+  getTradings,
+  removePortfolioTrading,
+  updatePortfolio,
+  type Trading
+} from '../utils/api';
 import { THEME_COLORS, getTradingTheme } from '../config/theme';
 import PortfolioWizardStepIndicator from '../components/portfolio/PortfolioWizardStepIndicator';
 import { getTradingDayCount } from '../utils/tradingDates';
@@ -20,6 +29,7 @@ type WizardStep = 1 | 2;
 export const PortfolioWizardPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { id: portfolioId } = useParams<{ id?: string }>();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [activeTab, setActiveTab] = useState<TradingTab>('real');
@@ -30,6 +40,9 @@ export const PortfolioWizardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialTradingIds, setInitialTradingIds] = useState<string[]>([]);
+
+  const isEditMode = Boolean(portfolioId);
 
   const colors = THEME_COLORS.portfolio;
   const Icon = colors.icon;
@@ -53,8 +66,18 @@ export const PortfolioWizardPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await getTradings();
-      setTradings(data);
+      const [tradingData, portfolioData] = await Promise.all([
+        getTradings(),
+        portfolioId ? getPortfolioById(portfolioId) : Promise.resolve(null),
+      ]);
+      setTradings(tradingData);
+      if (portfolioData) {
+        const existingIds = portfolioData.tradings.map(trading => trading.id);
+        setSelectedTradingIds(existingIds);
+        setInitialTradingIds(existingIds);
+        setPortfolioName(portfolioData.portfolio.name);
+        setPortfolioMemo(portfolioData.portfolio.memo ?? '');
+      }
     } catch (err) {
       console.error('Failed to fetch tradings:', err);
       if (err instanceof ApiError) {
@@ -71,7 +94,7 @@ export const PortfolioWizardPage: React.FC = () => {
     if (isAuthenticated && !authLoading) {
       fetchTradings();
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading, portfolioId]);
 
   useRequireAuthRedirect({ isAuthenticated, isLoading: authLoading });
 
@@ -117,16 +140,39 @@ export const PortfolioWizardPage: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      const portfolio = await createPortfolio({
-        name: portfolioName.trim(),
-        memo: portfolioMemo.trim() || undefined,
-      });
+      if (isEditMode && portfolioId) {
+        await updatePortfolio(portfolioId, {
+          name: portfolioName.trim(),
+          memo: portfolioMemo.trim() || null,
+        });
 
-      if (selectedTradingIds.length > 0) {
-        await addPortfolioTradings(portfolio.id, selectedTradingIds);
+        const currentSet = new Set(selectedTradingIds);
+        const initialSet = new Set(initialTradingIds);
+        const toAdd = selectedTradingIds.filter(id => !initialSet.has(id));
+        const toRemove = initialTradingIds.filter(id => !currentSet.has(id));
+
+        if (toAdd.length > 0) {
+          await addPortfolioTradings(portfolioId, toAdd);
+        }
+        if (toRemove.length > 0) {
+          await Promise.all(toRemove.map(tradingId => removePortfolioTrading(portfolioId, tradingId)));
+        }
+      } else {
+        const portfolio = await createPortfolio({
+          name: portfolioName.trim(),
+          memo: portfolioMemo.trim() || undefined,
+        });
+
+        if (selectedTradingIds.length > 0) {
+          await addPortfolioTradings(portfolio.id, selectedTradingIds);
+        }
       }
 
-      navigate('/portfolios');
+      if (isEditMode && portfolioId) {
+        navigate(`/portfolios/${portfolioId}`);
+      } else {
+        navigate('/portfolios');
+      }
     } catch (err) {
       console.error('Failed to create portfolio:', err);
       if (err instanceof ApiError) {
@@ -182,8 +228,12 @@ export const PortfolioWizardPage: React.FC = () => {
                 <Icon className="w-8 h-8" />
               </button>
               <div className="ml-4">
-                <h1 className="text-2xl font-bold">{t('portfolios.wizard.title')}</h1>
-                <p className="text-white/90 mt-1">{t('portfolios.wizard.subtitle')}</p>
+                <h1 className="text-2xl font-bold">
+                  {isEditMode ? t('portfolios.wizard.editTitle') : t('portfolios.wizard.title')}
+                </h1>
+                <p className="text-white/90 mt-1">
+                  {isEditMode ? t('portfolios.wizard.editSubtitle') : t('portfolios.wizard.subtitle')}
+                </p>
               </div>
             </div>
 
@@ -371,7 +421,11 @@ export const PortfolioWizardPage: React.FC = () => {
 
             <div className="mt-8 flex items-center justify-between gap-4">
               <button
-                onClick={currentStep === 1 ? () => navigate('/portfolios') : handlePreviousStep}
+                onClick={
+                  currentStep === 1
+                    ? () => navigate(isEditMode && portfolioId ? `/portfolios/${portfolioId}` : '/portfolios')
+                    : handlePreviousStep
+                }
                 className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
               >
                 {currentStep === 1 ? (
@@ -400,10 +454,10 @@ export const PortfolioWizardPage: React.FC = () => {
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      {t('common.creating')}
+                      {isEditMode ? t('common.saving') : t('common.creating')}
                     </>
                   ) : (
-                    <>{t('portfolios.wizard.create')}</>
+                    <>{isEditMode ? t('portfolios.wizard.save') : t('portfolios.wizard.create')}</>
                   )}
                 </button>
               ) : (

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, Check, Copy, Trash2 } from 'lucide-react';
+import { AlertCircle, Check, Copy, Pencil, Trash2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
@@ -246,8 +246,15 @@ export const PortfolioDetailPage: React.FC = () => {
                     {portfolio.name}
                   </h1>
                   <button
-                    onClick={handleDeleteClick}
+                    onClick={() => navigate(`/portfolios/${portfolio.id}/edit`)}
                     className="ml-auto shrink-0 p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                    title={t('common.edit')}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleDeleteClick}
+                    className="shrink-0 p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
                     title={t('common.delete')}
                   >
                     <Trash2 className="w-4 h-4" />

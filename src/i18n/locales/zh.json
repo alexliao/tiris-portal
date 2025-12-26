@@ -321,6 +321,8 @@
     "wizard": {
       "title": "创建投资组合",
       "subtitle": "将交易归类到投资组合中",
+      "editTitle": "编辑投资组合",
+      "editSubtitle": "更新信息与成员",
       "step1": {
         "label": "选择交易",
         "title": "选择要包含的交易",
@@ -342,6 +344,7 @@
       "memoPlaceholder": "关于该投资组合的说明（可选）",
       "nameRequired": "投资组合名称为必填项。",
       "create": "创建投资组合",
+      "save": "保存修改",
       "failedToLoad": "加载交易失败",
       "failedToLoadWithError": "加载交易失败：{{error}}",
       "createFailed": "创建投资组合失败",

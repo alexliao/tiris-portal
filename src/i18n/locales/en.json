@@ -321,6 +321,8 @@
     "wizard": {
       "title": "Create Portfolio",
       "subtitle": "Group tradings into a portfolio",
+      "editTitle": "Edit Portfolio",
+      "editSubtitle": "Update details and memberships",
       "step1": {
         "label": "Select Tradings",
         "title": "Select tradings to include",
@@ -342,6 +344,7 @@
       "memoPlaceholder": "Optional notes about this portfolio",
       "nameRequired": "Portfolio name is required.",
       "create": "Create Portfolio",
+      "save": "Save Changes",
       "failedToLoad": "Failed to load tradings",
       "failedToLoadWithError": "Failed to load tradings: {{error}}",
       "createFailed": "Failed to create portfolio",

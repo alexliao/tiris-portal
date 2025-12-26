@@ -39,20 +39,20 @@ export const THEME_COLORS = {
   exchanges: {
     name: 'Exchanges',
     icon: Landmark,
-    primary: '#2E3A59',      // Dark Blue - Automatic
-    light: '#E8EAF0',        // Very light blue
-    medium: '#6B7A9E',       // Medium blue
-    border: '#B8C1D9',       // Light blue border
-    hover: '#1F2A3F',        // Darker blue for hover
+    primary: '#6A6A6A',      // Dark Gray - Automatic
+    light: '#F4F4F4',        // Very light gray
+    medium: '#8F8F8F',       // Medium gray
+    border: '#D9D9D9',       // Light gray border
+    hover: '#333333',        // Darker gray for hover
   },
   portfolio: {
     name: 'Portfolios',
     icon: Layers,
-    primary: '#A14B1D',      // Burnt orange - Structured
-    light: '#F8E9E1',        // Very light orange
-    medium: '#C97A4F',       // Medium orange
-    border: '#E6C0A8',       // Light orange border
-    hover: '#7A3715',        // Darker orange for hover
+    primary: '#2E3A59',      // Dark Blue - Structured
+    light: '#E8EAF0',        // Very light blue
+    medium: '#6B7A9E',       // Medium blue
+    border: '#B8C1D9',       // Light blue border
+    hover: '#1F2A3F',        // Darker blue for hover
   },
 } as const;
 

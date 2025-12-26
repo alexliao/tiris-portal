@@ -50,6 +50,7 @@ function App() {
             <Route path="/portfolios" element={<PortfoliosListPage />} />
             <Route path="/portfolios/create" element={<PortfolioWizardPage />} />
             <Route path="/portfolios/:id" element={<PortfolioDetailPage />} />
+            <Route path="/portfolios/:id/edit" element={<PortfolioWizardPage />} />
             <Route path="/paper-trading/create" element={<PaperTradingWizardPage />} />
             <Route path="/backtest-trading/create" element={<BacktestTradingWizardPage />} />
             <Route path="/real-trading/create" element={<RealTradingWizardPage />} />
