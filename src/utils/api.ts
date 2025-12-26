@@ -64,6 +64,13 @@ export interface Portfolio {
   updated_at?: string;
 }
 
+export interface PortfolioTradingSummary {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+}
+
 export interface Transaction {
   id: string;
   timestamp: string;
@@ -250,6 +257,12 @@ export async function getPortfolios(): Promise<Portfolio[]> {
   return response.portfolios || [];
 }
 
+export async function getPortfolioById(
+  portfolioId: string
+): Promise<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] }> {
+  return apiRequest<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] }>(`/portfolios/${portfolioId}`);
+}
+
 export async function createPortfolio(payload: {
   name: string;
   memo?: string;
@@ -270,6 +283,77 @@ export async function addPortfolioTradings(
     method: 'POST',
     body: JSON.stringify({ trading_ids: tradingIds }),
   });
+}
+
+export async function getPortfolioEquityCurve(
+  portfolioId: string,
+  timeframe: string = '1h',
+  recentTimeframes: number = 100,
+  requireAuth: boolean = true,
+  endTime?: number
+): Promise<EquityCurveNewData> {
+  const params = new URLSearchParams();
+  params.append('timeframe', timeframe);
+  params.append('recent_timeframes', recentTimeframes.toString());
+  if (typeof endTime === 'number' && Number.isFinite(endTime)) {
+    params.append('end_time', Math.floor(endTime).toString());
+  }
+
+  const endpoint = `/portfolios/${portfolioId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
+  try {
+    const data = await apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);
+    console.log(`✅ getPortfolioEquityCurve response: received ${data.data_points?.length ?? 0} data points`);
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 202) {
+      const warmupCurve = buildWarmupEquityCurve(error.payload, portfolioId, timeframe);
+      if (warmupCurve) {
+        console.warn(
+          `⏳ Portfolio equity curve data warming detected. Returning ${warmupCurve.data_points.length} partial data points (gap_count=${warmupCurve.gap_count ?? 'unknown'}).`
+        );
+        return warmupCurve;
+      }
+    }
+
+    console.error(`❌ getPortfolioEquityCurve error: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
+  }
+}
+
+export async function getPortfolioEquityCurveByTimeRange(
+  portfolioId: string,
+  timeframe: string,
+  startTime: number,
+  endTime: number,
+  requireAuth: boolean = true
+): Promise<EquityCurveNewData> {
+  const params = new URLSearchParams();
+  params.append('timeframe', timeframe);
+  params.append('start_time', startTime.toString());
+  params.append('end_time', endTime.toString());
+
+  const endpoint = `/portfolios/${portfolioId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
+  try {
+    const data = await apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);
+    console.log(`✅ getPortfolioEquityCurveByTimeRange response: received ${data.data_points?.length ?? 0} data points`);
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 202) {
+      const warmupCurve = buildWarmupEquityCurve(error.payload, portfolioId, timeframe, {
+        startTimeMs: startTime,
+        endTimeMs: endTime,
+      });
+      if (warmupCurve) {
+        console.warn(
+          `⏳ Portfolio equity curve (time range) warming detected. Returning ${warmupCurve.data_points.length} partial data points (gap_count=${warmupCurve.gap_count ?? 'unknown'}).`
+        );
+        return warmupCurve;
+      }
+    }
+
+    console.error(`❌ getPortfolioEquityCurveByTimeRange error: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
+  }
 }
 
 // Get a single trading by ID (supports both authenticated and unauthenticated access)

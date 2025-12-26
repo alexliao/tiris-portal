@@ -308,6 +308,7 @@
     "memberTradings": "Member Tradings",
     "lastUpdated": "Last updated",
     "createPortfolio": "Create Portfolio",
+    "backToList": "Back to Portfolios",
     "failedToLoad": "Failed to load portfolio data",
     "failedToLoadWithError": "Failed to load portfolio data: {{error}}",
     "status": {
@@ -342,6 +343,14 @@
       "failedToLoadWithError": "Failed to load tradings: {{error}}",
       "createFailed": "Failed to create portfolio",
       "createFailedWithError": "Failed to create portfolio: {{error}}"
+    },
+    "detail": {
+      "notFound": "Portfolio not found",
+      "loadFailed": "Failed to load portfolio",
+      "copyId": "Copy portfolio ID",
+      "tradingCount": "{{count}} tradings",
+      "createdAt": "Created",
+      "updatedAt": "Last updated"
     }
   },
   "exchanges": {

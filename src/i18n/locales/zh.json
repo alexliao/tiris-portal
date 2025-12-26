@@ -308,6 +308,7 @@
     "memberTradings": "成员交易数",
     "lastUpdated": "最近更新",
     "createPortfolio": "创建投资组合",
+    "backToList": "返回投资组合",
     "failedToLoad": "加载投资组合数据失败",
     "failedToLoadWithError": "加载投资组合数据失败：{{error}}",
     "status": {
@@ -342,6 +343,14 @@
       "failedToLoadWithError": "加载交易失败：{{error}}",
       "createFailed": "创建投资组合失败",
       "createFailedWithError": "创建投资组合失败：{{error}}"
+    },
+    "detail": {
+      "notFound": "未找到投资组合",
+      "loadFailed": "加载投资组合失败",
+      "copyId": "复制投资组合ID",
+      "tradingCount": "{{count}} 个交易",
+      "createdAt": "创建时间",
+      "updatedAt": "最近更新"
     }
   },
   "exchanges": {

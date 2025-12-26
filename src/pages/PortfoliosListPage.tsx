@@ -171,7 +171,8 @@ export const PortfoliosListPage: React.FC = () => {
                 return (
                   <div
                     key={portfolio.id}
-                    className="bg-white rounded-lg shadow hover:shadow-xl transition-shadow border border-gray-200 overflow-hidden"
+                    onClick={() => navigate(`/portfolios/${portfolio.id}`)}
+                    className="bg-white rounded-lg shadow hover:shadow-xl transition-shadow border border-gray-200 overflow-hidden cursor-pointer"
                   >
                     <div
                       style={{

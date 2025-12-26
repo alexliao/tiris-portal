@@ -8,6 +8,8 @@ import {
   type Trading,
   type TradingLog,
   type EquityCurveNewData,
+  getPortfolioEquityCurve,
+  getPortfolioEquityCurveByTimeRange,
 } from '../../utils/api';
 import {
   transformNewEquityCurveToChartData,
@@ -17,7 +19,7 @@ import {
   type TradingMetrics,
   type TradingCandlestickPoint,
 } from '../../utils/chartData';
-import { fetchMarketSnapshot } from '../../utils/marketSnapshot';
+import { deriveMarketContextFromTrading, fetchMarketSnapshot } from '../../utils/marketSnapshot';
 import CandlestickChart from './CandlestickChart';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
@@ -165,6 +167,8 @@ type SeriesVisibility = {
 
 interface TradingPerformanceWidgetProps {
   trading: Trading;
+  entityType?: 'trading' | 'portfolio';
+  entityId?: string;
   className?: string;
   height?: string;
   dataEndTime?: number;
@@ -458,6 +462,8 @@ const TOTAL_DATA_TO_LOAD = 365; // Total number of data points to load from back
 
 const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps> = ({
   trading,
+  entityType = 'trading',
+  entityId,
   className = '',
   dataEndTime,
   timeframe,
@@ -481,6 +487,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const tradingTimeframe = trading.info?.timeframe;
+  const resolvedEntityId = entityId ?? trading.id;
+  const isPortfolio = entityType === 'portfolio';
 
   const availableTimeframes = useMemo<Timeframe[]>(() => {
     const baseTimeframes: Timeframe[] = ['1h', '8h', '1d', '1w'];
@@ -586,6 +594,15 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   }, [isAuthenticated]);
 
   const loadMarketSnapshot = useCallback(async (endTimeMs?: number): Promise<MarketContext & { price: number | null; warmingUp: boolean }> => {
+    if (isPortfolio) {
+      const fallbackContext = deriveMarketContextFromTrading(trading);
+      setStockSymbol(fallbackContext.stockSymbol);
+      setQuoteSymbol(fallbackContext.quoteSymbol);
+      setStockBalance(fallbackContext.stockBalance);
+      setQuoteBalance(fallbackContext.quoteBalance);
+      return { ...fallbackContext, warmingUp: false };
+    }
+
     // If endTimeMs is very close to current time (within 5 seconds), don't pass it
     // to let fetchMarketSnapshot use its default (previous minute's finalized data)
     // and avoid backend warmup delays.
@@ -608,7 +625,71 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     oneMinutePriceRef.current = snapshotPrice ?? oneMinutePriceRef.current;
 
     return snapshot;
-  }, [attemptPublicFirst, trading]);
+  }, [attemptPublicFirst, isPortfolio, trading]);
+
+  const requestEquityCurve = useCallback(
+    (
+      timeframeValue: Timeframe,
+      recentTimeframes: number,
+      endTimeMs: number | undefined,
+      stock: string,
+      quote: string,
+      useAuth: boolean,
+      exchangeType?: string
+    ) => {
+      if (isPortfolio) {
+        return getPortfolioEquityCurve(resolvedEntityId, timeframeValue, recentTimeframes, useAuth, endTimeMs);
+      }
+      return getEquityCurve(
+        trading.id,
+        timeframeValue,
+        recentTimeframes,
+        stock,
+        quote,
+        useAuth,
+        exchangeType,
+        endTimeMs
+      );
+    },
+    [isPortfolio, resolvedEntityId, trading.id]
+  );
+
+  const requestEquityCurveByTimeRange = useCallback(
+    (
+      timeframeValue: Timeframe,
+      startTimeMs: number,
+      endTimeMs: number,
+      stock: string,
+      quote: string,
+      useAuth: boolean,
+      exchangeType?: string
+    ) => {
+      if (isPortfolio) {
+        return getPortfolioEquityCurveByTimeRange(resolvedEntityId, timeframeValue, startTimeMs, endTimeMs, useAuth);
+      }
+      return getEquityCurveByTimeRange(
+        trading.id,
+        timeframeValue,
+        startTimeMs,
+        endTimeMs,
+        stock,
+        quote,
+        useAuth,
+        exchangeType
+      );
+    },
+    [isPortfolio, resolvedEntityId, trading.id]
+  );
+
+  const requestTradingLogs = useCallback(
+    (useAuth: boolean, sinceTimestamp?: number) => {
+      if (isPortfolio) {
+        return Promise.resolve([]);
+      }
+      return getTradingLogs(resolvedEntityId, useAuth, sinceTimestamp);
+    },
+    [isPortfolio, resolvedEntityId]
+  );
 
 
   const fetchTradingData = useCallback(async (isInitialLoad = false, silentRefresh = false) => {
@@ -643,15 +724,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           backtestStartTime >= effectiveEndTime
         ) {
           return attemptPublicFirst(useAuth =>
-            getEquityCurve(
-              trading.id,
+            requestEquityCurve(
               selectedTimeframe,
               TOTAL_DATA_TO_LOAD,
+              effectiveEndTime,
               resolvedStockSymbol,
               resolvedQuoteSymbol,
               useAuth,
-              exchangeType,
-              effectiveEndTime
+              exchangeType
             )
           );
         }
@@ -670,8 +750,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           const cursorEnd = Math.min(cursorStart + chunkDurationMs, effectiveEndTime);
           try {
             const chunk = await attemptPublicFirst(useAuth =>
-              getEquityCurveByTimeRange(
-                trading.id,
+              requestEquityCurveByTimeRange(
                 selectedTimeframe,
                 cursorStart,
                 cursorEnd,
@@ -696,15 +775,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           } catch (error) {
             console.warn('Failed to fetch backtest equity chunk, falling back to default request', error);
             return attemptPublicFirst(useAuth =>
-              getEquityCurve(
-                trading.id,
+              requestEquityCurve(
                 selectedTimeframe,
                 TOTAL_DATA_TO_LOAD,
+                effectiveEndTime,
                 resolvedStockSymbol,
                 resolvedQuoteSymbol,
                 useAuth,
-                exchangeType,
-                effectiveEndTime
+                exchangeType
               )
             );
           }
@@ -713,15 +791,14 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
         if (!lastChunk || pointMap.size === 0) {
           return attemptPublicFirst(useAuth =>
-            getEquityCurve(
-              trading.id,
+            requestEquityCurve(
               selectedTimeframe,
               TOTAL_DATA_TO_LOAD,
+              effectiveEndTime,
               resolvedStockSymbol,
               resolvedQuoteSymbol,
               useAuth,
-              exchangeType,
-              effectiveEndTime
+              exchangeType
             )
           );
         }
@@ -746,7 +823,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       const [equityCurve, tradingLogs] = await Promise.all([
         equityCurvePromise,
-        attemptPublicFirst(useAuth => getTradingLogs(trading.id, useAuth))
+        attemptPublicFirst(useAuth => requestTradingLogs(useAuth))
       ]);
 
       console.log('Equity curve response:', equityCurve);
@@ -760,6 +837,27 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       const normalizedEquityCurve = normalizeEquityCurve(equityCurve);
       const constrainedEquityCurve = trimEquityCurveToEndTime(normalizedEquityCurve, effectiveEndTime) ?? normalizedEquityCurve;
+
+      if (isPortfolio && constrainedEquityCurve?.data_points?.length) {
+        const lastPoint = constrainedEquityCurve.data_points[constrainedEquityCurve.data_points.length - 1];
+        if (typeof lastPoint.quote_balance === 'number' && Number.isFinite(lastPoint.quote_balance)) {
+          setQuoteBalance(lastPoint.quote_balance);
+        }
+        if (typeof lastPoint.stock_balance === 'number' && Number.isFinite(lastPoint.stock_balance)) {
+          setStockBalance(lastPoint.stock_balance);
+        }
+        if (typeof lastPoint.stock_price === 'number' && Number.isFinite(lastPoint.stock_price) && lastPoint.stock_price > 0) {
+          oneMinutePriceRef.current = lastPoint.stock_price;
+        }
+        if (
+          initialStockPriceRef.current === undefined &&
+          typeof constrainedEquityCurve.baseline_price === 'number' &&
+          Number.isFinite(constrainedEquityCurve.baseline_price) &&
+          constrainedEquityCurve.baseline_price > 0
+        ) {
+          initialStockPriceRef.current = constrainedEquityCurve.baseline_price;
+        }
+      }
 
       const {
         data,
@@ -958,6 +1056,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     tradingStartDateIso,
     tradingStartTimestamp,
     loadMarketSnapshot,
+    requestEquityCurve,
+    requestEquityCurveByTimeRange,
+    requestTradingLogs,
+    isPortfolio,
   ]);
 
 
@@ -1001,8 +1103,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       }
 
       const incrementalEquity = await attemptPublicFirst(useAuth =>
-        getEquityCurveByTimeRange(
-          trading.id,
+        requestEquityCurveByTimeRange(
           selectedTimeframe,
           startTime,
           endTime,
@@ -1088,6 +1189,27 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         message: warmupSourceCurve?.message ?? existingEquityCurve.message,
       };
 
+      if (isPortfolio && updatedEquityCurve.data_points.length > 0) {
+        const lastPoint = updatedEquityCurve.data_points[updatedEquityCurve.data_points.length - 1];
+        if (typeof lastPoint.quote_balance === 'number' && Number.isFinite(lastPoint.quote_balance)) {
+          setQuoteBalance(lastPoint.quote_balance);
+        }
+        if (typeof lastPoint.stock_balance === 'number' && Number.isFinite(lastPoint.stock_balance)) {
+          setStockBalance(lastPoint.stock_balance);
+        }
+        if (typeof lastPoint.stock_price === 'number' && Number.isFinite(lastPoint.stock_price) && lastPoint.stock_price > 0) {
+          oneMinutePriceRef.current = lastPoint.stock_price;
+        }
+        if (
+          initialStockPriceRef.current === undefined &&
+          typeof updatedEquityCurve.baseline_price === 'number' &&
+          Number.isFinite(updatedEquityCurve.baseline_price) &&
+          updatedEquityCurve.baseline_price > 0
+        ) {
+          initialStockPriceRef.current = updatedEquityCurve.baseline_price;
+        }
+      }
+
       const nextWarmupState = getWarmupStateFromCurve(updatedEquityCurve);
       setWarmupState((previous) => {
         if (previous.active === nextWarmupState.active && previous.retryAfterMs === nextWarmupState.retryAfterMs) {
@@ -1104,8 +1226,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       // Fetch trading logs incrementally to capture new events
       const newTradingLogs = await attemptPublicFirst(useAuth =>
-        getTradingLogs(
-          trading.id,
+        requestTradingLogs(
           useAuth,
           lastTradingLogTimestampRef.current
         )
@@ -1246,6 +1367,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     tradingStartDateIso,
     tradingStartTimestamp,
     loadMarketSnapshot,
+    requestEquityCurveByTimeRange,
+    requestTradingLogs,
+    isPortfolio,
   ]);
 
 
@@ -1882,6 +2006,8 @@ const arePropsEqual = (
   return (
     prev.trading.id === next.trading.id &&
     prev.trading.name === next.trading.name &&
+    prev.entityType === next.entityType &&
+    prev.entityId === next.entityId &&
     prev.className === next.className &&
     prev.height === next.height &&
     prev.dataEndTime === next.dataEndTime &&
