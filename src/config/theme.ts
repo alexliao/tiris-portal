@@ -2,10 +2,10 @@
  * Unified Color Theme Configuration
  *
  * These colors are used consistently across the entire application
- * to represent the four main elements: Paper, Backtest, Real, and Exchanges
+ * to represent the main elements: Paper, Backtest, Real, Exchanges, and Portfolios
  */
 
-import { NotebookPen, CircleDollarSign, LineChart, Landmark } from 'lucide-react';
+import { NotebookPen, CircleDollarSign, LineChart, Landmark, Layers } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export const THEME_COLORS = {
@@ -44,6 +44,15 @@ export const THEME_COLORS = {
     medium: '#6B7A9E',       // Medium blue
     border: '#B8C1D9',       // Light blue border
     hover: '#1F2A3F',        // Darker blue for hover
+  },
+  portfolio: {
+    name: 'Portfolios',
+    icon: Layers,
+    primary: '#A14B1D',      // Burnt orange - Structured
+    light: '#F8E9E1',        // Very light orange
+    medium: '#C97A4F',       // Medium orange
+    border: '#E6C0A8',       // Light orange border
+    hover: '#7A3715',        // Darker orange for hover
   },
 } as const;
 

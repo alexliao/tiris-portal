@@ -8,6 +8,7 @@ import PerformancePage from './pages/PerformancePage';
 import DashboardPage from './pages/DashboardPage';
 import TradingsListPage from './pages/TradingsListPage';
 import TradingDetailPage from './pages/TradingDetailPage';
+import PortfoliosListPage from './pages/PortfoliosListPage';
 import ExchangesPage from './pages/ExchangesPage';
 import ExchangeBindingWizardPage from './pages/ExchangeBindingWizardPage';
 import PaperTradingWizardPage from './pages/PaperTradingWizardPage';
@@ -44,6 +45,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/tradings/:type" element={<TradingsListPage />} />
             <Route path="/trading/:id" element={<TradingDetailPage />} />
+            <Route path="/portfolios" element={<PortfoliosListPage />} />
             <Route path="/paper-trading/create" element={<PaperTradingWizardPage />} />
             <Route path="/backtest-trading/create" element={<BacktestTradingWizardPage />} />
             <Route path="/real-trading/create" element={<RealTradingWizardPage />} />

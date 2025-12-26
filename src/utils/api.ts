@@ -53,6 +53,17 @@ export interface Trading {
   };
 }
 
+export interface Portfolio {
+  id: string;
+  name: string;
+  memo?: string | null;
+  status: string;
+  info?: Record<string, unknown>;
+  trading_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Transaction {
   id: string;
   timestamp: string;
@@ -232,6 +243,11 @@ export async function getTradings(): Promise<Trading[]> {
   console.log('🔍 [getTradings] Raw response:', response);
   console.log('🔍 [getTradings] First trading:', response.tradings?.[0]);
   return response.tradings || [];
+}
+
+export async function getPortfolios(): Promise<Portfolio[]> {
+  const response = await apiRequest<{ portfolios: Portfolio[] }>('/portfolios');
+  return response.portfolios || [];
 }
 
 // Get a single trading by ID (supports both authenticated and unauthenticated access)

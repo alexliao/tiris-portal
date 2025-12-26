@@ -258,6 +258,9 @@
     "realDescription": "使用真实资金进行实盘交易",
     "exchanges": "交易所",
     "manageExchanges": "管理您的交易所连接",
+    "portfolios": "投资组合",
+    "portfoliosDescription": "将交易归类到投资组合",
+    "totalPortfolios": "投资组合总数",
     "yourTradings": "您的交易",
     "totalExchanges": "总交易所数",
     "activeConnections": "活跃",
@@ -290,6 +293,25 @@
       "noBot": "无机器人",
       "online": "在线",
       "offline": "离线"
+    }
+  },
+  "portfolios": {
+    "title": "投资组合",
+    "description": "将交易组织到投资组合中",
+    "totalPortfolios": "投资组合总数",
+    "activePortfolios": "活跃投资组合",
+    "archivedPortfolios": "已归档投资组合",
+    "allPortfolios": "所有投资组合",
+    "loadingPortfolios": "正在加载投资组合...",
+    "noPortfoliosFound": "未找到投资组合",
+    "noPortfoliosDescription": "创建投资组合以分组您的交易。",
+    "memberTradings": "成员交易数",
+    "lastUpdated": "最近更新",
+    "failedToLoad": "加载投资组合数据失败",
+    "failedToLoadWithError": "加载投资组合数据失败：{{error}}",
+    "status": {
+      "active": "活跃",
+      "archived": "已归档"
     }
   },
   "exchanges": {

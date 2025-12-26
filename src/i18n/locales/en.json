@@ -254,6 +254,9 @@
     "backtests": "Backtests",
     "exchanges": "Exchanges",
     "manageExchanges": "Manage your exchange connections",
+    "portfolios": "Portfolios",
+    "portfoliosDescription": "Group tradings into portfolios",
+    "totalPortfolios": "Total Portfolios",
     "yourTradings": "Your Tradings",
     "allTradings": "All Tradings",
     "totalExchanges": "Total Exchanges",
@@ -290,6 +293,25 @@
       "noBot": "No Bot",
       "online": "Online",
       "offline": "Offline"
+    }
+  },
+  "portfolios": {
+    "title": "Portfolios",
+    "description": "Organize your tradings into portfolios",
+    "totalPortfolios": "Total Portfolios",
+    "activePortfolios": "Active Portfolios",
+    "archivedPortfolios": "Archived Portfolios",
+    "allPortfolios": "All Portfolios",
+    "loadingPortfolios": "Loading portfolios...",
+    "noPortfoliosFound": "No portfolios found",
+    "noPortfoliosDescription": "Create a portfolio to group your tradings together.",
+    "memberTradings": "Member Tradings",
+    "lastUpdated": "Last updated",
+    "failedToLoad": "Failed to load portfolio data",
+    "failedToLoadWithError": "Failed to load portfolio data: {{error}}",
+    "status": {
+      "active": "Active",
+      "archived": "Archived"
     }
   },
   "exchanges": {

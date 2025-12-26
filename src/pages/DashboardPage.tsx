@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/useAuth';
-import { getTradings, type Trading, ApiError, getBots, type Bot, getExchangeBindings, type ExchangeBinding } from '../utils/api';
+import { getTradings, type Trading, ApiError, getBots, type Bot, getExchangeBindings, type ExchangeBinding, getPortfolios, type Portfolio } from '../utils/api';
 import { AlertCircle, ChevronRight, Zap } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navigation from '../components/layout/Header';
@@ -20,6 +20,7 @@ export const DashboardPage: React.FC = () => {
   const [tradings, setTradings] = useState<Trading[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
   const [exchanges, setExchanges] = useState<ExchangeBinding[]>([]);
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +47,15 @@ export const DashboardPage: React.FC = () => {
       } catch (exchangeErr) {
         console.warn('Failed to fetch exchanges:', exchangeErr);
         setExchanges([]);
+      }
+
+      // Try to fetch portfolios
+      try {
+        const portfolioData = await getPortfolios();
+        setPortfolios(portfolioData);
+      } catch (portfolioErr) {
+        console.warn('Failed to fetch portfolios:', portfolioErr);
+        setPortfolios([]);
       }
     } catch (err) {
       console.error('Failed to fetch tradings:', err);
@@ -119,13 +129,20 @@ export const DashboardPage: React.FC = () => {
     );
   };
 
-  const renderIconRow = (goldCount: number, grayCount: number, keyPrefix: string, ariaLabel: string) => (
+  const renderIconRow = (
+    goldCount: number,
+    grayCount: number,
+    keyPrefix: string,
+    ariaLabel: string,
+    goldAlt = t('dashboard.activeTradings'),
+    grayAlt = t('dashboard.totalTradings')
+  ) => (
     <div className="flex items-center flex-wrap gap-2 mt-2" aria-label={ariaLabel}>
       {Array.from({ length: goldCount }).map((_, idx) => (
         <img
           key={`${keyPrefix}-gold-${idx}`}
           src="/tiris-gold.png"
-          alt={t('dashboard.activeTradings')}
+          alt={goldAlt}
           className="w-8 h-8"
         />
       ))}
@@ -133,7 +150,7 @@ export const DashboardPage: React.FC = () => {
         <img
           key={`${keyPrefix}-gray-${idx}`}
           src="/tiris-gray.png"
-          alt={t('dashboard.totalTradings')}
+          alt={grayAlt}
           className="w-8 h-8 opacity-30"
         />
       ))}
@@ -333,7 +350,7 @@ export const DashboardPage: React.FC = () => {
                 <hr className="my-8 border-gray-300" />
               </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {tradingTypes.map((type, index) => {
               const Icon = type.icon;
               const stats = getTradingTypeStats(type.key);
@@ -402,6 +419,32 @@ export const DashboardPage: React.FC = () => {
                 </React.Fragment>
               );
             })}
+            <div
+              onClick={() => navigate('/portfolios')}
+              className="py-6 rounded-lg shadow hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-gray-200"
+              style={{
+                background: `linear-gradient(90deg, ${THEME_COLORS.portfolio.primary}, ${THEME_COLORS.portfolio.hover})`
+              }}
+            >
+              <div className="px-6 pb-6 text-white">
+                <div className="flex items-center justify-between mb-3">
+                  {React.createElement(THEME_COLORS.portfolio.icon, { className: 'w-10 h-10' })}
+                  <ChevronRight className="w-5 h-5 opacity-80" />
+                </div>
+                <h3 className="text-xl font-bold mb-1">{t('dashboard.portfolios')}</h3>
+                <p className="text-sm text-white/80">{t('dashboard.portfoliosDescription')}</p>
+              </div>
+              <div className="px-6 text-white">
+                {renderIconRow(
+                  portfolios.length,
+                  0,
+                  'portfolios-total',
+                  `${t('dashboard.totalPortfolios')}: ${portfolios.length}`,
+                  t('dashboard.totalPortfolios'),
+                  t('dashboard.totalPortfolios')
+                )}
+              </div>
+            </div>
             </div>
           </>
         )}
