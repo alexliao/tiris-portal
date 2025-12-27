@@ -1,3 +1,5 @@
+import { isTradingActive } from './tradingStatus';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Get access token from localStorage
@@ -828,10 +830,11 @@ export async function fetchExchangeBalanceForBinding(
       tradings = [];
     }
 
-    // Filter for existing real tradings with the same exchange binding
+    // Filter for existing real tradings with the same exchange binding and not ended
     const existingRealTradings = tradings.filter(
       t => t.type === 'real' &&
-        (t.exchange_binding_id === exchangeBindingId || t.exchange_binding?.id === exchangeBindingId)
+        (t.exchange_binding_id === exchangeBindingId || t.exchange_binding?.id === exchangeBindingId) &&
+        isTradingActive(t)
     );
 
     console.log(`Found ${existingRealTradings.length} existing real tradings with same exchange binding`);
