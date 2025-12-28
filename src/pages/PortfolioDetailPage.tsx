@@ -8,7 +8,7 @@ import TradingPerformanceWidget from '../components/trading/TradingPerformanceWi
 import { useAuth } from '../hooks/useAuth';
 import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
 import ConfirmDialog from '../components/common/ConfirmDialog';
-import { deletePortfolio, getPortfolioById, getPortfolioEquityCurve, type EquityCurveNewData, type Portfolio, type PortfolioTradingSummary, type Trading } from '../utils/api';
+import { deletePortfolio, getPortfolioById, type Portfolio, type PortfolioTradingSummary, type Trading } from '../utils/api';
 import { THEME_COLORS } from '../config/theme';
 import { createDateTimeFormatter, DateTimeFormatOption } from '../utils/locale';
 
@@ -19,7 +19,6 @@ export const PortfolioDetailPage: React.FC = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [tradings, setTradings] = useState<PortfolioTradingSummary[]>([]);
-  const [portfolioCurve, setPortfolioCurve] = useState<EquityCurveNewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState(false);
@@ -30,6 +29,8 @@ export const PortfolioDetailPage: React.FC = () => {
     isOpen: false,
     isDeleting: false,
   });
+
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
   const dateTimeFormatter = useMemo(
     () => createDateTimeFormatter(DateTimeFormatOption),
@@ -52,13 +53,6 @@ export const PortfolioDetailPage: React.FC = () => {
       setPortfolio(response.portfolio);
       setTradings(response.tradings || []);
 
-      try {
-        const equityCurve = await getPortfolioEquityCurve(id, '1h', 1);
-        setPortfolioCurve(equityCurve);
-      } catch (curveError) {
-        console.warn('Failed to fetch portfolio equity curve metadata:', curveError);
-        setPortfolioCurve(null);
-      }
     } catch (err) {
       console.error('Failed to load portfolio:', err);
       setError(t('portfolios.detail.loadFailed'));
@@ -127,8 +121,37 @@ export const PortfolioDetailPage: React.FC = () => {
     [dateTimeFormatter]
   );
 
+  const portfolioInfo = useMemo(() => (portfolio?.info ?? {}) as Record<string, unknown>, [portfolio]);
+
+  const parseNumeric = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return undefined;
+  };
+
+  const getDateLike = (value: unknown): string | number | null => {
+    if (typeof value === 'string' || typeof value === 'number') return value;
+    return null;
+  };
+
+  const parseDateValue = (value: unknown): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value;
+    }
+    if (typeof value === 'string' || typeof value === 'number') {
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+    return null;
+  };
+
   const portfolioTrading = useMemo<Trading | null>(() => {
     if (!portfolio) return null;
+    const startDate = getDateLike(portfolioInfo.start_date) ?? undefined;
     return {
       id: portfolio.id,
       name: portfolio.name,
@@ -137,10 +160,22 @@ export const PortfolioDetailPage: React.FC = () => {
       status: portfolio.status,
       created_at: portfolio.created_at ?? new Date().toISOString(),
       info: {
-        start_date: portfolio.created_at ?? new Date().toISOString(),
+        ...portfolioInfo,
+        ...(startDate ? { start_date: startDate } : {}),
       },
     };
-  }, [portfolio]);
+  }, [portfolio, portfolioInfo]);
+
+  const portfolioDayCount = useMemo(() => {
+    const start = parseDateValue(portfolioInfo.start_date);
+    if (!start) return null;
+    const end = parseDateValue(portfolioInfo.end_date) ?? new Date();
+    const diffMs = end.getTime() - start.getTime();
+    if (diffMs < 0) return null;
+    return Math.max(1, Math.ceil(diffMs / MS_PER_DAY));
+  }, [portfolioInfo]);
+  const portfolioDayCountLabel =
+    portfolioDayCount !== null ? t('trading.detail.dayCount', { count: portfolioDayCount }) : null;
 
   if (authLoading) {
     return (
@@ -215,11 +250,35 @@ export const PortfolioDetailPage: React.FC = () => {
   const statusLabel = (statusKey === 'active' || statusKey === 'archived')
     ? t(`portfolios.status.${statusKey}`)
     : portfolio.status;
-  const initialFunds = typeof portfolioCurve?.initial_funds === 'number' ? portfolioCurve.initial_funds : undefined;
-  const baselinePrice = typeof portfolioCurve?.baseline_price === 'number' ? portfolioCurve.baseline_price : undefined;
-  const startDateDisplay = formatDateTime(portfolioCurve?.start_time ?? portfolio.created_at);
-  const endDateDisplay = formatDateTime(portfolioCurve?.end_time ?? portfolio.updated_at);
-  const hasEndDate = Boolean(portfolioCurve?.end_time ?? portfolio.updated_at);
+  const infoInitialFunds = parseNumeric(portfolioInfo.initial_funds);
+  const infoBaselinePrice = parseNumeric(portfolioInfo.baseline_price);
+  const quoteCurrency = typeof portfolioInfo.quote_currency === 'string' ? portfolioInfo.quote_currency : undefined;
+  const initialFunds = infoInitialFunds;
+  const baselinePrice = infoBaselinePrice;
+  const startDateDisplay = formatDateTime(getDateLike(portfolioInfo.start_date));
+  const endDateDisplay = formatDateTime(getDateLike(portfolioInfo.end_date));
+  const hasEndDate = portfolioInfo.end_date !== null && portfolioInfo.end_date !== undefined;
+  const formatFunds = (value: number): string => {
+    const formatted = Math.floor(value).toLocaleString();
+    if (quoteCurrency === 'USD' || quoteCurrency === 'USDT') {
+      return `$${formatted}`;
+    }
+    if (quoteCurrency) {
+      return `${formatted} ${quoteCurrency}`;
+    }
+    return formatted;
+  };
+
+  const formatPrice = (value: number): string => {
+    const formatted = value.toFixed(2);
+    if (quoteCurrency === 'USD' || quoteCurrency === 'USDT') {
+      return `$${formatted}`;
+    }
+    if (quoteCurrency) {
+      return `${formatted} ${quoteCurrency}`;
+    }
+    return formatted;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -277,6 +336,11 @@ export const PortfolioDetailPage: React.FC = () => {
                   <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80">
                     {statusLabel}
                   </span>
+                  {portfolioDayCountLabel && (
+                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80">
+                      {portfolioDayCountLabel}
+                    </span>
+                  )}
                   <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/20 text-white/80">
                     {t('portfolios.detail.tradingCount', { count: tradingCount })}
                   </span>
@@ -294,14 +358,14 @@ export const PortfolioDetailPage: React.FC = () => {
                   <div className="flex mb-2">
                     <span className="text-xs md:text-sm font-medium text-gray-600">{t('trading.detail.initialFunds')}:&nbsp;</span>
                     <span className="text-sm font-semibold text-gray-900">
-                      {typeof initialFunds === 'number' ? `$${Math.floor(initialFunds).toLocaleString()}` : '—'}
+                      {typeof initialFunds === 'number' ? formatFunds(initialFunds) : '—'}
                     </span>
                   </div>
                   {baselinePrice !== undefined && (
                     <div className="flex mb-2">
                       <span className="text-xs md:text-sm font-medium text-gray-600">{t('trading.detail.initialPrice')}:&nbsp;</span>
                       <span className="text-sm font-semibold text-gray-900">
-                        {typeof baselinePrice === 'number' ? `$${baselinePrice.toFixed(2)}` : '—'}
+                        {typeof baselinePrice === 'number' ? formatPrice(baselinePrice) : '—'}
                       </span>
                     </div>
                   )}
