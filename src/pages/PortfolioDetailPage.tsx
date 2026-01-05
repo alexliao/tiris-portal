@@ -6,7 +6,6 @@ import Navigation from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import TradingPerformanceWidget from '../components/trading/TradingPerformanceWidget';
 import { useAuth } from '../hooks/useAuth';
-import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { deletePortfolio, getPortfolioById, type Portfolio, type PortfolioTradingSummary, type Trading } from '../utils/api';
 import { THEME_COLORS } from '../config/theme';
@@ -37,8 +36,6 @@ export const PortfolioDetailPage: React.FC = () => {
     [i18n.language]
   );
 
-  useRequireAuthRedirect({ isAuthenticated, isLoading: authLoading });
-
   const fetchPortfolio = useCallback(async () => {
     if (!id) {
       setError(t('portfolios.detail.notFound'));
@@ -49,7 +46,16 @@ export const PortfolioDetailPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getPortfolioById(id);
+      let response = await getPortfolioById(id, false);
+      if (!response && isAuthenticated) {
+        response = await getPortfolioById(id, true);
+      }
+
+      if (!response) {
+        setError(t('portfolios.detail.notFound'));
+        return;
+      }
+
       setPortfolio(response.portfolio);
       setTradings(response.tradings || []);
 
@@ -59,13 +65,13 @@ export const PortfolioDetailPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, t]);
+  }, [id, isAuthenticated, t]);
 
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
+    if (!authLoading) {
       fetchPortfolio();
     }
-  }, [authLoading, fetchPortfolio, isAuthenticated]);
+  }, [authLoading, fetchPortfolio]);
 
   const handleCopyPortfolioId = async () => {
     if (!portfolio?.id) return;
@@ -183,18 +189,6 @@ export const PortfolioDetailPage: React.FC = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tiris-primary-600 mx-auto mb-4"></div>
           <p className="text-gray-600">{t('common.loading')}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('common.accessDenied')}</h1>
-          <p className="text-gray-600 mb-4">{t('dashboard.needSignIn')}</p>
         </div>
       </div>
     );

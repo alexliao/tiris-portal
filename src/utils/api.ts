@@ -259,8 +259,32 @@ export async function getPortfolios(): Promise<Portfolio[]> {
 
 export async function getPortfolioById(
   portfolioId: string
-): Promise<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] }> {
-  return apiRequest<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] }>(`/portfolios/${portfolioId}`);
+): Promise<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] }>;
+export async function getPortfolioById(
+  portfolioId: string,
+  requireAuth: true
+): Promise<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] }>;
+export async function getPortfolioById(
+  portfolioId: string,
+  requireAuth: false
+): Promise<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] } | null>;
+export async function getPortfolioById(
+  portfolioId: string,
+  requireAuth: boolean = true
+): Promise<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] } | null> {
+  try {
+    return await apiRequest<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] }>(
+      `/portfolios/${portfolioId}`,
+      {},
+      requireAuth
+    );
+  } catch (error) {
+    if (!requireAuth) {
+      console.warn('Unauthenticated access to portfolio details not supported by backend');
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function updatePortfolio(
