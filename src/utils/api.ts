@@ -525,6 +525,44 @@ export async function getTradingLogs(tradingId: string, requireAuth: boolean = t
   return allLogs;
 }
 
+export async function getPortfolioTradingLogs(
+  portfolioId: string,
+  requireAuth: boolean = true,
+  sinceTimestamp?: number
+): Promise<TradingLog[]> {
+  const allLogs: TradingLog[] = [];
+  let offset = 0;
+  const limit = 1000;
+
+  const startDate = sinceTimestamp !== undefined ? new Date(sinceTimestamp).toISOString() : undefined;
+  let query = `/trading-logs/portfolio/${portfolioId}?limit=${limit}&offset=${offset}`;
+  if (startDate) {
+    query = `/trading-logs/portfolio/${portfolioId}?limit=${limit}&offset=${offset}&start_date=${startDate}`;
+  }
+
+  while (true) {
+    const response = await apiRequest<{ trading_logs: TradingLog[] }>(query, {}, requireAuth);
+    const logs = response.trading_logs;
+
+    if (logs.length === 0) {
+      break;
+    }
+
+    allLogs.push(...logs);
+
+    if (logs.length < limit) {
+      break;
+    }
+
+    offset += limit;
+    query = startDate
+      ? `/trading-logs/portfolio/${portfolioId}?limit=${limit}&offset=${offset}&start_date=${startDate}`
+      : `/trading-logs/portfolio/${portfolioId}?limit=${limit}&offset=${offset}`;
+  }
+
+  return allLogs;
+}
+
 export interface EquityCurveOhlcv {
   open: number;
   high: number;

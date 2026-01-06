@@ -648,6 +648,10 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         const equityValue = equityAreaSeriesRef.current
           ? extractSingleValue(param.seriesData.get(equityAreaSeriesRef.current))
           : undefined;
+        const beforeCreationEquityValue = beforeCreationAreaSeriesRef.current
+          ? extractSingleValue(param.seriesData.get(beforeCreationAreaSeriesRef.current))
+          : undefined;
+        const resolvedEquityValue = equityValue ?? beforeCreationEquityValue;
         const volumeValue = volumeSeriesRef.current
           ? extractSingleValue(param.seriesData.get(volumeSeriesRef.current))
           : undefined;
@@ -672,7 +676,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
         const hasAnyData = Boolean(
           (currentVisibility.price && (candlestickData || volumeValue !== undefined)) ||
-          (currentVisibility.equity && (equityValue !== undefined || roiValue !== undefined)) ||
+          (currentVisibility.equity && (resolvedEquityValue !== undefined || roiValue !== undefined)) ||
           (currentVisibility.benchmark && benchmarkPercent !== undefined) ||
           (currentVisibility.position && positionValue !== undefined)
         );
@@ -1057,18 +1061,22 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     }
 
     const equityRoiMap = new Map<number, number>();
-    equityPoints.forEach((point) => {
-      const timeInSeconds = toTimeKeySeconds(point.timestampNum / 1000);
-      if (timeInSeconds === null) {
-        return;
-      }
+    const addRoiPoints = (points: TradingDataPoint[]) => {
+      points.forEach((point) => {
+        const timeInSeconds = toTimeKeySeconds(point.timestampNum / 1000);
+        if (timeInSeconds === null) {
+          return;
+        }
 
-      if (point.roi === undefined || point.roi === null) {
-        return;
-      }
+        if (point.roi === undefined || point.roi === null) {
+          return;
+        }
 
-      equityRoiMap.set(timeInSeconds, point.roi);
-    });
+        equityRoiMap.set(timeInSeconds, point.roi);
+      });
+    };
+    addRoiPoints(beforeCreationEquityPoints ?? []);
+    addRoiPoints(equityPoints);
     roiByTimeRef.current = equityRoiMap;
 
     const benchmarkData = benchmarkPoints
@@ -1259,6 +1267,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   }, [ // eslint-disable-line react-hooks/exhaustive-deps
     candles,
     equityPoints,
+    beforeCreationEquityPoints,
     benchmarkPoints,
     loading,
     hasInitialized,

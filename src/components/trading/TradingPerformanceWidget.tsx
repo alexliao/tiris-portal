@@ -10,6 +10,7 @@ import {
   type EquityCurveNewData,
   getPortfolioEquityCurve,
   getPortfolioEquityCurveByTimeRange,
+  getPortfolioTradingLogs,
 } from '../../utils/api';
 import {
   transformNewEquityCurveToChartData,
@@ -19,7 +20,7 @@ import {
   type TradingMetrics,
   type TradingCandlestickPoint,
 } from '../../utils/chartData';
-import { deriveMarketContextFromTrading, fetchMarketSnapshot } from '../../utils/marketSnapshot';
+import { fetchMarketSnapshot, fetchPortfolioSnapshot } from '../../utils/marketSnapshot';
 import CandlestickChart from './CandlestickChart';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
@@ -594,23 +595,20 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   }, [isAuthenticated]);
 
   const loadMarketSnapshot = useCallback(async (endTimeMs?: number): Promise<MarketContext & { price: number | null; warmingUp: boolean }> => {
-    if (isPortfolio) {
-      const fallbackContext = deriveMarketContextFromTrading(trading);
-      setStockSymbol(fallbackContext.stockSymbol);
-      setQuoteSymbol(fallbackContext.quoteSymbol);
-      setStockBalance(fallbackContext.stockBalance);
-      setQuoteBalance(fallbackContext.quoteBalance);
-      return { ...fallbackContext, warmingUp: false };
-    }
-
     // If endTimeMs is very close to current time (within 5 seconds), don't pass it
     // to let fetchMarketSnapshot use its default (previous minute's finalized data)
     // and avoid backend warmup delays.
     const isCurrentTime = typeof endTimeMs === 'number' && Math.abs(Date.now() - endTimeMs) < 5000;
-    const snapshot = await fetchMarketSnapshot(trading, {
-      attemptPublicFirst,
-      endTimeMs: isCurrentTime ? undefined : endTimeMs,
-    });
+    const resolvedEndTime = isCurrentTime ? undefined : endTimeMs;
+    const snapshot = isPortfolio
+      ? await fetchPortfolioSnapshot(resolvedEntityId, trading, {
+        attemptPublicFirst,
+        endTimeMs: resolvedEndTime,
+      })
+      : await fetchMarketSnapshot(trading, {
+        attemptPublicFirst,
+        endTimeMs: resolvedEndTime,
+      });
 
     setStockSymbol(snapshot.stockSymbol);
     setQuoteSymbol(snapshot.quoteSymbol);
@@ -684,7 +682,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const requestTradingLogs = useCallback(
     (useAuth: boolean, sinceTimestamp?: number) => {
       if (isPortfolio) {
-        return Promise.resolve([]);
+        return getPortfolioTradingLogs(resolvedEntityId, useAuth, sinceTimestamp);
       }
       return getTradingLogs(resolvedEntityId, useAuth, sinceTimestamp);
     },
