@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, Check, Copy, Pencil, Trash2 } from 'lucide-react';
 import Navigation from '../components/layout/Header';
@@ -14,7 +14,9 @@ import { createDateTimeFormatter, DateTimeFormatOption } from '../utils/locale';
 export const PortfolioDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
+  const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [tradings, setTradings] = useState<PortfolioTradingSummary[]>([]);
@@ -30,6 +32,8 @@ export const PortfolioDetailPage: React.FC = () => {
   });
 
   const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  type TradingPerformanceProps = React.ComponentProps<typeof TradingPerformanceWidget>;
+  const timeframeParam = searchParams.get('timeframe') as TradingPerformanceProps['timeframe'] | null;
 
   const dateTimeFormatter = useMemo(
     () => createDateTimeFormatter(DateTimeFormatOption),
@@ -116,6 +120,21 @@ export const PortfolioDetailPage: React.FC = () => {
       });
     }
   };
+
+  const handleTimeframeSelection = useCallback((nextTimeframe: TradingPerformanceProps['timeframe']) => {
+    if (!nextTimeframe) {
+      return;
+    }
+    const currentTimeframe = searchParams.get('timeframe');
+    if (currentTimeframe === nextTimeframe) {
+      return;
+    }
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('timeframe', nextTimeframe);
+    const nextSearch = nextParams.toString();
+    const nextUrl = `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`;
+    window.location.assign(nextUrl);
+  }, [location.hash, location.pathname, searchParams]);
 
   const formatDateTime = useCallback(
     (value?: string | number | null): string | null => {
@@ -394,6 +413,8 @@ export const PortfolioDetailPage: React.FC = () => {
             trading={portfolioTrading}
             entityType="portfolio"
             entityId={portfolio.id}
+            timeframe={timeframeParam ?? undefined}
+            onTimeframeChange={handleTimeframeSelection}
           />
         </div>
       </div>

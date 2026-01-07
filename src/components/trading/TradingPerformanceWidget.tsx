@@ -174,6 +174,7 @@ interface TradingPerformanceWidgetProps {
   height?: string;
   dataEndTime?: number;
   timeframe?: Timeframe;
+  onTimeframeChange?: (timeframe: Timeframe) => void;
   showEquity?: boolean;
   showBenchmark?: boolean;
   showSignals?: boolean;
@@ -468,6 +469,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   className = '',
   dataEndTime,
   timeframe,
+  onTimeframeChange,
   showEquity = true,
   showBenchmark = true,
   showSignals = true,
@@ -1546,6 +1548,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
   // Handle timeframe selection
   const handleTimeframeChange = (timeframe: Timeframe) => {
+    onTimeframeChange?.(timeframe);
     setSelectedTimeframe(timeframe);
   };
 
@@ -2010,6 +2013,7 @@ const arePropsEqual = (
     prev.height === next.height &&
     prev.dataEndTime === next.dataEndTime &&
     prev.timeframe === next.timeframe &&
+    prev.onTimeframeChange === next.onTimeframeChange &&
     prev.showEquity === next.showEquity &&
     prev.showBenchmark === next.showBenchmark &&
     prev.showSignals === next.showSignals &&
