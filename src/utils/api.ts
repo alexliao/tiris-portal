@@ -55,6 +55,24 @@ export interface Trading {
   };
 }
 
+export interface Portfolio {
+  id: string;
+  name: string;
+  memo?: string | null;
+  status: string;
+  info?: Record<string, unknown>;
+  trading_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PortfolioTradingSummary {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+}
+
 export interface Transaction {
   id: string;
   timestamp: string;
@@ -236,6 +254,165 @@ export async function getTradings(): Promise<Trading[]> {
   return response.tradings || [];
 }
 
+export async function getPortfolios(): Promise<Portfolio[]> {
+  const response = await apiRequest<{ portfolios: Portfolio[] }>('/portfolios');
+  return response.portfolios || [];
+}
+
+export async function getPortfolioById(
+  portfolioId: string
+): Promise<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] }>;
+export async function getPortfolioById(
+  portfolioId: string,
+  requireAuth: true
+): Promise<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] }>;
+export async function getPortfolioById(
+  portfolioId: string,
+  requireAuth: false
+): Promise<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] } | null>;
+export async function getPortfolioById(
+  portfolioId: string,
+  requireAuth: boolean = true
+): Promise<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] } | null> {
+  try {
+    return await apiRequest<{ portfolio: Portfolio; tradings: PortfolioTradingSummary[] }>(
+      `/portfolios/${portfolioId}`,
+      {},
+      requireAuth
+    );
+  } catch (error) {
+    if (!requireAuth) {
+      console.warn('Unauthenticated access to portfolio details not supported by backend');
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function updatePortfolio(
+  portfolioId: string,
+  payload: {
+    name?: string;
+    memo?: string | null;
+    status?: string;
+    info?: Record<string, unknown>;
+  }
+): Promise<Portfolio> {
+  const response = await apiRequest<{ portfolio: Portfolio }>(`/portfolios/${portfolioId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+  return response.portfolio;
+}
+
+export async function createPortfolio(payload: {
+  name: string;
+  memo?: string;
+  info?: Record<string, unknown>;
+}): Promise<Portfolio> {
+  const response = await apiRequest<{ portfolio: Portfolio }>('/portfolios', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return response.portfolio;
+}
+
+export async function addPortfolioTradings(
+  portfolioId: string,
+  tradingIds: string[]
+): Promise<{ added: string[]; skipped: string[] }> {
+  return apiRequest<{ added: string[]; skipped: string[] }>(`/portfolios/${portfolioId}/tradings`, {
+    method: 'POST',
+    body: JSON.stringify({ trading_ids: tradingIds }),
+  });
+}
+
+export async function removePortfolioTrading(
+  portfolioId: string,
+  tradingId: string
+): Promise<void> {
+  await apiRequest<void>(`/portfolios/${portfolioId}/tradings/${tradingId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function deletePortfolio(portfolioId: string): Promise<void> {
+  await apiRequest<void>(`/portfolios/${portfolioId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getPortfolioEquityCurve(
+  portfolioId: string,
+  timeframe: string = '1h',
+  recentTimeframes: number = 100,
+  requireAuth: boolean = true,
+  endTime?: number
+): Promise<EquityCurveNewData> {
+  const params = new URLSearchParams();
+  params.append('timeframe', timeframe);
+  params.append('recent_timeframes', recentTimeframes.toString());
+  if (typeof endTime === 'number' && Number.isFinite(endTime)) {
+    params.append('end_time', Math.floor(endTime).toString());
+  }
+
+  const endpoint = `/portfolios/${portfolioId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
+  try {
+    const data = await apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);
+    console.log(`✅ getPortfolioEquityCurve response: received ${data.data_points?.length ?? 0} data points`);
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 202) {
+      const warmupCurve = buildWarmupEquityCurve(error.payload, portfolioId, timeframe);
+      if (warmupCurve) {
+        console.warn(
+          `⏳ Portfolio equity curve data warming detected. Returning ${warmupCurve.data_points.length} partial data points (gap_count=${warmupCurve.gap_count ?? 'unknown'}).`
+        );
+        return warmupCurve;
+      }
+    }
+
+    console.error(`❌ getPortfolioEquityCurve error: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
+  }
+}
+
+export async function getPortfolioEquityCurveByTimeRange(
+  portfolioId: string,
+  timeframe: string,
+  startTime: number,
+  endTime: number,
+  requireAuth: boolean = true
+): Promise<EquityCurveNewData> {
+  const params = new URLSearchParams();
+  params.append('timeframe', timeframe);
+  params.append('start_time', startTime.toString());
+  params.append('end_time', endTime.toString());
+
+  const endpoint = `/portfolios/${portfolioId}/equity-curve${params.toString() ? `?${params.toString()}` : ''}`;
+  try {
+    const data = await apiRequest<EquityCurveNewData>(endpoint, {}, requireAuth);
+    console.log(`✅ getPortfolioEquityCurveByTimeRange response: received ${data.data_points?.length ?? 0} data points`);
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 202) {
+      const warmupCurve = buildWarmupEquityCurve(error.payload, portfolioId, timeframe, {
+        startTimeMs: startTime,
+        endTimeMs: endTime,
+      });
+      if (warmupCurve) {
+        console.warn(
+          `⏳ Portfolio equity curve (time range) warming detected. Returning ${warmupCurve.data_points.length} partial data points (gap_count=${warmupCurve.gap_count ?? 'unknown'}).`
+        );
+        return warmupCurve;
+      }
+    }
+
+    console.error(`❌ getPortfolioEquityCurveByTimeRange error: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
+  }
+}
+
 // Get a single trading by ID (supports both authenticated and unauthenticated access)
 // For unauthenticated access, the backend must support public access to paper/backtest tradings
 export async function getTradingById(tradingId: string, requireAuth: boolean = true): Promise<Trading | null> {
@@ -345,6 +522,44 @@ export async function getTradingLogs(tradingId: string, requireAuth: boolean = t
     query = sinceTimestamp !== undefined
       ? `/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}&since=${new Date(sinceTimestamp).toISOString()}`
       : `/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}`;
+  }
+
+  return allLogs;
+}
+
+export async function getPortfolioTradingLogs(
+  portfolioId: string,
+  requireAuth: boolean = true,
+  sinceTimestamp?: number
+): Promise<TradingLog[]> {
+  const allLogs: TradingLog[] = [];
+  let offset = 0;
+  const limit = 1000;
+
+  const startDate = sinceTimestamp !== undefined ? new Date(sinceTimestamp).toISOString() : undefined;
+  let query = `/trading-logs/portfolio/${portfolioId}?limit=${limit}&offset=${offset}`;
+  if (startDate) {
+    query = `/trading-logs/portfolio/${portfolioId}?limit=${limit}&offset=${offset}&start_date=${startDate}`;
+  }
+
+  while (true) {
+    const response = await apiRequest<{ trading_logs: TradingLog[] }>(query, {}, requireAuth);
+    const logs = response.trading_logs;
+
+    if (logs.length === 0) {
+      break;
+    }
+
+    allLogs.push(...logs);
+
+    if (logs.length < limit) {
+      break;
+    }
+
+    offset += limit;
+    query = startDate
+      ? `/trading-logs/portfolio/${portfolioId}?limit=${limit}&offset=${offset}&start_date=${startDate}`
+      : `/trading-logs/portfolio/${portfolioId}?limit=${limit}&offset=${offset}`;
   }
 
   return allLogs;

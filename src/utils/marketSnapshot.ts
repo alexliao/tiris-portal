@@ -1,6 +1,7 @@
 import {
   getOHLCV,
   getEquityCurve,
+  getPortfolioEquityCurve,
   getSubAccountsByTrading,
   type EquityCurveNewData,
   type Trading,
@@ -274,4 +275,61 @@ export async function fetchMarketSnapshot(
     price: workingEntry.price,
     warmingUp: workingEntry.status === 'warming' || workingEntry.warmingUp,
   };
+}
+
+export async function fetchPortfolioSnapshot(
+  portfolioId: string,
+  trading: Trading,
+  options: MarketSnapshotOptions = {},
+): Promise<MarketSnapshot> {
+  const fallbackContext = deriveMarketContextFromTrading(trading);
+
+  const requestWithAuthFallback = async <T,>(request: (useAuth: boolean) => Promise<T>): Promise<T> => {
+    if (options.attemptPublicFirst) {
+      return options.attemptPublicFirst(request);
+    }
+    return request(true);
+  };
+
+  const effectiveEndTime = options.endTimeMs ?? (Date.now() - 60_000);
+  let snapshot: MarketSnapshot = {
+    ...fallbackContext,
+    price: null,
+    warmingUp: false,
+  };
+
+  try {
+    const equityCurve = await requestWithAuthFallback(useAuth =>
+      getPortfolioEquityCurve(portfolioId, '1m', 1, useAuth, effectiveEndTime)
+    );
+
+    if (equityCurve?.data_points?.length) {
+      const latestPoint = equityCurve.data_points[equityCurve.data_points.length - 1];
+      const latestPrice =
+        typeof latestPoint?.ohlcv?.close === 'number' && Number.isFinite(latestPoint.ohlcv.close) && latestPoint.ohlcv.close > 0
+          ? latestPoint.ohlcv.close
+          : typeof latestPoint?.stock_price === 'number' && Number.isFinite(latestPoint.stock_price) && latestPoint.stock_price > 0
+            ? latestPoint.stock_price
+            : null;
+
+      snapshot = {
+        stockSymbol: fallbackContext.stockSymbol,
+        quoteSymbol: fallbackContext.quoteSymbol,
+        stockBalance:
+          typeof latestPoint.stock_balance === 'number' && Number.isFinite(latestPoint.stock_balance)
+            ? latestPoint.stock_balance
+            : fallbackContext.stockBalance,
+        quoteBalance:
+          typeof latestPoint.quote_balance === 'number' && Number.isFinite(latestPoint.quote_balance)
+            ? latestPoint.quote_balance
+            : fallbackContext.quoteBalance,
+        price: latestPrice,
+        warmingUp: equityCurve?.warming_up === true || latestPrice === null,
+      };
+    }
+  } catch (error) {
+    console.warn('fetchPortfolioSnapshot: failed to fetch portfolio equity curve; using fallback context', error);
+  }
+
+  return snapshot;
 }

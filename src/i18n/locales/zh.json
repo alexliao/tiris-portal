@@ -258,6 +258,9 @@
     "realDescription": "使用真实资金进行实盘交易",
     "exchanges": "交易所",
     "manageExchanges": "管理您的交易所连接",
+    "portfolios": "投资组合",
+    "portfoliosDescription": "将交易归类到投资组合",
+    "totalPortfolios": "投资组合总数",
     "yourTradings": "您的交易",
     "totalExchanges": "总交易所数",
     "activeConnections": "活跃",
@@ -290,6 +293,81 @@
       "noBot": "无机器人",
       "online": "在线",
       "offline": "离线"
+    }
+  },
+  "portfolios": {
+    "title": "投资组合",
+    "description": "将交易组织到投资组合中",
+    "totalPortfolios": "投资组合总数",
+    "activePortfolios": "活跃投资组合",
+    "archivedPortfolios": "已归档投资组合",
+    "allPortfolios": "所有投资组合",
+    "loadingPortfolios": "正在加载投资组合...",
+    "noPortfoliosFound": "未找到投资组合",
+    "noPortfoliosDescription": "创建投资组合以分组您的交易。",
+    "memberTradings": "成员交易数",
+    "lastUpdated": "最近更新",
+    "createPortfolio": "创建投资组合",
+    "backToList": "返回投资组合",
+    "deleteTitle": "删除投资组合",
+    "deleteMessage": "确定要删除“{{name}}”吗？这将永久移除该投资组合及其成员记录。",
+    "deleteFailed": "删除投资组合失败：{{error}}",
+    "failedToLoad": "加载投资组合数据失败",
+    "failedToLoadWithError": "加载投资组合数据失败：{{error}}",
+    "status": {
+      "active": "活跃",
+      "archived": "已归档"
+    },
+    "wizard": {
+      "title": "创建投资组合",
+      "subtitle": "将交易归类到投资组合中",
+      "editTitle": "编辑投资组合",
+      "editSubtitle": "更新信息与成员",
+      "step1": {
+        "label": "选择交易",
+        "title": "选择要包含的交易",
+        "description": "选择要归入同一组合的交易。"
+      },
+      "step2": {
+        "label": "初始资金",
+        "title": "设置初始资金",
+        "description": "可使用默认值或自行输入金额。"
+      },
+      "step3": {
+        "label": "组合信息",
+        "title": "名称与备注",
+        "description": "填写投资组合名称与可选备注。"
+      },
+      "selectedCount": "已选择 {{count}} 个",
+      "selectedSummary": "已选择 {{count}} 个交易加入该投资组合。",
+      "noTradingsInTab": "暂无{{type}}交易",
+      "noTradingsHint": "请先创建交易，再将它们分组到投资组合中。",
+      "selectAtLeastOne": "请选择至少一个交易以继续。",
+      "nameLabel": "投资组合名称",
+      "namePlaceholder": "例如：核心策略",
+      "memoLabel": "备注",
+      "memoPlaceholder": "关于该投资组合的说明（可选）",
+      "initialFundsLabel": "初始资金",
+      "initialFundsPlaceholder": "例如：10000",
+      "initialFundsHint": "默认值基于所选交易：{{amount}}",
+      "portfolioEndDateLabel": "投资组合结束日期",
+      "tradingEndDateLabel": "交易结束日期",
+      "nameRequired": "投资组合名称为必填项。",
+      "initialFundsRequired": "初始资金为必填项。",
+      "create": "创建投资组合",
+      "save": "保存修改",
+      "failedToLoad": "加载交易失败",
+      "failedToLoadWithError": "加载交易失败：{{error}}",
+      "createFailed": "创建投资组合失败",
+      "createFailedWithError": "创建投资组合失败：{{error}}"
+    },
+    "detail": {
+      "notFound": "未找到投资组合",
+      "loadFailed": "加载投资组合失败",
+      "copyId": "复制投资组合ID",
+      "tradingCount": "{{count}} 个交易",
+      "createdAt": "创建时间",
+      "updatedAt": "最近更新"
     }
   },
   "exchanges": {

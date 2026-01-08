@@ -36,7 +36,7 @@ export const ExchangeBindingCard: React.FC<ExchangeBindingCardProps> = ({
   onRefreshValidation,
 }) => {
   const { t } = useTranslation();
-  const colors = THEME_COLORS.real;
+  const colors = THEME_COLORS.exchanges;
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleCardClick = () => {
