@@ -24,7 +24,33 @@ const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
 type TradingTab = 'real' | 'paper' | 'backtest';
 
-type WizardStep = 1 | 2;
+type WizardStep = 1 | 2 | 3;
+
+const parseDateValue = (value: unknown): Date | null => {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+};
+
+const parseNumeric = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const formatDateLabel = (value: Date | null): string => {
+  if (!value) return '—';
+  return value.toLocaleString();
+};
 
 export const PortfolioWizardPage: React.FC = () => {
   const { t } = useTranslation();
@@ -37,10 +63,13 @@ export const PortfolioWizardPage: React.FC = () => {
   const [selectedTradingIds, setSelectedTradingIds] = useState<string[]>([]);
   const [portfolioName, setPortfolioName] = useState('');
   const [portfolioMemo, setPortfolioMemo] = useState('');
+  const [portfolioInitialFunds, setPortfolioInitialFunds] = useState('');
+  const [initialFundsTouched, setInitialFundsTouched] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialTradingIds, setInitialTradingIds] = useState<string[]>([]);
+  const [existingInfo, setExistingInfo] = useState<Record<string, unknown>>({});
 
   const isEditMode = Boolean(portfolioId);
 
@@ -62,6 +91,106 @@ export const PortfolioWizardPage: React.FC = () => {
 
   const selectedCount = selectedTradingIds.length;
 
+  const selectedTradings = useMemo(() => {
+    if (selectedTradingIds.length === 0) return [];
+    const selectedSet = new Set(selectedTradingIds);
+    return tradings.filter(trading => selectedSet.has(trading.id));
+  }, [tradings, selectedTradingIds]);
+
+  const portfolioDateRange = useMemo(() => {
+    let earliestStart: Date | null = null;
+    let latestEnd: Date | null = null;
+    let hasOpenEnded = false;
+
+    selectedTradings.forEach(trading => {
+      const info = trading.info as { start_date?: unknown; end_date?: unknown };
+      const startDate = parseDateValue(info?.start_date) ?? parseDateValue(trading.created_at);
+      if (startDate && (!earliestStart || startDate < earliestStart)) {
+        earliestStart = startDate;
+      }
+
+      const endValue = info?.end_date ?? null;
+      if (endValue === null || endValue === undefined) {
+        hasOpenEnded = true;
+        return;
+      }
+
+      const endDate = parseDateValue(endValue);
+      if (endDate && (!latestEnd || endDate > latestEnd)) {
+        latestEnd = endDate;
+      }
+    });
+
+    return {
+      startDate: earliestStart,
+      endDate: hasOpenEnded ? null : latestEnd,
+    };
+  }, [selectedTradings]);
+
+  const defaultInitialFunds = useMemo(() => {
+    if (selectedTradings.length === 0) return 0;
+    const portfolioEndDate = portfolioDateRange.endDate;
+
+    return selectedTradings.reduce((sum, trading) => {
+      const info = trading.info as {
+        initial_funds?: unknown;
+        initial_balance?: unknown;
+        initial_quote_balance?: unknown;
+        balance?: unknown;
+        end_date?: unknown;
+      };
+      const endValue = info?.end_date ?? null;
+      const endDate = endValue === null || endValue === undefined ? null : parseDateValue(endValue);
+
+      const isCounted = portfolioEndDate === null
+        ? endDate === null
+        : Boolean(endDate && endDate.getTime() === portfolioEndDate.getTime());
+      if (!isCounted) return sum;
+
+      const initialFunds =
+        parseNumeric(info?.initial_funds) ??
+        parseNumeric(info?.initial_balance) ??
+        parseNumeric(info?.initial_quote_balance) ??
+        parseNumeric(info?.balance) ??
+        0;
+
+      return sum + initialFunds;
+    }, 0);
+  }, [portfolioDateRange.endDate, selectedTradings]);
+
+  const tradingInitialFundsCards = useMemo(() => {
+    const portfolioEndDate = portfolioDateRange.endDate;
+    return selectedTradings.map(trading => {
+      const info = trading.info as {
+        initial_funds?: unknown;
+        initial_balance?: unknown;
+        initial_quote_balance?: unknown;
+        balance?: unknown;
+        end_date?: unknown;
+      };
+      const endValue = info?.end_date ?? null;
+      const endDate = endValue === null || endValue === undefined ? null : parseDateValue(endValue);
+      const isCounted = portfolioEndDate === null
+        ? endDate === null
+        : Boolean(endDate && endDate.getTime() === portfolioEndDate.getTime());
+
+      const initialFunds =
+        parseNumeric(info?.initial_funds) ??
+        parseNumeric(info?.initial_balance) ??
+        parseNumeric(info?.initial_quote_balance) ??
+        parseNumeric(info?.balance) ??
+        0;
+
+      return {
+        id: trading.id,
+        name: trading.name,
+        initialFunds,
+        isCounted,
+        endDate,
+      };
+    });
+  }, [portfolioDateRange.endDate, selectedTradings]);
+
   const fetchTradings = async () => {
     try {
       setIsLoading(true);
@@ -77,6 +206,13 @@ export const PortfolioWizardPage: React.FC = () => {
         setInitialTradingIds(existingIds);
         setPortfolioName(portfolioData.portfolio.name);
         setPortfolioMemo(portfolioData.portfolio.memo ?? '');
+        const info = portfolioData.portfolio.info ?? {};
+        setExistingInfo(info);
+        const infoInitialFunds = parseNumeric(info.initial_funds);
+        if (infoInitialFunds !== null) {
+          setPortfolioInitialFunds(infoInitialFunds.toString());
+          setInitialFundsTouched(true);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch tradings:', err);
@@ -98,6 +234,12 @@ export const PortfolioWizardPage: React.FC = () => {
 
   useRequireAuthRedirect({ isAuthenticated, isLoading: authLoading });
 
+  useEffect(() => {
+    if (!initialFundsTouched) {
+      setPortfolioInitialFunds(defaultInitialFunds.toString());
+    }
+  }, [defaultInitialFunds, initialFundsTouched]);
+
   const toggleTradingSelection = (tradingId: string) => {
     setSelectedTradingIds(prev => {
       if (prev.includes(tradingId)) {
@@ -113,7 +255,15 @@ export const PortfolioWizardPage: React.FC = () => {
       return false;
     }
 
-    if (step === 2 && !portfolioName.trim()) {
+    if (step === 2) {
+      const parsedFunds = parseNumeric(portfolioInitialFunds);
+      if (parsedFunds === null || parsedFunds < 0) {
+        setError(t('portfolios.wizard.initialFundsRequired'));
+        return false;
+      }
+    }
+
+    if (step === 3 && !portfolioName.trim()) {
       setError(t('portfolios.wizard.nameRequired'));
       return false;
     }
@@ -124,26 +274,36 @@ export const PortfolioWizardPage: React.FC = () => {
 
   const handleNextStep = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(2);
+      setCurrentStep(prev => (prev === 1 ? 2 : 3));
     }
   };
 
   const handlePreviousStep = () => {
     setError(null);
-    setCurrentStep(1);
+    setCurrentStep(prev => (prev === 3 ? 2 : 1));
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(2)) {
+    if (!validateStep(3)) {
       return;
     }
 
     try {
       setIsSubmitting(true);
+      const startDateIso = portfolioDateRange.startDate?.toISOString() ?? null;
+      const endDateIso = portfolioDateRange.endDate ? portfolioDateRange.endDate.toISOString() : null;
+      const parsedFunds = parseNumeric(portfolioInitialFunds) ?? 0;
+      const infoPayload = {
+        ...existingInfo,
+        start_date: startDateIso,
+        end_date: endDateIso,
+        initial_funds: parsedFunds,
+      };
       if (isEditMode && portfolioId) {
         await updatePortfolio(portfolioId, {
           name: portfolioName.trim(),
           memo: portfolioMemo.trim() || null,
+          info: infoPayload,
         });
 
         const currentSet = new Set(selectedTradingIds);
@@ -157,14 +317,23 @@ export const PortfolioWizardPage: React.FC = () => {
         if (toRemove.length > 0) {
           await Promise.all(toRemove.map(tradingId => removePortfolioTrading(portfolioId, tradingId)));
         }
+
+        if (toAdd.length > 0 || toRemove.length > 0) {
+          await updatePortfolio(portfolioId, { info: infoPayload });
+        }
       } else {
         const portfolio = await createPortfolio({
           name: portfolioName.trim(),
           memo: portfolioMemo.trim() || undefined,
+          info: infoPayload,
         });
 
         if (selectedTradingIds.length > 0) {
           await addPortfolioTradings(portfolio.id, selectedTradingIds);
+        }
+
+        if (selectedTradingIds.length > 0) {
+          await updatePortfolio(portfolio.id, { info: infoPayload });
         }
       }
 
@@ -388,6 +557,61 @@ export const PortfolioWizardPage: React.FC = () => {
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
+                      {t('portfolios.wizard.initialFundsLabel')}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={portfolioInitialFunds}
+                      onChange={(event) => {
+                        setPortfolioInitialFunds(event.target.value);
+                        setInitialFundsTouched(true);
+                      }}
+                      placeholder={t('portfolios.wizard.initialFundsPlaceholder')}
+                      className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-tiris-primary-500"
+                    />
+                    <p className="mt-2 text-sm text-gray-500">
+                      {t('portfolios.wizard.initialFundsHint', { amount: defaultInitialFunds.toLocaleString() })}
+                    </p>
+                    <p className="mt-2 text-sm text-gray-500">
+                      {t('portfolios.wizard.portfolioEndDateLabel')}: {formatDateLabel(portfolioDateRange.endDate)}
+                    </p>
+                  </div>
+
+                  {tradingInitialFundsCards.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {tradingInitialFundsCards.map(card => (
+                        <div key={card.id} className="rounded-lg border border-gray-200 bg-white p-3 text-sm">
+                          <p className="text-gray-700 font-medium truncate">{card.name}</p>
+                          <p className={card.isCounted ? 'text-gray-900 mt-1' : 'text-gray-400 mt-1'}>
+                            {card.initialFunds.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {t('portfolios.wizard.tradingEndDateLabel')}: {formatDateLabel(card.endDate)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                    {t('portfolios.wizard.selectedSummary', { count: selectedCount })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 3 && (
+              <div className="max-w-2xl">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-gray-900">{t('portfolios.wizard.step3.title')}</h2>
+                  <p className="text-gray-600 mt-1">{t('portfolios.wizard.step3.description')}</p>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
                       {t('portfolios.wizard.nameLabel')}
                     </label>
                     <input
@@ -440,7 +664,7 @@ export const PortfolioWizardPage: React.FC = () => {
 
               <div className="flex-1" />
 
-              {currentStep === 2 ? (
+              {currentStep === 3 ? (
                 <button
                   onClick={handleSubmit}
                   disabled={isSubmitting}

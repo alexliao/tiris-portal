@@ -12,7 +12,8 @@ export const PortfolioWizardStepIndicator: React.FC<PortfolioWizardStepIndicator
 
   const steps = [
     { number: 1, label: t('portfolios.wizard.step1.label') || 'Select Tradings' },
-    { number: 2, label: t('portfolios.wizard.step2.label') || 'Portfolio Details' },
+    { number: 2, label: t('portfolios.wizard.step2.label') || 'Initial Funds' },
+    { number: 3, label: t('portfolios.wizard.step3.label') || 'Portfolio Details' },
   ];
 
   return (

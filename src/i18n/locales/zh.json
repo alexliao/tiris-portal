@@ -329,6 +329,11 @@
         "description": "选择要归入同一组合的交易。"
       },
       "step2": {
+        "label": "初始资金",
+        "title": "设置初始资金",
+        "description": "可使用默认值或自行输入金额。"
+      },
+      "step3": {
         "label": "组合信息",
         "title": "名称与备注",
         "description": "填写投资组合名称与可选备注。"
@@ -342,7 +347,13 @@
       "namePlaceholder": "例如：核心策略",
       "memoLabel": "备注",
       "memoPlaceholder": "关于该投资组合的说明（可选）",
+      "initialFundsLabel": "初始资金",
+      "initialFundsPlaceholder": "例如：10000",
+      "initialFundsHint": "默认值基于所选交易：{{amount}}",
+      "portfolioEndDateLabel": "投资组合结束日期",
+      "tradingEndDateLabel": "交易结束日期",
       "nameRequired": "投资组合名称为必填项。",
+      "initialFundsRequired": "初始资金为必填项。",
       "create": "创建投资组合",
       "save": "保存修改",
       "failedToLoad": "加载交易失败",

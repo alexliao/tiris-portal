@@ -329,6 +329,11 @@
         "description": "Choose the tradings you want to group together."
       },
       "step2": {
+        "label": "Initial Funds",
+        "title": "Set initial funds",
+        "description": "Review the default initial funds or enter your own amount."
+      },
+      "step3": {
         "label": "Portfolio Details",
         "title": "Name and memo",
         "description": "Add a portfolio name and an optional memo."
@@ -342,7 +347,13 @@
       "namePlaceholder": "e.g., Core Strategies",
       "memoLabel": "Memo",
       "memoPlaceholder": "Optional notes about this portfolio",
+      "initialFundsLabel": "Initial Funds",
+      "initialFundsPlaceholder": "e.g., 10000",
+      "initialFundsHint": "Default based on selected tradings: {{amount}}",
+      "portfolioEndDateLabel": "Portfolio end date",
+      "tradingEndDateLabel": "Trading end date",
       "nameRequired": "Portfolio name is required.",
+      "initialFundsRequired": "Initial funds is required.",
       "create": "Create Portfolio",
       "save": "Save Changes",
       "failedToLoad": "Failed to load tradings",
