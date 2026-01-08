@@ -871,7 +871,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         selectedTimeframe
       );
 
-      if (initialBalance === undefined && tradingInitialBalanceFromInfo !== undefined) {
+      if (isPortfolio && resolvedInitialBalance && resolvedInitialBalance > 0) {
+        if (initialBalance === undefined || initialBalance !== resolvedInitialBalance) {
+          setInitialBalance(resolvedInitialBalance);
+        }
+      } else if (initialBalance === undefined && tradingInitialBalanceFromInfo !== undefined) {
         setInitialBalance(tradingInitialBalanceFromInfo);
       } else if (resolvedInitialBalance && resolvedInitialBalance > 0 && initialBalance === undefined) {
         setInitialBalance(resolvedInitialBalance);
@@ -1261,7 +1265,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         selectedTimeframe
       );
 
-      if (initialBalance === undefined && tradingInitialBalanceFromInfo !== undefined) {
+      if (isPortfolio && resolvedInitialBalance && resolvedInitialBalance > 0) {
+        if (initialBalance === undefined || initialBalance !== resolvedInitialBalance) {
+          setInitialBalance(resolvedInitialBalance);
+        }
+      } else if (initialBalance === undefined && tradingInitialBalanceFromInfo !== undefined) {
         setInitialBalance(tradingInitialBalanceFromInfo);
       } else if (resolvedInitialBalance && resolvedInitialBalance > 0 && initialBalance === undefined) {
         setInitialBalance(resolvedInitialBalance);
