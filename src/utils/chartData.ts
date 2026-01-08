@@ -300,10 +300,26 @@ export function transformNewEquityCurveToChartData(
   // Calculate the time window based on the timeframe - use half the interval
   const timeframeMs = timeframeToMilliseconds(timeframe);
   const maxTimeWindow = Math.max(timeframeMs / 2, 60 * 1000); // At least 1 minute window
+  let minChartTime = Infinity;
+  let maxChartTime = -Infinity;
+  for (const point of chartData) {
+    const pointTime = new Date(point.timestamp).getTime();
+    if (!Number.isFinite(pointTime)) {
+      continue;
+    }
+    minChartTime = Math.min(minChartTime, pointTime);
+    maxChartTime = Math.max(maxChartTime, pointTime);
+  }
 
   // Now assign each trading event to its nearest chart data point
   for (const [eventTime, events] of eventsByTimestamp) {
     const eventTimestamp = new Date(eventTime).getTime();
+    if (!Number.isFinite(eventTimestamp)) {
+      continue;
+    }
+    if (eventTimestamp < minChartTime || eventTimestamp > maxChartTime) {
+      continue;
+    }
     let closestPoint: TradingDataPoint | undefined;
     let closestTimeDiff = Infinity;
     let closestIndex = -1;
@@ -475,9 +491,26 @@ export function transformEquityCurveToChartData(
     };
   });
 
+  let minChartTime = Infinity;
+  let maxChartTime = -Infinity;
+  for (const point of chartData) {
+    const pointTime = new Date(point.timestamp).getTime();
+    if (!Number.isFinite(pointTime)) {
+      continue;
+    }
+    minChartTime = Math.min(minChartTime, pointTime);
+    maxChartTime = Math.max(maxChartTime, pointTime);
+  }
+
   // Now assign each trading event to its nearest equity curve point
   for (const [eventTime, events] of eventsByTimestamp) {
     const eventTimestamp = new Date(eventTime).getTime();
+    if (!Number.isFinite(eventTimestamp)) {
+      continue;
+    }
+    if (eventTimestamp < minChartTime || eventTimestamp > maxChartTime) {
+      continue;
+    }
     let closestPoint: TradingDataPoint | undefined;
     let closestTimeDiff = Infinity;
     let closestIndex = -1;

@@ -97,7 +97,7 @@ export const PortfolioWizardPage: React.FC = () => {
     return tradings.filter(trading => selectedSet.has(trading.id));
   }, [tradings, selectedTradingIds]);
 
-  const portfolioDateRange = useMemo(() => {
+  const portfolioDateRange = useMemo<{ startDate: Date | null; endDate: Date | null }>(() => {
     let earliestStart: Date | null = null;
     let latestEnd: Date | null = null;
     let hasOpenEnded = false;
