@@ -1385,6 +1385,30 @@ export interface BotCreateRequest {
   spec: BotSpec;
 }
 
+export interface BotChartEvent {
+  event_id: number;
+  event_ts: string;
+  bar_ts?: number | null;
+  event_type: string;
+  payload?: Record<string, unknown>;
+  source?: string;
+}
+
+export interface BotChartHistoryResponse {
+  bot_id: string;
+  events: BotChartEvent[];
+  next_cursor?: string | null;
+  has_more?: boolean;
+}
+
+interface GetBotChartHistoryOptions {
+  start?: string;
+  end?: string;
+  limit?: number;
+  eventTypes?: string[];
+  cursor?: string;
+}
+
 // Bot API request functions
 async function botApiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${BOT_API_BASE_URL}${endpoint}`;
@@ -1518,6 +1542,29 @@ export async function getBotByTradingId(tradingId: string): Promise<Bot | null> 
     console.error('Failed to find bot for trading:', error);
     return null;
   }
+}
+
+export async function getBotChartHistory(
+  botId: string,
+  options: GetBotChartHistoryOptions = {}
+): Promise<BotChartHistoryResponse> {
+  const params = new URLSearchParams();
+
+  if (options.start) params.append('start', options.start);
+  if (options.end) params.append('end', options.end);
+  if (typeof options.limit === 'number' && Number.isFinite(options.limit)) {
+    params.append('limit', String(Math.max(1, Math.floor(options.limit))));
+  }
+  if (options.eventTypes && options.eventTypes.length > 0) {
+    params.append('event_types', options.eventTypes.join(','));
+  }
+  if (options.cursor) {
+    params.append('cursor', options.cursor);
+  }
+
+  const query = params.toString();
+  const endpoint = `/bots/${botId}/chart/history${query ? `?${query}` : ''}`;
+  return botApiRequest<BotChartHistoryResponse>(endpoint);
 }
 
 // Delete a bot

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, Component, type ErrorInfo, type ReactNode } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback, Component, type ErrorInfo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   createChart,
@@ -13,7 +13,6 @@ import {
   type IChartApi,
   type ISeriesApi,
   type IPriceScaleApi,
-  type CandlestickData,
   type Time,
   type BusinessDay,
   type LogicalRange,
@@ -23,8 +22,10 @@ import type {
   TradingCandlestickPoint,
   TradingDataPoint,
 } from '../../utils/chartData';
+import type { BotChartEvent } from '../../utils/api';
 import { createChartTooltip, positionTooltipAvoidingCrosshair } from './tooltipUtils';
 import { AxisDateTimeFormatOption, createDateTimeFormatter, DateFormatOption, DateTimeFormatOption, resolveLocale } from '../../utils/locale';
+import { buildStatusBarStyleMap } from './chartEvents/statusEventRenderer';
 
 const toTimeKeySeconds = (timestampSeconds: number): number | null => {
   if (!Number.isFinite(timestampSeconds) || timestampSeconds <= 0) {
@@ -46,8 +47,9 @@ interface CandlestickChartProps {
   baselinePrice?: number;
   tradingSignalsVisible?: boolean;
   onTradingSignalsToggle?: (nextVisible: boolean) => void;
-  seriesVisibility?: { price: boolean; equity: boolean; benchmark: boolean; position: boolean; signals: boolean };
-  onSeriesVisibilityChange?: (visibility: { price: boolean; equity: boolean; benchmark: boolean; position: boolean; signals: boolean }) => void;
+  statusEvents?: BotChartEvent[];
+  seriesVisibility?: { price: boolean; equity: boolean; benchmark: boolean; position: boolean; signals: boolean; status: boolean };
+  onSeriesVisibilityChange?: (visibility: { price: boolean; equity: boolean; benchmark: boolean; position: boolean; signals: boolean; status: boolean }) => void;
 }
 
 const DEFAULT_VISIBLE_CANDLE_COUNT = 100;
@@ -101,6 +103,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   initialBalance,
   baselinePrice,
   tradingSignalsVisible,
+  statusEvents = [],
   seriesVisibility: externalSeriesVisibility,
 }) => {
   const { t, i18n } = useTranslation();
@@ -117,6 +120,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     [i18n.language]
   );
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartSurfaceRef = useRef<HTMLDivElement>(null);
+  const statusBackgroundOverlayRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const beforeCreationAreaSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
@@ -148,6 +153,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     equity: true,
     benchmark: true,
     position: true,
+    signals: true,
+    status: false,
   });
 
   // Use external visibility if provided, otherwise use internal state
@@ -156,6 +163,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const [localSignalsVisible, setLocalSignalsVisible] = useState(
     tradingSignalsVisible ?? true
   );
+  const candlesRef = useRef<TradingCandlestickPoint[]>([]);
+  const statusBarStyleBySecondRef = useRef<Map<number, { color: string }>>(new Map());
   const roiByTimeRef = useRef<Map<number, number>>(new Map());
   const tradingEventsBySecondRef = useRef<Map<number, NonNullable<TradingDataPoint['events']>>>(new Map());
 
@@ -173,6 +182,89 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     });
     return map;
   }, [benchmarkPoints]);
+
+  const statusBarStyleBySecond = useMemo(
+    () => buildStatusBarStyleMap(statusEvents),
+    [statusEvents]
+  );
+
+  useEffect(() => {
+    candlesRef.current = candles;
+  }, [candles]);
+
+  useEffect(() => {
+    statusBarStyleBySecondRef.current = statusBarStyleBySecond;
+  }, [statusBarStyleBySecond]);
+
+  const renderStatusBackgroundOverlay = useCallback(() => {
+    const overlayEl = statusBackgroundOverlayRef.current;
+    const chart = chartRef.current;
+
+    if (!overlayEl || !chart) {
+      return;
+    }
+
+    overlayEl.innerHTML = '';
+
+    if (!seriesVisibilityStateRef.current.status || candlesRef.current.length === 0) {
+      return;
+    }
+
+    const bars = candlesRef.current
+      .map((candle) => {
+        const timeInSeconds = toTimeKeySeconds(candle.timestampNum / 1000);
+        if (timeInSeconds === null) {
+          return null;
+        }
+
+        const style = statusBarStyleBySecondRef.current.get(timeInSeconds);
+        if (!style) {
+          return null;
+        }
+
+        const coordinate = chart.timeScale().timeToCoordinate(timeInSeconds as Time);
+        const x = coordinate === null ? Number.NaN : Number(coordinate);
+        if (!Number.isFinite(x)) {
+          return null;
+        }
+
+        return {
+          x,
+          color: style.color,
+        };
+      })
+      .filter((bar): bar is { x: number; color: string } => bar !== null)
+      .sort((a, b) => a.x - b.x);
+
+    if (bars.length === 0) {
+      return;
+    }
+
+    const overlayHeight = overlayEl.clientHeight;
+    if (overlayHeight <= 0) {
+      return;
+    }
+
+    for (let index = 0; index < bars.length; index += 1) {
+      const current = bars[index];
+      const previous = bars[index - 1];
+      const next = bars[index + 1];
+      const leftGap = previous ? Math.max(current.x - previous.x, 1) : next ? Math.max(next.x - current.x, 1) : 12;
+      const rightGap = next ? Math.max(next.x - current.x, 1) : previous ? Math.max(current.x - previous.x, 1) : 12;
+      const left = current.x - leftGap / 2;
+      const right = current.x + rightGap / 2;
+      const width = Math.max(right - left, 1);
+
+      const barEl = document.createElement('div');
+      barEl.style.position = 'absolute';
+      barEl.style.left = `${left}px`;
+      barEl.style.top = '0px';
+      barEl.style.width = `${width}px`;
+      barEl.style.height = `${overlayHeight}px`;
+      barEl.style.backgroundColor = current.color;
+      overlayEl.appendChild(barEl);
+    }
+  }, []);
 
   useEffect(() => {
     tradingEventsBySecondRef.current = tradingEventsBySecond;
@@ -289,7 +381,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
   // Initialize chart
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    if (!chartContainerRef.current || !chartSurfaceRef.current) return;
 
     try {
       const containerWidth = chartContainerRef.current.clientWidth;
@@ -386,7 +478,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         return `${value.toFixed(2)}`;
       };
 
-      const chart = createChart(chartContainerRef.current, {
+      const chart = createChart(chartSurfaceRef.current, {
         width: containerWidth || 600,
         height: heightRef.current,
         layout: {
@@ -434,6 +526,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         }
 
         hasUserAdjustedRangeRef.current = true;
+        renderStatusBackgroundOverlay();
       };
 
       timeScale.subscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
@@ -802,15 +895,20 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           chartRef.current.applyOptions({
             width: chartContainerRef.current.clientWidth,
           });
+          renderStatusBackgroundOverlay();
         }
       };
 
       window.addEventListener('resize', handleResize);
 
       setHasInitialized(true);
+      requestAnimationFrame(() => {
+        renderStatusBackgroundOverlay();
+      });
 
       // Capture container ref in effect scope to avoid stale ref issues
       const containerRef = chartContainerRef.current;
+      const overlayRef = statusBackgroundOverlayRef.current;
       return () => {
         window.removeEventListener('resize', handleResize);
         chart.unsubscribeCrosshairMove(handleCrosshairMove);
@@ -823,12 +921,15 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         benchmarkMarkersPluginRef.current = null;
         benchmarkLabelMarkersPluginRef.current?.detach();
         benchmarkLabelMarkersPluginRef.current = null;
+        if (overlayRef) {
+          overlayRef.innerHTML = '';
+        }
       };
     } catch (err) {
       console.error('Failed to initialize candlestick chart:', err);
       setError(t('trading.chart.failedToInitialize', `Failed to initialize chart: ${err instanceof Error ? err.message : String(err)}`));
     }
-  }, [initialBalance, baselinePrice, t]);
+  }, [initialBalance, baselinePrice, renderStatusBackgroundOverlay, t]);
 
   useEffect(() => {
     if (!chartRef.current) {
@@ -840,6 +941,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
   // Cleanup chart on unmount
   useEffect(() => {
+    const overlayRef = statusBackgroundOverlayRef.current;
     return () => {
       if (chartRef.current) {
         chartRef.current.remove();
@@ -856,6 +958,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       rightPriceScaleRef.current = null;
       volumePriceScaleRef.current = null;
       positionPriceScaleRef.current = null;
+      if (overlayRef) {
+        overlayRef.innerHTML = '';
+      }
       if (zeroPriceLineRef.current) {
         zeroPriceLineRef.current.series.removePriceLine(zeroPriceLineRef.current.line);
         zeroPriceLineRef.current = null;
@@ -882,29 +987,31 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       positionSeriesRef.current?.setData([]);
       roiByTimeRef.current = new Map();
       syncZeroLine(undefined);
+      if (statusBackgroundOverlayRef.current) {
+        statusBackgroundOverlayRef.current.innerHTML = '';
+      }
       if (!loading) {
         setError(t('trading.chart.noDataAvailable', 'No candlestick data available for this timeframe.'));
       }
       return;
     }
 
-    const chartData: CandlestickData<Time>[] = [];
-    for (const candle of candles) {
+    const validCandles = candles.filter(candle => {
       const timeInSeconds = toTimeKeySeconds(candle.timestampNum / 1000);
-
       if (timeInSeconds === null) {
         console.error(t('trading.chart.invalidCandle', `Skipping invalid candle with timestamp: ${candle.timestamp}`));
-        continue;
+        return false;
       }
+      return true;
+    });
 
-      chartData.push({
-        time: timeInSeconds as Time,
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
-      });
-    }
+    const chartData = validCandles.map((candle) => ({
+      time: Math.floor(candle.timestampNum / 1000) as Time,
+      open: candle.open,
+      high: candle.high,
+      low: candle.low,
+      close: candle.close,
+    }));
 
     if (chartData.length === 0) {
       candlestickSeriesRef.current.setData([]);
@@ -921,6 +1028,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     setError(null);
     candlestickSeriesRef.current.setData(chartData);
+    renderStatusBackgroundOverlay();
 
     const lastBarTime = chartData.length > 0 ? Number(chartData[chartData.length - 1].time) : Number.NaN;
     const datasetResetDetected =
@@ -1274,11 +1382,20 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     timeframe,
     baselinePrice,
     signalsVisible,
+    statusBarStyleBySecond,
     axisDateTimeFormatter,
     fullDateTimeFormatter,
     dateOnlyFormatter,
     i18n.language,
+    renderStatusBackgroundOverlay,
   ]);
+
+  useEffect(() => {
+    if (!hasInitialized) {
+      return;
+    }
+    renderStatusBackgroundOverlay();
+  }, [hasInitialized, statusBarStyleBySecond, renderStatusBackgroundOverlay, seriesVisibility.status]);
 
   useEffect(() => {
     if (!hasInitialized) {
@@ -1291,7 +1408,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     beforeCreationAreaSeriesRef.current?.applyOptions({ visible: seriesVisibility.equity });
     benchmarkLineSeriesRef.current?.applyOptions({ visible: seriesVisibility.benchmark });
     applyScaleVisibility(seriesVisibility);
-  }, [hasInitialized, seriesVisibility]);
+    renderStatusBackgroundOverlay();
+  }, [hasInitialized, renderStatusBackgroundOverlay, seriesVisibility]);
 
   // Update internal state when external visibility changes (if from parent)
   useEffect(() => {
@@ -1324,7 +1442,16 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         ref={chartContainerRef}
         style={{ width: '100%', height: '100%', position: 'relative' }}
         data-testid="candlestick-chart-container"
-      />
+      >
+        <div
+          ref={statusBackgroundOverlayRef}
+          style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, overflow: 'hidden' }}
+        />
+        <div
+          ref={chartSurfaceRef}
+          style={{ position: 'absolute', inset: 0, zIndex: 1 }}
+        />
+      </div>
     </div>
   );
 };

@@ -683,6 +683,7 @@
       "signalsLabel": "买卖",
       "priceLabel": "ETH价格",
       "positionLabel": "仓位",
+      "statusLabel": "状态",
       "apiCredentialsRequired": "运行实盘交易机器人需要交易所API凭证。请更新您的交易所绑定。",
       "exchangeBindingNotAvailable": "交易所绑定信息不可用。请尝试刷新页面。",
       "notSignedIn": "您必须登录才能删除交易",

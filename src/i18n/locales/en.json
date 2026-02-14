@@ -684,6 +684,7 @@
       "signalsLabel": "Signals",
       "priceLabel": "ETH Price",
       "positionLabel": "Position",
+      "statusLabel": "Status",
       "apiCredentialsRequired": "Exchange API credentials are required to run a real trading bot. Please update your exchange binding.",
       "exchangeBindingNotAvailable": "Exchange binding information not available. Please try refreshing the page.",
       "notSignedIn": "You must be signed in to delete tradings",

@@ -8,9 +8,12 @@ import {
   type Trading,
   type TradingLog,
   type EquityCurveNewData,
+  type BotChartEvent,
   getPortfolioEquityCurve,
   getPortfolioEquityCurveByTimeRange,
   getPortfolioTradingLogs,
+  getBotByTradingId,
+  getBotChartHistory,
 } from '../../utils/api';
 import {
   transformNewEquityCurveToChartData,
@@ -164,6 +167,7 @@ type SeriesVisibility = {
   signals: boolean;
   price: boolean;
   position: boolean;
+  status: boolean;
 };
 
 interface TradingPerformanceWidgetProps {
@@ -180,6 +184,7 @@ interface TradingPerformanceWidgetProps {
   showSignals?: boolean;
   showPrice?: boolean;
   showPosition?: boolean;
+  showStatus?: boolean;
 }
 
 interface MarketContext {
@@ -263,6 +268,47 @@ const mergeTradingLogs = (existing: TradingLog[], incoming: TradingLog[]): Tradi
 
   return Array.from(logMap.values()).sort(
     (a, b) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime()
+  );
+};
+
+const normalizeEpochMs = (value: number): number => {
+  if (value >= 1_000_000_000_000) {
+    return Math.floor(value);
+  }
+  return Math.floor(value * 1000);
+};
+
+const getBotChartEventTimestampMs = (event: BotChartEvent): number => {
+  if (typeof event.bar_ts === 'number' && Number.isFinite(event.bar_ts)) {
+    return normalizeEpochMs(event.bar_ts);
+  }
+  return new Date(event.event_ts).getTime();
+};
+
+const buildBotChartEventKey = (event: BotChartEvent): string => {
+  if (Number.isFinite(event.event_id)) {
+    return `id:${event.event_id}`;
+  }
+
+  const payloadFingerprint = event.payload ? JSON.stringify(event.payload) : '';
+  return `fallback:${event.event_type}:${event.event_ts}:${event.bar_ts ?? ''}:${payloadFingerprint}`;
+};
+
+const mergeBotChartEvents = (existing: BotChartEvent[], incoming: BotChartEvent[]): BotChartEvent[] => {
+  if (incoming.length === 0) {
+    return existing;
+  }
+
+  const eventMap = new Map<string, BotChartEvent>();
+  existing.forEach(event => {
+    eventMap.set(buildBotChartEventKey(event), event);
+  });
+  incoming.forEach(event => {
+    eventMap.set(buildBotChartEventKey(event), event);
+  });
+
+  return Array.from(eventMap.values()).sort(
+    (a, b) => getBotChartEventTimestampMs(a) - getBotChartEventTimestampMs(b)
   );
 };
 
@@ -475,6 +521,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   showSignals = true,
   showPrice = false,
   showPosition = false,
+  showStatus = false,
 }) => {
   const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
@@ -545,7 +592,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     signals: showSignals,
     price: showPrice,
     position: showPosition,
+    status: showStatus,
   }));
+  const [botId, setBotId] = useState<string | null>(() => {
+    const rawBotId = trading.info?.bot_id;
+    return typeof rawBotId === 'string' && rawBotId.trim().length > 0 ? rawBotId.trim() : null;
+  });
+  const [statusEvents, setStatusEvents] = useState<BotChartEvent[]>([]);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   // Per-timeframe data cache to store data loaded for each timeframe
@@ -553,6 +606,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const initialStockPriceRef = useRef<number | undefined>(undefined);
   const tradingLogsRef = useRef<TradingLog[]>([]);
   const lastTradingLogTimestampRef = useRef<number | undefined>(undefined);
+  const statusEventsRef = useRef<BotChartEvent[]>([]);
+  const lastStatusEventTimestampRef = useRef<number | undefined>(undefined);
   const incrementalUpdateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const incrementalUpdateInProgressRef = useRef(false);
 
@@ -691,6 +746,46 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     [isPortfolio, resolvedEntityId]
   );
 
+  const resolveBotId = useCallback(async (): Promise<string | null> => {
+    if (isPortfolio) {
+      return null;
+    }
+
+    const infoBotId = trading.info?.bot_id;
+    if (typeof infoBotId === 'string' && infoBotId.trim().length > 0) {
+      return infoBotId.trim();
+    }
+
+    const associatedBot = await getBotByTradingId(trading.id);
+    return associatedBot?.record.id ?? null;
+  }, [isPortfolio, trading.id, trading.info?.bot_id]);
+
+  const requestBotChartEvents = useCallback(async (
+    resolvedBotId: string,
+    start?: string,
+    end?: string,
+  ): Promise<BotChartEvent[]> => {
+    const events: BotChartEvent[] = [];
+    let cursor: string | undefined;
+    let hasMore = true;
+
+    while (hasMore) {
+      const response = await getBotChartHistory(resolvedBotId, {
+        start,
+        end,
+        limit: 2000,
+        cursor,
+      });
+      if (response.events.length > 0) {
+        events.push(...response.events);
+      }
+      hasMore = response.has_more === true && typeof response.next_cursor === 'string';
+      cursor = hasMore ? response.next_cursor ?? undefined : undefined;
+    }
+
+    return events;
+  }, []);
+
 
   const fetchTradingData = useCallback(async (isInitialLoad = false, silentRefresh = false) => {
     let is202Error = false;
@@ -820,10 +915,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       };
 
       const equityCurvePromise = loadBacktestEquityCurve();
+      const resolvedBotIdPromise = resolveBotId();
 
-      const [equityCurve, tradingLogs] = await Promise.all([
+      const [equityCurve, tradingLogs, resolvedBotId] = await Promise.all([
         equityCurvePromise,
-        attemptPublicFirst(useAuth => requestTradingLogs(useAuth))
+        attemptPublicFirst(useAuth => requestTradingLogs(useAuth)),
+        resolvedBotIdPromise,
       ]);
 
       console.log('Equity curve response:', equityCurve);
@@ -837,6 +934,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       const normalizedEquityCurve = normalizeEquityCurve(equityCurve);
       const constrainedEquityCurve = trimEquityCurveToEndTime(normalizedEquityCurve, effectiveEndTime) ?? normalizedEquityCurve;
+
+      if (!isPortfolio) {
+        if (botId !== resolvedBotId) {
+          setBotId(resolvedBotId);
+        }
+      }
 
       if (isPortfolio && constrainedEquityCurve?.data_points?.length) {
         const lastPoint = constrainedEquityCurve.data_points[constrainedEquityCurve.data_points.length - 1];
@@ -925,6 +1028,33 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       if (tradingLogsRef.current.length > 0) {
         const latestLog = tradingLogsRef.current[tradingLogsRef.current.length - 1];
         lastTradingLogTimestampRef.current = new Date(latestLog.event_time).getTime();
+      }
+
+      if (!isPortfolio && resolvedBotId) {
+        const statusEventsStart = constrainedEquityCurve.start_time;
+        const statusEventsEnd = constrainedEquityCurve.end_time;
+        const fetchedStatusEvents = await requestBotChartEvents(
+          resolvedBotId,
+          statusEventsStart,
+          statusEventsEnd
+        );
+        const mergedStatusEvents = mergeBotChartEvents(statusEventsRef.current, fetchedStatusEvents);
+        statusEventsRef.current = mergedStatusEvents;
+        setStatusEvents(mergedStatusEvents);
+
+        if (mergedStatusEvents.length > 0) {
+          lastStatusEventTimestampRef.current = getBotChartEventTimestampMs(
+            mergedStatusEvents[mergedStatusEvents.length - 1]
+          );
+        }
+      } else if (!isPortfolio) {
+        statusEventsRef.current = [];
+        lastStatusEventTimestampRef.current = undefined;
+        setStatusEvents([]);
+      } else if (isPortfolio) {
+        statusEventsRef.current = [];
+        lastStatusEventTimestampRef.current = undefined;
+        setStatusEvents([]);
       }
 
       setChartState((previous) => {
@@ -1063,6 +1193,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     requestEquityCurve,
     requestEquityCurveByTimeRange,
     requestTradingLogs,
+    resolveBotId,
+    requestBotChartEvents,
+    botId,
     isPortfolio,
   ]);
 
@@ -1243,6 +1376,41 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         hasUpdatedData = true;
       }
 
+      if (!isPortfolio) {
+        const resolvedBotId = botId ?? await resolveBotId();
+        if (botId !== resolvedBotId) {
+          setBotId(resolvedBotId);
+        }
+        if (resolvedBotId) {
+          const incrementalStatusStart = (() => {
+            if (typeof lastStatusEventTimestampRef.current !== 'number') {
+              return updatedEquityCurve.start_time;
+            }
+            const overlapMs = timeframeToMilliseconds(selectedTimeframe);
+            return new Date(lastStatusEventTimestampRef.current - overlapMs).toISOString();
+          })();
+
+          const fetchedStatusEvents = await requestBotChartEvents(
+            resolvedBotId,
+            incrementalStatusStart,
+            updatedEquityCurve.end_time
+          );
+
+          if (fetchedStatusEvents.length > 0) {
+            const mergedStatusEvents = mergeBotChartEvents(statusEventsRef.current, fetchedStatusEvents);
+            const changed = mergedStatusEvents.length !== statusEventsRef.current.length;
+            statusEventsRef.current = mergedStatusEvents;
+            if (changed) {
+              setStatusEvents(mergedStatusEvents);
+              hasUpdatedData = true;
+            }
+            lastStatusEventTimestampRef.current = getBotChartEventTimestampMs(
+              mergedStatusEvents[mergedStatusEvents.length - 1]
+            );
+          }
+        }
+      }
+
       if (!hasUpdatedData) {
         // Update cache with latest timestamps even if nothing changed to ensure fresh metadata
         timeframeDataCacheRef.current[cacheKey] = {
@@ -1377,6 +1545,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     loadMarketSnapshot,
     requestEquityCurveByTimeRange,
     requestTradingLogs,
+    requestBotChartEvents,
+    resolveBotId,
+    botId,
     isPortfolio,
   ]);
 
@@ -1406,6 +1577,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       timeframeDataCacheRef.current = {};
       tradingLogsRef.current = [];
       lastTradingLogTimestampRef.current = undefined;
+      statusEventsRef.current = [];
+      lastStatusEventTimestampRef.current = undefined;
+      setStatusEvents([]);
       initialStockPriceRef.current = undefined;
       fetchTradingData(false, true);
       lastKnownDataEndTimeRef.current = dataEndTime;
@@ -1551,6 +1725,45 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     };
   }, [chartState.data.length, fetchIncrementalUpdates, selectedTimeframe, trading.type]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrateBotId = async () => {
+      if (isPortfolio) {
+        if (!cancelled) {
+          setBotId(null);
+          statusEventsRef.current = [];
+          lastStatusEventTimestampRef.current = undefined;
+          setStatusEvents([]);
+        }
+        return;
+      }
+
+      const infoBotId = trading.info?.bot_id;
+      if (typeof infoBotId === 'string' && infoBotId.trim().length > 0) {
+        if (!cancelled) {
+          setBotId(infoBotId.trim());
+        }
+        return;
+      }
+
+      const associatedBot = await getBotByTradingId(trading.id);
+      if (!cancelled) {
+        setBotId(associatedBot?.record.id ?? null);
+      }
+    };
+
+    hydrateBotId().catch((error) => {
+      console.warn('Unable to resolve bot id for status chart events:', error);
+      if (!cancelled) {
+        setBotId(null);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPortfolio, trading.id, trading.info?.bot_id]);
 
   const visibleBenchmarkData = chartState.benchmarkData;
 
@@ -1812,6 +2025,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 { key: 'signals' as const, labelKey: 'trading.tradingDetail.signalsLabel', color: '#3B82F6' },
                 { key: 'price' as const, labelKey: 'trading.tradingDetail.priceLabel', color: '#4B5563' },
                 { key: 'position' as const, labelKey: 'trading.tradingDetail.positionLabel', color: '#6366F1' },
+                ...(!isPortfolio ? [{ key: 'status' as const, labelKey: 'trading.tradingDetail.statusLabel', color: '#0EA5E9' }] : []),
               ].map((item) => (
                 <button
                   key={item.key}
@@ -1867,6 +2081,20 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                       {/* Red candlestick (right) */}
                       <line x1="9" y1="1" x2="9" y2="10" stroke="#EF4444" strokeWidth="1.2" />
                       <rect x="7" y="3" width="4" height="4" fill="#EF4444" />
+                    </svg>
+                  ) : item.key === 'status' ? (
+                    <svg
+                      className="inline-block h-4 w-4"
+                      viewBox="0 0 12 12"
+                    >
+                      <rect
+                        x="1.5"
+                        y="2"
+                        width="9"
+                        height="8"
+                        rx="1"
+                        fill={seriesVisibility[item.key] ? '#0EA5E9' : '#D1D5DB'}
+                      />
                     </svg>
                   ) : (
                     <svg
@@ -1991,6 +2219,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 initialBalance={initialBalance}
                 baselinePrice={chartState.baselinePrice}
                 tradingSignalsVisible={seriesVisibility.signals}
+                statusEvents={statusEvents}
                 onTradingSignalsToggle={(next) => setSeriesVisibility(prev => ({
                   ...prev,
                   signals: next,
@@ -2026,7 +2255,8 @@ const arePropsEqual = (
     prev.showBenchmark === next.showBenchmark &&
     prev.showSignals === next.showSignals &&
     prev.showPrice === next.showPrice &&
-    prev.showPosition === next.showPosition
+    prev.showPosition === next.showPosition &&
+    prev.showStatus === next.showStatus
   );
 };
 
