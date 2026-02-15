@@ -120,7 +120,11 @@ const CHART_LEFT_MARGIN = 5;
 const CHART_RIGHT_MARGIN = 0;
 const STATUS_EVENT_TYPE_OPTIONS: Array<{ key: StatusEventDisplayType; label: string }> = [
   { key: 'bgcolor', label: 'bgcolor' },
+  { key: 'fill', label: 'fill' },
+  { key: 'plot', label: 'plot' },
+  { key: 'plotcandle', label: 'plotcandle' },
   { key: 'plotshape', label: 'plotshape' },
+  { key: 'signal', label: 'signal' },
 ];
 
 const METRIC_VALUE_BLOCK_CLASS = 'flex flex-col justify-end';
@@ -600,10 +604,11 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     status: showStatus,
   }));
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
-  const [selectedStatusEventTypes, setSelectedStatusEventTypes] = useState<StatusEventDisplayType[]>([
-    'bgcolor',
-    'plotshape',
-  ]);
+  const [selectedStatusEventTypes, setSelectedStatusEventTypes] = useState<StatusEventDisplayType[]>(
+    () => STATUS_EVENT_TYPE_OPTIONS
+      .map((option) => option.key)
+      .filter((key) => key !== 'signal' && key !== 'plotcandle' && key !== 'plotshape')
+  );
   const statusMenuRef = useRef<HTMLDivElement | null>(null);
   const [botId, setBotId] = useState<string | null>(() => {
     const rawBotId = trading.info?.bot_id;
@@ -661,12 +666,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [statusMenuOpen]);
-
-  useEffect(() => {
-    if (!seriesVisibility.status) {
-      setStatusMenuOpen(false);
-    }
-  }, [seriesVisibility.status]);
 
   const beginApiCall = useCallback(() => {
     apiRequestCountRef.current += 1;
@@ -2123,55 +2122,65 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 );
 
                 if (item.key === 'status') {
+                  const statusButtonToneClass = seriesVisibility.status
+                    ? 'bg-white border-gray-300 text-gray-700 focus:ring-tiris-primary-200'
+                    : 'bg-gray-100 border-gray-200 text-gray-400 focus:ring-tiris-primary-100';
+
                   return (
                     <div key={item.key} className="relative" ref={statusMenuRef}>
-                      <button
-                        onClick={() => {
-                          const isTurningOn = !seriesVisibility.status;
-                          setSeriesVisibility(prev => ({
-                            ...prev,
-                            status: isTurningOn,
-                          }));
-                          setStatusMenuOpen(isTurningOn);
-                        }}
-                        className={buttonClassName}
-                      >
-                        {icon}
-                        {t(item.labelKey)}
-                        <svg className="h-3 w-3 text-gray-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                          <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.087l3.71-3.857a.75.75 0 1 1 1.04 1.08l-4.25 4.418a.75.75 0 0 1-1.04 0L5.21 8.31a.75.75 0 0 1 .02-1.1z" />
-                        </svg>
-                      </button>
-                      {statusMenuOpen && seriesVisibility.status && (
+                      <div className="flex items-stretch">
+                        <button
+                          onClick={() => {
+                            setSeriesVisibility(prev => ({
+                              ...prev,
+                              status: !prev.status,
+                            }));
+                          }}
+                          className={`flex items-center gap-1 rounded-l-md rounded-r-none border border-r-0 px-3 py-1 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${statusButtonToneClass}`}
+                        >
+                          {icon}
+                          {t(item.labelKey)}
+                        </button>
+                        <button
+                          onClick={() => setStatusMenuOpen(prev => !prev)}
+                          className={`inline-flex items-center justify-center rounded-r-md rounded-l-none border px-2 py-1 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${statusButtonToneClass}`}
+                          aria-label={t('trading.tradingDetail.statusLabel', 'Status')}
+                          aria-expanded={statusMenuOpen}
+                        >
+                          <svg className="h-3 w-3 text-gray-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.087l3.71-3.857a.75.75 0 1 1 1.04 1.08l-4.25 4.418a.75.75 0 0 1-1.04 0L5.21 8.31a.75.75 0 0 1 .02-1.1z" />
+                          </svg>
+                        </button>
+                      </div>
+                      {statusMenuOpen && (
                         <div className="absolute left-0 top-full z-20 mt-1 w-44 rounded-md border border-gray-200 bg-white p-2 shadow-lg">
                           <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
                             {t('trading.tradingDetail.statusLabel', 'Status')}
                           </div>
                           <div className="space-y-1">
                             {STATUS_EVENT_TYPE_OPTIONS.map((option) => (
-                              <label
-                                key={option.key}
-                                className="flex cursor-pointer select-none items-center gap-2 rounded px-1 py-1 text-sm text-gray-700 hover:bg-gray-50"
-                              >
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded border-gray-300 text-tiris-primary-600 focus:ring-tiris-primary-300"
-                                  checked={selectedStatusEventTypes.includes(option.key)}
-                                  onChange={(event) => {
-                                    const checked = event.target.checked;
-                                    setSelectedStatusEventTypes((prev) => {
-                                      if (checked) {
-                                        if (prev.includes(option.key)) {
-                                          return prev;
+                              <div key={option.key} className="rounded px-1 py-1 hover:bg-gray-50">
+                                <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-gray-700">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-gray-300 text-tiris-primary-600 focus:ring-tiris-primary-300"
+                                    checked={selectedStatusEventTypes.includes(option.key)}
+                                    onChange={(event) => {
+                                      const checked = event.target.checked;
+                                      setSelectedStatusEventTypes((prev) => {
+                                        if (checked) {
+                                          if (prev.includes(option.key)) {
+                                            return prev;
+                                          }
+                                          return [...prev, option.key];
                                         }
-                                        return [...prev, option.key];
-                                      }
-                                      return prev.filter((key) => key !== option.key);
-                                    });
-                                  }}
-                                />
-                                <span>{option.label}</span>
-                              </label>
+                                        return prev.filter((key) => key !== option.key);
+                                      });
+                                    }}
+                                  />
+                                  <span>{option.label}</span>
+                                </label>
+                              </div>
                             ))}
                           </div>
                         </div>

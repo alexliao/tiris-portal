@@ -6,7 +6,13 @@ export interface StatusEventInterval {
   color: string;
 }
 
-export type StatusEventDisplayType = 'bgcolor' | 'plotshape';
+export type StatusEventDisplayType =
+  | 'bgcolor'
+  | 'fill'
+  | 'plot'
+  | 'plotcandle'
+  | 'plotshape'
+  | 'signal';
 
 export type ChartEventMarkerShape = 'arrowUp' | 'arrowDown' | 'circle' | 'square';
 export type ChartEventMarkerPosition =
@@ -26,13 +32,34 @@ export interface PlotShapeEventMarker {
   text?: string;
 }
 
+export interface StatusLinePoint {
+  lineKey: string;
+  handle?: string;
+  series?: string;
+  timeSec: number;
+  value: number;
+  color: string;
+}
+
+export interface StatusCandlePoint {
+  timeSec: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  color?: string;
+}
+
 export interface ChartEventLayers {
   backgroundIntervals: StatusEventInterval[];
-  plotShapeMarkers: PlotShapeEventMarker[];
+  statusMarkers: PlotShapeEventMarker[];
+  statusLinePoints: StatusLinePoint[];
+  statusCandles: StatusCandlePoint[];
 }
 
 interface ChartEventParseContext {
   timeframeSec: number;
+  plotValueByTimeAndHandle: Map<string, number>;
 }
 
 interface ChartEventParser {
@@ -214,6 +241,41 @@ const mapPlotShapeLocation = (
   return 'inBar';
 };
 
+const clampStyleColor = (color: string | null, fallback: string): string => color ?? fallback;
+
+const buildPlotLookupKey = (timeSec: number, handle: string): string => `${timeSec}:${handle}`;
+
+const parseMarkerFromPayload = (
+  event: BotChartEvent,
+  fallback: {
+    color: string;
+    style?: string;
+    location?: string;
+    text?: string;
+  } = { color: '#111827' }
+): PlotShapeEventMarker | null => {
+  const timeSec = parseEventBarTimeSeconds(event);
+  if (timeSec === null) {
+    return null;
+  }
+
+  const color = clampStyleColor(readColorFromPayload(event.payload), fallback.color);
+  const style = readStringFromPayload(event.payload, ['style', 'shape']) ?? fallback.style;
+  const value = readNumberFromPayload(event.payload, ['value', 'price', 'y']);
+  const location = readStringFromPayload(event.payload, ['location']) ?? fallback.location;
+  const text = readStringFromPayload(event.payload, ['text', 'label', 'title']) ?? fallback.text;
+  const position = mapPlotShapeLocation(location, Number.isFinite(value));
+
+  return {
+    timeSec,
+    color,
+    shape: mapPlotShapeStyle(style),
+    position,
+    price: Number.isFinite(value) ? value : undefined,
+    text,
+  };
+};
+
 const backgroundEventParser: ChartEventParser = {
   kind: 'bgcolor',
   match: (eventType) => isBackgroundEventType(eventType),
@@ -236,34 +298,140 @@ const backgroundEventParser: ChartEventParser = {
   },
 };
 
+const fillEventParser: ChartEventParser = {
+  kind: 'fill',
+  match: (eventType) => eventType.toLowerCase().trim() === 'fill',
+  parse: (event, context, output) => {
+    const timeSec = parseEventBarTimeSeconds(event);
+    if (timeSec === null) {
+      return;
+    }
+
+    const upperHandle = readStringFromPayload(event.payload, ['upper']);
+    const lowerHandle = readStringFromPayload(event.payload, ['lower']);
+    if (!upperHandle || !lowerHandle) {
+      return;
+    }
+
+    const upper = context.plotValueByTimeAndHandle.get(buildPlotLookupKey(timeSec, upperHandle));
+    const lower = context.plotValueByTimeAndHandle.get(buildPlotLookupKey(timeSec, lowerHandle));
+    if (!Number.isFinite(upper) || !Number.isFinite(lower)) {
+      return;
+    }
+
+    const high = Math.max(upper as number, lower as number);
+    const low = Math.min(upper as number, lower as number);
+    const color = readColorFromPayload(event.payload) ?? 'rgba(59, 130, 246, 0.15)';
+
+    // Render fill as a candle-range bar (open/high = upper, close/low = lower).
+    output.statusCandles.push({
+      timeSec,
+      open: upper as number,
+      high,
+      low,
+      close: lower as number,
+      color,
+    });
+  },
+};
+
 const plotShapeEventParser: ChartEventParser = {
   kind: 'plotshape',
   match: (eventType) => eventType.toLowerCase().trim() === 'plotshape',
+  parse: (event, _context, output) => {
+    const marker = parseMarkerFromPayload(event, { color: '#111827' });
+    if (!marker) {
+      return;
+    }
+    output.statusMarkers.push(marker);
+  },
+};
+
+const signalEventParser: ChartEventParser = {
+  kind: 'signal',
+  match: (eventType) => eventType.toLowerCase().trim() === 'signal',
+  parse: (event, _context, output) => {
+    const direction =
+      readStringFromPayload(event.payload, ['direction', 'side', 'signal'])?.toLowerCase() ?? '';
+
+    const marker = parseMarkerFromPayload(event, {
+      color: direction === 'buy' || direction === 'long' ? '#2563EB' : '#DC2626',
+      style: direction === 'buy' || direction === 'long' ? 'triangleup' : 'triangledown',
+      location: direction === 'buy' || direction === 'long' ? 'belowbar' : 'abovebar',
+      text: direction ? direction.toUpperCase() : 'SIGNAL',
+    });
+    if (!marker) {
+      return;
+    }
+    output.statusMarkers.push(marker);
+  },
+};
+
+const plotEventParser: ChartEventParser = {
+  kind: 'plot',
+  match: (eventType) => eventType.toLowerCase().trim() === 'plot',
+  parse: (event, _context, output) => {
+    const timeSec = parseEventBarTimeSeconds(event);
+    if (timeSec === null) {
+      return;
+    }
+    const value = readNumberFromPayload(event.payload, ['value', 'price', 'y']);
+    if (!Number.isFinite(value)) {
+      return;
+    }
+    const color = 'rgba(156, 163, 175, 0.5)';
+    const lineSeries = readStringFromPayload(event.payload, ['series']) ?? 'plot';
+    const lineHandle =
+      readStringFromPayload(event.payload, ['handle']) ??
+      readStringFromPayload(event.payload, ['name', 'id', 'series', 'title']) ??
+      'plot';
+    output.statusLinePoints.push({
+      lineKey: `plot:${lineHandle}`,
+      handle: lineHandle,
+      series: lineSeries,
+      timeSec,
+      value: value as number,
+      color,
+    });
+  },
+};
+
+const plotCandleEventParser: ChartEventParser = {
+  kind: 'plotcandle',
+  match: (eventType) => eventType.toLowerCase().trim() === 'plotcandle',
   parse: (event, _context, output) => {
     const timeSec = parseEventBarTimeSeconds(event);
     if (timeSec === null) {
       return;
     }
 
-    const color = readColorFromPayload(event.payload) ?? '#111827';
-    const style = readStringFromPayload(event.payload, ['style', 'shape']);
-    const value = readNumberFromPayload(event.payload, ['value', 'price', 'y']);
-    const location = readStringFromPayload(event.payload, ['location']);
-    const text = readStringFromPayload(event.payload, ['text', 'label', 'title']);
-    const position = mapPlotShapeLocation(location, Number.isFinite(value));
+    const open = readNumberFromPayload(event.payload, ['open', 'o']);
+    const high = readNumberFromPayload(event.payload, ['high', 'h']);
+    const low = readNumberFromPayload(event.payload, ['low', 'l']);
+    const close = readNumberFromPayload(event.payload, ['close', 'c', 'value']);
 
-    output.plotShapeMarkers.push({
+    if (![open, high, low, close].every((v) => typeof v === 'number' && Number.isFinite(v))) {
+      return;
+    }
+
+    output.statusCandles.push({
       timeSec,
-      color,
-      shape: mapPlotShapeStyle(style),
-      position,
-      price: Number.isFinite(value) ? value : undefined,
-      text,
+      open: open as number,
+      high: high as number,
+      low: low as number,
+      close: close as number,
     });
   },
 };
 
-const EVENT_PARSERS: ChartEventParser[] = [backgroundEventParser, plotShapeEventParser];
+const EVENT_PARSERS: ChartEventParser[] = [
+  backgroundEventParser,
+  fillEventParser,
+  plotShapeEventParser,
+  signalEventParser,
+  plotEventParser,
+  plotCandleEventParser,
+];
 
 export const buildChartEventLayers = (
   events: BotChartEvent[],
@@ -272,14 +440,42 @@ export const buildChartEventLayers = (
 ): ChartEventLayers => {
   const layers: ChartEventLayers = {
     backgroundIntervals: [],
-    plotShapeMarkers: [],
+    statusMarkers: [],
+    statusLinePoints: [],
+    statusCandles: [],
   };
   const enabledSet = new Set<StatusEventDisplayType>(
-    enabledKinds && enabledKinds.length > 0 ? enabledKinds : ['bgcolor', 'plotshape']
+    enabledKinds && enabledKinds.length > 0
+      ? enabledKinds
+      : ['bgcolor', 'fill', 'plot', 'plotcandle', 'plotshape', 'signal']
   );
+
+  const plotValueByTimeAndHandle = new Map<string, number>();
+  events.forEach((event) => {
+    const normalizedType = event.event_type.toLowerCase().trim();
+    if (normalizedType !== 'plot') {
+      return;
+    }
+
+    const timeSec = parseEventBarTimeSeconds(event);
+    if (timeSec === null) {
+      return;
+    }
+
+    const handle =
+      readStringFromPayload(event.payload, ['handle']) ??
+      readStringFromPayload(event.payload, ['name', 'id', 'series', 'title']);
+    const value = readNumberFromPayload(event.payload, ['value', 'price', 'y']);
+    if (!handle || !Number.isFinite(value)) {
+      return;
+    }
+
+    plotValueByTimeAndHandle.set(buildPlotLookupKey(timeSec, handle), value as number);
+  });
 
   const context: ChartEventParseContext = {
     timeframeSec: Math.max(timeframeToSeconds(tradingTimeframe), 1),
+    plotValueByTimeAndHandle,
   };
 
   events.forEach((event) => {
@@ -297,7 +493,9 @@ export const buildChartEventLayers = (
   });
 
   layers.backgroundIntervals.sort((a, b) => a.startSec - b.startSec);
-  layers.plotShapeMarkers.sort((a, b) => a.timeSec - b.timeSec);
+  layers.statusMarkers.sort((a, b) => a.timeSec - b.timeSec);
+  layers.statusLinePoints.sort((a, b) => a.timeSec - b.timeSec);
+  layers.statusCandles.sort((a, b) => a.timeSec - b.timeSec);
 
   return layers;
 };
