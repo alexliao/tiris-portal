@@ -335,13 +335,23 @@ export const TradingDetailPage: React.FC = () => {
       if (isAuthenticated) {
         try {
           const associatedBot = await getBotByTradingId(foundTrading.id);
-          setBot(associatedBot);
+          if (associatedBot) {
+            setBot(associatedBot);
+          } else if (isInitialLoad) {
+            setBot(null);
+          } else {
+            console.warn('No associated bot returned during refresh; keeping existing bot state');
+          }
         } catch (botErr) {
           console.warn('Failed to fetch bot for trading:', botErr);
           // Don't show error for bot fetch failure, just log it
         }
       } else {
-        setBot(null);
+        if (isInitialLoad) {
+          setBot(null);
+        } else {
+          console.warn('Unauthenticated refresh detected; keeping existing bot state');
+        }
       }
 
       // Set exchange binding from embedded object if available, otherwise fetch it
