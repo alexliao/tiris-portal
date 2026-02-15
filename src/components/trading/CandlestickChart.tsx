@@ -25,13 +25,119 @@ import type {
 import type { BotChartEvent } from '../../utils/api';
 import { createChartTooltip, positionTooltipAvoidingCrosshair } from './tooltipUtils';
 import { AxisDateTimeFormatOption, createDateTimeFormatter, DateFormatOption, DateTimeFormatOption, resolveLocale } from '../../utils/locale';
-import { buildStatusEventIntervals, type StatusEventInterval } from './chartEvents/statusEventRenderer';
+import {
+  buildChartEventLayers,
+  type ChartEventLayers,
+  type PlotShapeEventMarker,
+  type StatusEventDisplayType,
+} from './chartEvents/statusEventRenderer';
 
 const toTimeKeySeconds = (timestampSeconds: number): number | null => {
   if (!Number.isFinite(timestampSeconds) || timestampSeconds <= 0) {
     return null;
   }
   return Math.floor(timestampSeconds);
+};
+
+const timeframeToSeconds = (timeframe?: string): number => {
+  const normalized = typeof timeframe === 'string' ? timeframe.trim().toLowerCase() : '';
+  const map: Record<string, number> = {
+    '1m': 60,
+    '5m': 5 * 60,
+    '15m': 15 * 60,
+    '30m': 30 * 60,
+    '1h': 60 * 60,
+    '2h': 2 * 60 * 60,
+    '4h': 4 * 60 * 60,
+    '8h': 8 * 60 * 60,
+    '12h': 12 * 60 * 60,
+    '1d': 24 * 60 * 60,
+    '1w': 7 * 24 * 60 * 60,
+  };
+  return map[normalized] ?? 60 * 60;
+};
+
+const alignToNearestCandleSecond = (
+  targetSec: number,
+  sortedCandleTimesSec: number[],
+  maxDistanceSec: number
+): number | null => {
+  if (sortedCandleTimesSec.length === 0) {
+    return null;
+  }
+
+  let low = 0;
+  let high = sortedCandleTimesSec.length - 1;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const value = sortedCandleTimesSec[mid];
+    if (value === targetSec) {
+      return value;
+    }
+    if (value < targetSec) {
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  const candidates: number[] = [];
+  if (low < sortedCandleTimesSec.length) {
+    candidates.push(sortedCandleTimesSec[low]);
+  }
+  if (high >= 0) {
+    candidates.push(sortedCandleTimesSec[high]);
+  }
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  let best = candidates[0];
+  let bestDistance = Math.abs(best - targetSec);
+  for (let index = 1; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    const distance = Math.abs(candidate - targetSec);
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+
+  return bestDistance <= maxDistanceSec ? best : null;
+};
+
+const toSeriesMarker = (
+  marker: PlotShapeEventMarker,
+  alignedTimeSec: number
+): SeriesMarker<Time> => {
+  const hasPricePosition =
+    marker.position === 'atPriceTop' ||
+    marker.position === 'atPriceBottom' ||
+    marker.position === 'atPriceMiddle';
+
+  if (hasPricePosition) {
+    return {
+      time: alignedTimeSec as Time,
+      color: marker.color,
+      shape: marker.shape,
+      position: marker.position,
+      text: marker.text,
+      price:
+        typeof marker.price === 'number' && Number.isFinite(marker.price)
+          ? marker.price
+          : 0,
+    };
+  }
+
+  return {
+    time: alignedTimeSec as Time,
+    color: marker.color,
+    shape: marker.shape,
+    position: marker.position as SeriesMarkerBarPosition,
+    text: marker.text,
+  };
 };
 
 interface CandlestickChartProps {
@@ -49,6 +155,7 @@ interface CandlestickChartProps {
   onTradingSignalsToggle?: (nextVisible: boolean) => void;
   statusEvents?: BotChartEvent[];
   statusEventTimeframe?: string;
+  statusEventTypeFilters?: StatusEventDisplayType[];
   seriesVisibility?: { price: boolean; equity: boolean; benchmark: boolean; position: boolean; signals: boolean; status: boolean };
   onSeriesVisibilityChange?: (visibility: { price: boolean; equity: boolean; benchmark: boolean; position: boolean; signals: boolean; status: boolean }) => void;
 }
@@ -106,6 +213,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   tradingSignalsVisible,
   statusEvents = [],
   statusEventTimeframe,
+  statusEventTypeFilters,
   seriesVisibility: externalSeriesVisibility,
 }) => {
   const { t, i18n } = useTranslation();
@@ -132,6 +240,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const benchmarkMarkersSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const benchmarkMarkersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const benchmarkLabelMarkersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const statusMarkersSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const statusMarkersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const positionSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
   const rightPriceScaleRef = useRef<IPriceScaleApi | null>(null);
@@ -166,7 +276,11 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     tradingSignalsVisible ?? true
   );
   const candlesRef = useRef<TradingCandlestickPoint[]>([]);
-  const statusEventIntervalsRef = useRef<StatusEventInterval[]>([]);
+  const chartEventLayersRef = useRef<ChartEventLayers>({
+    backgroundIntervals: [],
+    plotShapeMarkers: [],
+  });
+  const statusPlotShapeMarkersRef = useRef<SeriesMarker<Time>[]>([]);
   const roiByTimeRef = useRef<Map<number, number>>(new Map());
   const tradingEventsBySecondRef = useRef<Map<number, NonNullable<TradingDataPoint['events']>>>(new Map());
 
@@ -185,9 +299,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     return map;
   }, [benchmarkPoints]);
 
-  const statusEventIntervals = useMemo(
-    () => buildStatusEventIntervals(statusEvents, statusEventTimeframe),
-    [statusEventTimeframe, statusEvents]
+  const chartEventLayers = useMemo(
+    () => buildChartEventLayers(statusEvents, statusEventTimeframe, statusEventTypeFilters),
+    [statusEventTimeframe, statusEventTypeFilters, statusEvents]
   );
 
   useEffect(() => {
@@ -195,8 +309,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   }, [candles]);
 
   useEffect(() => {
-    statusEventIntervalsRef.current = statusEventIntervals;
-  }, [statusEventIntervals]);
+    chartEventLayersRef.current = chartEventLayers;
+  }, [chartEventLayers]);
 
   const renderStatusBackgroundOverlay = useCallback(() => {
     const overlayEl = statusBackgroundOverlayRef.current;
@@ -219,7 +333,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           return null;
         }
         let activeColor: string | null = null;
-        const intervals = statusEventIntervalsRef.current;
+        const intervals = chartEventLayersRef.current.backgroundIntervals;
         for (let index = intervals.length - 1; index >= 0; index -= 1) {
           const interval = intervals[index];
           if (timeInSeconds >= interval.startSec && timeInSeconds < interval.endSec) {
@@ -613,6 +727,18 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       benchmarkMarkersPluginRef.current = createSeriesMarkers(benchmarkMarkerSeries, []);
       benchmarkLabelMarkersPluginRef.current = createSeriesMarkers(benchmarkMarkerSeries, []);
 
+      const statusMarkerSeries = chart.addSeries(LineSeries, {
+        priceScaleId: 'right',
+        color: 'rgba(0, 0, 0, 0)',
+        lineWidth: 1,
+        visible: true,
+        lastValueVisible: false,
+        priceLineVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      statusMarkersSeriesRef.current = statusMarkerSeries;
+      statusMarkersPluginRef.current = createSeriesMarkers(statusMarkerSeries, []);
+
       const volumeSeries = chart.addSeries(HistogramSeries, {
         priceScaleId: 'volume',
         priceFormat: {
@@ -663,6 +789,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       benchmarkLineSeriesRef.current = benchmarkSeries;
       if (!benchmarkMarkersSeriesRef.current) {
         benchmarkMarkersSeriesRef.current = benchmarkMarkerSeries;
+      }
+      if (!statusMarkersSeriesRef.current) {
+        statusMarkersSeriesRef.current = statusMarkerSeries;
       }
       volumeSeriesRef.current = volumeSeries;
       positionSeriesRef.current = positionSeries;
@@ -933,6 +1062,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         benchmarkMarkersPluginRef.current = null;
         benchmarkLabelMarkersPluginRef.current?.detach();
         benchmarkLabelMarkersPluginRef.current = null;
+        statusMarkersPluginRef.current?.detach();
+        statusMarkersPluginRef.current = null;
         if (overlayRef) {
           overlayRef.innerHTML = '';
         }
@@ -965,11 +1096,14 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       benchmarkMarkersSeriesRef.current = null;
       benchmarkMarkersPluginRef.current = null;
       benchmarkLabelMarkersPluginRef.current = null;
+      statusMarkersSeriesRef.current = null;
+      statusMarkersPluginRef.current = null;
       volumeSeriesRef.current = null;
       positionSeriesRef.current = null;
       rightPriceScaleRef.current = null;
       volumePriceScaleRef.current = null;
       positionPriceScaleRef.current = null;
+      statusPlotShapeMarkersRef.current = [];
       if (overlayRef) {
         overlayRef.innerHTML = '';
       }
@@ -995,6 +1129,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       equityAreaSeriesRef.current?.setData([]);
       benchmarkLineSeriesRef.current?.setData([]);
       benchmarkMarkersSeriesRef.current?.setData([]);
+      statusMarkersSeriesRef.current?.setData([]);
+      statusMarkersPluginRef.current?.setMarkers([]);
+      statusPlotShapeMarkersRef.current = [];
       volumeSeriesRef.current?.setData([]);
       positionSeriesRef.current?.setData([]);
       roiByTimeRef.current = new Map();
@@ -1339,6 +1476,36 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       );
     }
 
+    const statusMarkersBaseData = chartData.map((point, index) => ({
+      time: point.time,
+      value: chartData[index].close,
+    }));
+
+    if (statusMarkersSeriesRef.current) {
+      statusMarkersSeriesRef.current.setData(statusMarkersBaseData);
+    }
+
+    const statusMarkers: SeriesMarker<Time>[] = [];
+    const candleTimesSec = chartData.map(point => Number(point.time)).sort((a, b) => a - b);
+    const maxMarkerDistanceSec = Math.max(Math.floor(timeframeToSeconds(timeframe) / 2), 60);
+
+    chartEventLayers.plotShapeMarkers.forEach((marker) => {
+      const alignedTime = alignToNearestCandleSecond(marker.timeSec, candleTimesSec, maxMarkerDistanceSec);
+      if (alignedTime === null) {
+        return;
+      }
+      statusMarkers.push(toSeriesMarker(marker, alignedTime));
+    });
+
+    statusMarkers.sort((a, b) => Number(a.time) - Number(b.time));
+    statusPlotShapeMarkersRef.current = statusMarkers;
+
+    if (statusMarkersPluginRef.current) {
+      statusMarkersPluginRef.current.setMarkers(
+        seriesVisibility.status ? statusMarkers : []
+      );
+    }
+
     if (chartRef.current) {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -1394,7 +1561,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     timeframe,
     baselinePrice,
     signalsVisible,
-    statusEventIntervals,
+    chartEventLayers,
     axisDateTimeFormatter,
     fullDateTimeFormatter,
     dateOnlyFormatter,
@@ -1407,7 +1574,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       return;
     }
     renderStatusBackgroundOverlay();
-  }, [hasInitialized, statusEventIntervals, renderStatusBackgroundOverlay, seriesVisibility.status]);
+  }, [hasInitialized, chartEventLayers, renderStatusBackgroundOverlay, seriesVisibility.status]);
 
   useEffect(() => {
     if (!hasInitialized) {
@@ -1421,6 +1588,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     benchmarkLineSeriesRef.current?.applyOptions({ visible: seriesVisibility.benchmark });
     applyScaleVisibility(seriesVisibility);
     renderStatusBackgroundOverlay();
+    statusMarkersPluginRef.current?.setMarkers(
+      seriesVisibility.status ? statusPlotShapeMarkersRef.current : []
+    );
   }, [hasInitialized, renderStatusBackgroundOverlay, seriesVisibility]);
 
   // Update internal state when external visibility changes (if from parent)

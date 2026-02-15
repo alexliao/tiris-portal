@@ -27,6 +27,7 @@ import { fetchMarketSnapshot, fetchPortfolioSnapshot } from '../../utils/marketS
 import CandlestickChart from './CandlestickChart';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
+import type { StatusEventDisplayType } from './chartEvents/statusEventRenderer';
 
 const timeframeToMilliseconds = (timeframe: Timeframe): number => {
   const timeframeMap: Record<Timeframe, number> = {
@@ -117,6 +118,10 @@ const resolveEffectiveEndTime = (
 
 const CHART_LEFT_MARGIN = 5;
 const CHART_RIGHT_MARGIN = 0;
+const STATUS_EVENT_TYPE_OPTIONS: Array<{ key: StatusEventDisplayType; label: string }> = [
+  { key: 'bgcolor', label: 'bgcolor' },
+  { key: 'plotshape', label: 'plotshape' },
+];
 
 const METRIC_VALUE_BLOCK_CLASS = 'flex flex-col justify-end';
 const SECONDARY_METRIC_CARD_CLASS =
@@ -594,6 +599,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     position: showPosition,
     status: showStatus,
   }));
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const [selectedStatusEventTypes, setSelectedStatusEventTypes] = useState<StatusEventDisplayType[]>([
+    'bgcolor',
+    'plotshape',
+  ]);
+  const statusMenuRef = useRef<HTMLDivElement | null>(null);
   const [botId, setBotId] = useState<string | null>(() => {
     const rawBotId = trading.info?.bot_id;
     return typeof rawBotId === 'string' && rawBotId.trim().length > 0 ? rawBotId.trim() : null;
@@ -628,6 +639,34 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const apiRequestCountRef = useRef(0);
   const [isWarmingUp, setIsWarmingUp] = useState(false);
   const oneMinutePriceRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!statusMenuOpen) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) {
+        return;
+      }
+      if (statusMenuRef.current?.contains(target)) {
+        return;
+      }
+      setStatusMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [statusMenuOpen]);
+
+  useEffect(() => {
+    if (!seriesVisibility.status) {
+      setStatusMenuOpen(false);
+    }
+  }, [seriesVisibility.status]);
 
   const beginApiCall = useCallback(() => {
     apiRequestCountRef.current += 1;
@@ -2026,95 +2065,150 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 { key: 'price' as const, labelKey: 'trading.tradingDetail.priceLabel', color: '#4B5563' },
                 { key: 'position' as const, labelKey: 'trading.tradingDetail.positionLabel', color: '#6366F1' },
                 ...(!isPortfolio ? [{ key: 'status' as const, labelKey: 'trading.tradingDetail.statusLabel', color: '#0EA5E9' }] : []),
-              ].map((item) => (
-                <button
-                  key={item.key}
-                  onClick={() => setSeriesVisibility(prev => {
-                    // Make benchmark and price mutually exclusive
-                    if (item.key === 'benchmark' && prev.benchmark === false) {
-                      // Turning benchmark ON, turn price OFF
-                      return {
-                        ...prev,
-                        benchmark: true,
-                        price: false,
-                      };
-                    } else if (item.key === 'price' && prev.price === false) {
-                      // Turning price ON, turn benchmark OFF
-                      return {
-                        ...prev,
-                        price: true,
-                        benchmark: false,
-                      };
-                    } else {
-                      // For other buttons or toggling off, just toggle normally
+              ].map((item) => {
+                const buttonClassName = `flex items-center gap-1 rounded-md border px-3 py-1 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  seriesVisibility[item.key]
+                    ? 'bg-white border-gray-300 text-gray-700 focus:ring-tiris-primary-200'
+                    : 'bg-gray-100 border-gray-200 text-gray-400 focus:ring-tiris-primary-100'
+                }`;
+
+                const icon = item.key === 'signals' ? (
+                  <svg
+                    className="inline-block h-5 w-5"
+                    viewBox="0 0 12 12"
+                  >
+                    <circle cx="3" cy="6" r="2.5" fill={seriesVisibility[item.key] ? '#3B82F6' : '#D1D5DB'} />
+                    <circle cx="9" cy="6" r="2.5" fill={seriesVisibility[item.key] ? '#EF4444' : '#D1D5DB'} />
+                  </svg>
+                ) : item.key === 'price' ? (
+                  <svg
+                    className="inline-block h-4 w-4"
+                    viewBox="0 0 12 12"
+                    fill="currentColor"
+                  >
+                    <line x1="3" y1="1" x2="3" y2="10" stroke="#10B981" strokeWidth="1.2" />
+                    <rect x="1" y="3" width="4" height="5" fill="#10B981" />
+                    <line x1="9" y1="1" x2="9" y2="10" stroke="#EF4444" strokeWidth="1.2" />
+                    <rect x="7" y="3" width="4" height="4" fill="#EF4444" />
+                  </svg>
+                ) : item.key === 'status' ? (
+                  <svg
+                    className="inline-block h-4 w-4"
+                    viewBox="0 0 12 12"
+                  >
+                    <rect
+                      x="1.5"
+                      y="2"
+                      width="9"
+                      height="8"
+                      rx="1"
+                      fill={seriesVisibility[item.key] ? '#0EA5E9' : '#D1D5DB'}
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="inline-block h-3 w-3"
+                    viewBox="0 0 12 12"
+                  >
+                    <line
+                      x1="2"
+                      y1="6"
+                      x2="10"
+                      y2="6"
+                      stroke={seriesVisibility[item.key] ? item.color : '#D1D5DB'}
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                );
+
+                if (item.key === 'status') {
+                  return (
+                    <div key={item.key} className="relative" ref={statusMenuRef}>
+                      <button
+                        onClick={() => {
+                          const isTurningOn = !seriesVisibility.status;
+                          setSeriesVisibility(prev => ({
+                            ...prev,
+                            status: isTurningOn,
+                          }));
+                          setStatusMenuOpen(isTurningOn);
+                        }}
+                        className={buttonClassName}
+                      >
+                        {icon}
+                        {t(item.labelKey)}
+                        <svg className="h-3 w-3 text-gray-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.087l3.71-3.857a.75.75 0 1 1 1.04 1.08l-4.25 4.418a.75.75 0 0 1-1.04 0L5.21 8.31a.75.75 0 0 1 .02-1.1z" />
+                        </svg>
+                      </button>
+                      {statusMenuOpen && seriesVisibility.status && (
+                        <div className="absolute left-0 top-full z-20 mt-1 w-44 rounded-md border border-gray-200 bg-white p-2 shadow-lg">
+                          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            {t('trading.tradingDetail.statusLabel', 'Status')}
+                          </div>
+                          <div className="space-y-1">
+                            {STATUS_EVENT_TYPE_OPTIONS.map((option) => (
+                              <label
+                                key={option.key}
+                                className="flex cursor-pointer select-none items-center gap-2 rounded px-1 py-1 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-gray-300 text-tiris-primary-600 focus:ring-tiris-primary-300"
+                                  checked={selectedStatusEventTypes.includes(option.key)}
+                                  onChange={(event) => {
+                                    const checked = event.target.checked;
+                                    setSelectedStatusEventTypes((prev) => {
+                                      if (checked) {
+                                        if (prev.includes(option.key)) {
+                                          return prev;
+                                        }
+                                        return [...prev, option.key];
+                                      }
+                                      return prev.filter((key) => key !== option.key);
+                                    });
+                                  }}
+                                />
+                                <span>{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => setSeriesVisibility(prev => {
+                      if (item.key === 'benchmark' && prev.benchmark === false) {
+                        return {
+                          ...prev,
+                          benchmark: true,
+                          price: false,
+                        };
+                      } else if (item.key === 'price' && prev.price === false) {
+                        return {
+                          ...prev,
+                          price: true,
+                          benchmark: false,
+                        };
+                      }
                       return {
                         ...prev,
                         [item.key]: !prev[item.key],
                       };
-                    }
-                  })}
-                  className={`flex items-center gap-1 rounded-md border px-3 py-1 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                    seriesVisibility[item.key]
-                      ? 'bg-white border-gray-300 text-gray-700 focus:ring-tiris-primary-200'
-                      : 'bg-gray-100 border-gray-200 text-gray-400 focus:ring-tiris-primary-100'
-                  }`}
-                >
-                  {item.key === 'signals' ? (
-                    <svg
-                      className="inline-block h-5 w-5"
-                      viewBox="0 0 12 12"
-                    >
-                      {/* Blue dot for buy signals */}
-                      <circle cx="3" cy="6" r="2.5" fill={seriesVisibility[item.key] ? '#3B82F6' : '#D1D5DB'} />
-                      {/* Red dot for sell signals */}
-                      <circle cx="9" cy="6" r="2.5" fill={seriesVisibility[item.key] ? '#EF4444' : '#D1D5DB'} />
-                    </svg>
-                  ) : item.key === 'price' ? (
-                    <svg
-                      className="inline-block h-4 w-4"
-                      viewBox="0 0 12 12"
-                      fill="currentColor"
-                    >
-                      {/* Green candlestick (left) */}
-                      <line x1="3" y1="1" x2="3" y2="10" stroke="#10B981" strokeWidth="1.2" />
-                      <rect x="1" y="3" width="4" height="5" fill="#10B981" />
-                      {/* Red candlestick (right) */}
-                      <line x1="9" y1="1" x2="9" y2="10" stroke="#EF4444" strokeWidth="1.2" />
-                      <rect x="7" y="3" width="4" height="4" fill="#EF4444" />
-                    </svg>
-                  ) : item.key === 'status' ? (
-                    <svg
-                      className="inline-block h-4 w-4"
-                      viewBox="0 0 12 12"
-                    >
-                      <rect
-                        x="1.5"
-                        y="2"
-                        width="9"
-                        height="8"
-                        rx="1"
-                        fill={seriesVisibility[item.key] ? '#0EA5E9' : '#D1D5DB'}
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="inline-block h-3 w-3"
-                      viewBox="0 0 12 12"
-                    >
-                      <line
-                        x1="2"
-                        y1="6"
-                        x2="10"
-                        y2="6"
-                        stroke={seriesVisibility[item.key] ? item.color : '#D1D5DB'}
-                        strokeWidth="5"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  )}
-                  {t(item.labelKey)}
-                </button>
-              ))}
+                    })}
+                    className={buttonClassName}
+                  >
+                    {icon}
+                    {t(item.labelKey)}
+                  </button>
+                );
+              })}
               <div className="flex items-center gap-2 flex-wrap md:hidden">
                 {isWarmingUp && (
                   <span className="inline-flex items-center justify-center">
@@ -2221,6 +2315,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 tradingSignalsVisible={seriesVisibility.signals}
                 statusEvents={statusEvents}
                 statusEventTimeframe={tradingTimeframe}
+                statusEventTypeFilters={selectedStatusEventTypes}
                 onTradingSignalsToggle={(next) => setSeriesVisibility(prev => ({
                   ...prev,
                   signals: next,
