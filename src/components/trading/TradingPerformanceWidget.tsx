@@ -2220,6 +2220,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
                 baselinePrice={chartState.baselinePrice}
                 tradingSignalsVisible={seriesVisibility.signals}
                 statusEvents={statusEvents}
+                statusEventTimeframe={tradingTimeframe}
                 onTradingSignalsToggle={(next) => setSeriesVisibility(prev => ({
                   ...prev,
                   signals: next,

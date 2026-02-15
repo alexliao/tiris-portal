@@ -1,6 +1,8 @@
 import type { BotChartEvent } from '../../../utils/api';
 
-export interface StatusBarStyle {
+export interface StatusEventInterval {
+  startSec: number;
+  endSec: number;
   color: string;
 }
 
@@ -28,6 +30,24 @@ const toEpochSeconds = (value: number): number | null => {
   }
 
   return Math.floor(value);
+};
+
+const timeframeToSeconds = (timeframe?: string): number => {
+  const normalized = typeof timeframe === 'string' ? timeframe.trim().toLowerCase() : '';
+  const map: Record<string, number> = {
+    '1m': 60,
+    '5m': 5 * 60,
+    '15m': 15 * 60,
+    '30m': 30 * 60,
+    '1h': 60 * 60,
+    '2h': 2 * 60 * 60,
+    '4h': 4 * 60 * 60,
+    '8h': 8 * 60 * 60,
+    '12h': 12 * 60 * 60,
+    '1d': 24 * 60 * 60,
+    '1w': 7 * 24 * 60 * 60,
+  };
+  return map[normalized] ?? 60 * 60;
 };
 
 const parseEventBarTimeSeconds = (event: BotChartEvent): number | null => {
@@ -66,8 +86,12 @@ const readColorFromPayload = (payload: Record<string, unknown> | undefined): str
   return null;
 };
 
-export const buildStatusBarStyleMap = (events: BotChartEvent[]): Map<number, StatusBarStyle> => {
-  const styleBySecond = new Map<number, StatusBarStyle>();
+export const buildStatusEventIntervals = (
+  events: BotChartEvent[],
+  tradingTimeframe?: string
+): StatusEventInterval[] => {
+  const intervals: StatusEventInterval[] = [];
+  const durationSec = Math.max(timeframeToSeconds(tradingTimeframe), 1);
 
   events.forEach((event) => {
     if (!isBackgroundEventType(event.event_type)) {
@@ -84,8 +108,13 @@ export const buildStatusBarStyleMap = (events: BotChartEvent[]): Map<number, Sta
       return;
     }
 
-    styleBySecond.set(barTime, { color });
+    intervals.push({
+      startSec: barTime,
+      endSec: barTime + durationSec,
+      color,
+    });
   });
 
-  return styleBySecond;
+  intervals.sort((a, b) => a.startSec - b.startSec);
+  return intervals;
 };

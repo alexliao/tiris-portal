@@ -25,7 +25,7 @@ import type {
 import type { BotChartEvent } from '../../utils/api';
 import { createChartTooltip, positionTooltipAvoidingCrosshair } from './tooltipUtils';
 import { AxisDateTimeFormatOption, createDateTimeFormatter, DateFormatOption, DateTimeFormatOption, resolveLocale } from '../../utils/locale';
-import { buildStatusBarStyleMap } from './chartEvents/statusEventRenderer';
+import { buildStatusEventIntervals, type StatusEventInterval } from './chartEvents/statusEventRenderer';
 
 const toTimeKeySeconds = (timestampSeconds: number): number | null => {
   if (!Number.isFinite(timestampSeconds) || timestampSeconds <= 0) {
@@ -48,6 +48,7 @@ interface CandlestickChartProps {
   tradingSignalsVisible?: boolean;
   onTradingSignalsToggle?: (nextVisible: boolean) => void;
   statusEvents?: BotChartEvent[];
+  statusEventTimeframe?: string;
   seriesVisibility?: { price: boolean; equity: boolean; benchmark: boolean; position: boolean; signals: boolean; status: boolean };
   onSeriesVisibilityChange?: (visibility: { price: boolean; equity: boolean; benchmark: boolean; position: boolean; signals: boolean; status: boolean }) => void;
 }
@@ -104,6 +105,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   baselinePrice,
   tradingSignalsVisible,
   statusEvents = [],
+  statusEventTimeframe,
   seriesVisibility: externalSeriesVisibility,
 }) => {
   const { t, i18n } = useTranslation();
@@ -164,7 +166,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     tradingSignalsVisible ?? true
   );
   const candlesRef = useRef<TradingCandlestickPoint[]>([]);
-  const statusBarStyleBySecondRef = useRef<Map<number, { color: string }>>(new Map());
+  const statusEventIntervalsRef = useRef<StatusEventInterval[]>([]);
   const roiByTimeRef = useRef<Map<number, number>>(new Map());
   const tradingEventsBySecondRef = useRef<Map<number, NonNullable<TradingDataPoint['events']>>>(new Map());
 
@@ -183,9 +185,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     return map;
   }, [benchmarkPoints]);
 
-  const statusBarStyleBySecond = useMemo(
-    () => buildStatusBarStyleMap(statusEvents),
-    [statusEvents]
+  const statusEventIntervals = useMemo(
+    () => buildStatusEventIntervals(statusEvents, statusEventTimeframe),
+    [statusEventTimeframe, statusEvents]
   );
 
   useEffect(() => {
@@ -193,8 +195,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   }, [candles]);
 
   useEffect(() => {
-    statusBarStyleBySecondRef.current = statusBarStyleBySecond;
-  }, [statusBarStyleBySecond]);
+    statusEventIntervalsRef.current = statusEventIntervals;
+  }, [statusEventIntervals]);
 
   const renderStatusBackgroundOverlay = useCallback(() => {
     const overlayEl = statusBackgroundOverlayRef.current;
@@ -210,15 +212,25 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       return;
     }
 
-    const bars = candlesRef.current
+    const candlesWithStyle = candlesRef.current
       .map((candle) => {
         const timeInSeconds = toTimeKeySeconds(candle.timestampNum / 1000);
         if (timeInSeconds === null) {
           return null;
         }
-
-        const style = statusBarStyleBySecondRef.current.get(timeInSeconds);
-        if (!style) {
+        let activeColor: string | null = null;
+        const intervals = statusEventIntervalsRef.current;
+        for (let index = intervals.length - 1; index >= 0; index -= 1) {
+          const interval = intervals[index];
+          if (timeInSeconds >= interval.startSec && timeInSeconds < interval.endSec) {
+            activeColor = interval.color;
+            break;
+          }
+          if (timeInSeconds >= interval.endSec) {
+            break;
+          }
+        }
+        if (!activeColor) {
           return null;
         }
 
@@ -230,13 +242,13 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
         return {
           x,
-          color: style.color,
+          color: activeColor,
         };
       })
       .filter((bar): bar is { x: number; color: string } => bar !== null)
       .sort((a, b) => a.x - b.x);
 
-    if (bars.length === 0) {
+    if (candlesWithStyle.length === 0) {
       return;
     }
 
@@ -245,10 +257,10 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       return;
     }
 
-    for (let index = 0; index < bars.length; index += 1) {
-      const current = bars[index];
-      const previous = bars[index - 1];
-      const next = bars[index + 1];
+    for (let index = 0; index < candlesWithStyle.length; index += 1) {
+      const current = candlesWithStyle[index];
+      const previous = candlesWithStyle[index - 1];
+      const next = candlesWithStyle[index + 1];
       const leftGap = previous ? Math.max(current.x - previous.x, 1) : next ? Math.max(next.x - current.x, 1) : 12;
       const rightGap = next ? Math.max(next.x - current.x, 1) : previous ? Math.max(current.x - previous.x, 1) : 12;
       const left = current.x - leftGap / 2;
@@ -1382,7 +1394,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     timeframe,
     baselinePrice,
     signalsVisible,
-    statusBarStyleBySecond,
+    statusEventIntervals,
     axisDateTimeFormatter,
     fullDateTimeFormatter,
     dateOnlyFormatter,
@@ -1395,7 +1407,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       return;
     }
     renderStatusBackgroundOverlay();
-  }, [hasInitialized, statusBarStyleBySecond, renderStatusBackgroundOverlay, seriesVisibility.status]);
+  }, [hasInitialized, statusEventIntervals, renderStatusBackgroundOverlay, seriesVisibility.status]);
 
   useEffect(() => {
     if (!hasInitialized) {
