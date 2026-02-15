@@ -94,6 +94,17 @@ export const TradingDetailPage: React.FC = () => {
     const params = new URLSearchParams(location.search);
     return params.get('autostart') === '1';
   }, [location.search]);
+  const clearAutostartQueryParam = useCallback(() => {
+    const params = new URLSearchParams(location.search);
+    if (!params.has('autostart')) {
+      return;
+    }
+
+    params.delete('autostart');
+    const nextSearch = params.toString();
+    const nextUrl = `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`;
+    window.history.replaceState(window.history.state, '', nextUrl);
+  }, [location.hash, location.pathname, location.search]);
 
   useEffect(() => {
     hasAutoStartedRef.current = false;
@@ -673,7 +684,7 @@ export const TradingDetailPage: React.FC = () => {
     hasAutoStartedRef.current = true;
 
     if (bot?.record.enabled && bot.alive) {
-      navigate(`/trading/${trading.id}`, { replace: true });
+      clearAutostartQueryParam();
       return;
     }
 
@@ -681,13 +692,13 @@ export const TradingDetailPage: React.FC = () => {
       try {
         await handleStartBot();
       } finally {
-        navigate(`/trading/${trading.id}`, { replace: true });
+        clearAutostartQueryParam();
       }
     };
 
     void autoStart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldAutoStartBacktest, trading?.id, trading?.type, bot?.record.enabled, bot?.alive, canManageTrading, botLoading, navigate]);
+  }, [shouldAutoStartBacktest, trading?.id, trading?.type, bot?.record.enabled, bot?.alive, canManageTrading, botLoading, clearAutostartQueryParam]);
 
   const handleStartBot = async () => {
     if (!trading || !canManageTrading) return;
