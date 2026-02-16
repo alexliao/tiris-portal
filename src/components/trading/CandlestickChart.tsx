@@ -140,6 +140,17 @@ const toSeriesMarker = (
   };
 };
 
+const sortAndDedupeByTime = <T extends { time: Time }>(points: T[]): T[] => {
+  const byTime = new Map<number, T>();
+  points.forEach((point) => {
+    const timeKey = Number(point.time);
+    if (Number.isFinite(timeKey)) {
+      byTime.set(timeKey, point);
+    }
+  });
+  return Array.from(byTime.values()).sort((a, b) => Number(a.time) - Number(b.time));
+};
+
 interface CandlestickChartProps {
   candles: TradingCandlestickPoint[];
   equityPoints: TradingDataPoint[];
@@ -1185,13 +1196,13 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       return true;
     });
 
-    const chartData = validCandles.map((candle) => ({
+    const chartData = sortAndDedupeByTime(validCandles.map((candle) => ({
       time: Math.floor(candle.timestampNum / 1000) as Time,
       open: candle.open,
       high: candle.high,
       low: candle.low,
       close: candle.close,
-    }));
+    })));
 
     if (chartData.length === 0) {
       candlestickSeriesRef.current.setData([]);
@@ -1199,8 +1210,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       setError(t('trading.chart.noValidData', 'No valid candlestick data available after validation'));
       return;
     }
-
-    chartData.sort((a, b) => (a.time as number) - (b.time as number));
 
     console.log(`📈 Setting ${chartData.length} candlesticks for timeframe ${timeframe}`);
     console.log('First candle:', chartData[0]);
@@ -1244,13 +1253,11 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       })
       .filter((item): item is { time: Time; value: number; color: string } => item !== null);
 
-    if (volumeData.length > 0) {
-      volumeData.sort((a, b) => (a.time as number) - (b.time as number));
-    }
+    const sortedVolumeData = sortAndDedupeByTime(volumeData);
 
     if (volumeSeriesRef.current) {
-      if (volumeData.length > 0) {
-        volumeSeriesRef.current.setData(volumeData);
+      if (sortedVolumeData.length > 0) {
+        volumeSeriesRef.current.setData(sortedVolumeData);
       } else {
         volumeSeriesRef.current.setData([]);
       }
@@ -1274,13 +1281,11 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       })
       .filter((item): item is { time: Time; value: number } => item !== null);
 
-    if (positionData.length > 0) {
-      positionData.sort((a, b) => (a.time as number) - (b.time as number));
-    }
+    const sortedPositionData = sortAndDedupeByTime(positionData);
 
     if (positionSeriesRef.current) {
-      if (positionData.length > 0) {
-        positionSeriesRef.current.setData(positionData);
+      if (sortedPositionData.length > 0) {
+        positionSeriesRef.current.setData(sortedPositionData);
       } else {
         positionSeriesRef.current.setData([]);
       }
@@ -1314,8 +1319,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     if (beforeCreationAreaSeriesRef.current) {
       if (resolvedBaselinePrice !== undefined && beforeCreationData.length > 0) {
-        beforeCreationData.sort((a: { time: Time; value: number }, b: { time: Time; value: number }) => (a.time as number) - (b.time as number));
-        beforeCreationAreaSeriesRef.current.setData(beforeCreationData);
+        beforeCreationAreaSeriesRef.current.setData(sortAndDedupeByTime(beforeCreationData));
       } else {
         beforeCreationAreaSeriesRef.current.setData([]);
       }
@@ -1341,8 +1345,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     if (equityAreaSeriesRef.current) {
       if (resolvedBaselinePrice !== undefined && equityData.length > 0) {
-        equityData.sort((a, b) => (a.time as number) - (b.time as number));
-        equityAreaSeriesRef.current.setData(equityData);
+        equityAreaSeriesRef.current.setData(sortAndDedupeByTime(equityData));
       } else {
         equityAreaSeriesRef.current.setData([]);
       }
@@ -1476,7 +1479,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
     let sortedBenchmarkData: { time: Time; value: number }[] | undefined;
     if (benchmarkData.length > 0) {
-      sortedBenchmarkData = [...benchmarkData].sort((a, b) => (a.time as number) - (b.time as number));
+      sortedBenchmarkData = sortAndDedupeByTime(benchmarkData);
     }
 
     if (benchmarkLineSeriesRef.current) {
@@ -1579,7 +1582,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         entry.points.forEach((point) => {
           dedupeByTime.set(Number(point.time), point);
         });
-        const lineData = Array.from(dedupeByTime.values()).sort((a, b) => Number(a.time) - Number(b.time));
+        const lineData = sortAndDedupeByTime(Array.from(dedupeByTime.values()));
         lineSeries.setData(lineData);
         lineSeries.applyOptions({ visible: seriesVisibility.status });
       });
@@ -1593,7 +1596,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       });
     }
 
-    const statusOverlayCandles = chartEventLayers.statusCandles
+    const statusOverlayCandles = sortAndDedupeByTime(chartEventLayers.statusCandles
       .map((point) => {
         const alignedTime = alignToNearestCandleSecond(point.timeSec, candleTimesSec, maxMarkerDistanceSec);
         if (alignedTime === null) {
@@ -1633,8 +1636,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           borderColor?: string;
           wickColor?: string;
         } => point !== null
-      )
-      .sort((a, b) => Number(a.time) - Number(b.time));
+      ));
 
     if (statusOverlayCandlestickSeriesRef.current) {
       statusOverlayCandlestickSeriesRef.current.setData(statusOverlayCandles);
