@@ -27,6 +27,7 @@ import { createChartTooltip, positionTooltipAvoidingCrosshair } from './tooltipU
 import { AxisDateTimeFormatOption, createDateTimeFormatter, DateFormatOption, DateTimeFormatOption, resolveLocale } from '../../utils/locale';
 import {
   buildChartEventLayers,
+  expandChartEventLayersForDisplay,
   type ChartEventLayers,
   type PlotShapeEventMarker,
   type StatusEventDisplayType,
@@ -315,10 +316,10 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     return map;
   }, [benchmarkPoints]);
 
-  const chartEventLayers = useMemo(
-    () => buildChartEventLayers(statusEvents, statusEventTimeframe, statusEventTypeFilters),
-    [statusEventTimeframe, statusEventTypeFilters, statusEvents]
-  );
+  const chartEventLayers = useMemo(() => {
+    const baseLayers = buildChartEventLayers(statusEvents, statusEventTimeframe, statusEventTypeFilters);
+    return expandChartEventLayersForDisplay(baseLayers, statusEventTimeframe, timeframe);
+  }, [statusEventTimeframe, statusEventTypeFilters, statusEvents, timeframe]);
 
   useEffect(() => {
     candlesRef.current = candles;

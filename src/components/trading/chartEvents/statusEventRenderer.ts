@@ -52,6 +52,7 @@ export interface StatusCandlePoint {
 }
 
 export interface ChartEventLayers {
+  sourceTimeframeSec?: number;
   backgroundIntervals: StatusEventInterval[];
   statusMarkers: PlotShapeEventMarker[];
   statusLinePoints: StatusLinePoint[];
@@ -109,6 +110,29 @@ const timeframeToSeconds = (timeframe?: string): number => {
   return map[normalized] ?? 60 * 60;
 };
 
+const resolveTimeframeToSeconds = (timeframe?: string): number | null => {
+  const normalized = typeof timeframe === 'string' ? timeframe.trim().toLowerCase() : '';
+  if (!normalized) {
+    return null;
+  }
+
+  const map: Record<string, number> = {
+    '1m': 60,
+    '5m': 5 * 60,
+    '15m': 15 * 60,
+    '30m': 30 * 60,
+    '1h': 60 * 60,
+    '2h': 2 * 60 * 60,
+    '4h': 4 * 60 * 60,
+    '8h': 8 * 60 * 60,
+    '12h': 12 * 60 * 60,
+    '1d': 24 * 60 * 60,
+    '1w': 7 * 24 * 60 * 60,
+  };
+
+  return map[normalized] ?? null;
+};
+
 const parseEventBarTimeSeconds = (event: BotChartEvent): number | null => {
   if (typeof event.bar_ts === 'number') {
     return toEpochSeconds(event.bar_ts);
@@ -120,6 +144,70 @@ const parseEventBarTimeSeconds = (event: BotChartEvent): number | null => {
   }
 
   return Math.floor(parsed / 1000);
+};
+
+const isBarSeriesEventType = (eventType: string): boolean => {
+  const normalized = eventType.toLowerCase().trim();
+  return (
+    normalized === 'plot' ||
+    normalized === 'fill' ||
+    normalized === 'plotcandle' ||
+    isBackgroundEventType(normalized)
+  );
+};
+
+const inferSourceTimeframeSecondsFromEvents = (
+  events: BotChartEvent[]
+): number | null => {
+  const times = events
+    .filter((event) => isBarSeriesEventType(event.event_type))
+    .map((event) => parseEventBarTimeSeconds(event))
+    .filter((value): value is number => value !== null)
+    .sort((a, b) => a - b);
+
+  if (times.length < 2) {
+    return null;
+  }
+
+  const uniqueTimes: number[] = [];
+  for (let index = 0; index < times.length; index += 1) {
+    if (index === 0 || times[index] !== times[index - 1]) {
+      uniqueTimes.push(times[index]);
+    }
+  }
+
+  if (uniqueTimes.length < 2) {
+    return null;
+  }
+
+  const deltaCounts = new Map<number, number>();
+  for (let index = 1; index < uniqueTimes.length; index += 1) {
+    const delta = uniqueTimes[index] - uniqueTimes[index - 1];
+    if (!Number.isFinite(delta) || delta <= 0) {
+      continue;
+    }
+    deltaCounts.set(delta, (deltaCounts.get(delta) ?? 0) + 1);
+  }
+
+  if (deltaCounts.size === 0) {
+    return null;
+  }
+
+  let bestDelta: number | null = null;
+  let bestCount = -1;
+  deltaCounts.forEach((count, delta) => {
+    if (count > bestCount) {
+      bestCount = count;
+      bestDelta = delta;
+      return;
+    }
+    if (count === bestCount && bestDelta !== null && delta > bestDelta) {
+      // Prefer a larger interval on ties to avoid collapsing 8h data into 1h rendering.
+      bestDelta = delta;
+    }
+  });
+
+  return bestDelta;
 };
 
 const readColorFromPayload = (payload: Record<string, unknown> | undefined): string | null => {
@@ -452,7 +540,11 @@ export const buildChartEventLayers = (
   tradingTimeframe?: string,
   enabledKinds?: StatusEventDisplayType[]
 ): ChartEventLayers => {
+  const sourceTimeframeSec =
+    inferSourceTimeframeSecondsFromEvents(events) ??
+    Math.max(timeframeToSeconds(tradingTimeframe), 1);
   const layers: ChartEventLayers = {
+    sourceTimeframeSec,
     backgroundIntervals: [],
     statusMarkers: [],
     statusLinePoints: [],
@@ -492,7 +584,7 @@ export const buildChartEventLayers = (
   });
 
   const context: ChartEventParseContext = {
-    timeframeSec: Math.max(timeframeToSeconds(tradingTimeframe), 1),
+    timeframeSec: sourceTimeframeSec,
     plotValueByTimeAndHandle,
   };
 
@@ -523,4 +615,54 @@ export const buildStatusEventIntervals = (
   tradingTimeframe?: string
 ): StatusEventInterval[] => {
   return buildChartEventLayers(events, tradingTimeframe).backgroundIntervals;
+};
+
+export const expandChartEventLayersForDisplay = (
+  layers: ChartEventLayers,
+  sourceTimeframe?: string,
+  displayTimeframe?: string
+): ChartEventLayers => {
+  const sourceTimeframeSec = layers.sourceTimeframeSec ?? resolveTimeframeToSeconds(sourceTimeframe);
+  const displayTimeframeSec = resolveTimeframeToSeconds(displayTimeframe);
+
+  if (
+    !sourceTimeframeSec ||
+    !displayTimeframeSec ||
+    displayTimeframeSec >= sourceTimeframeSec
+  ) {
+    return layers;
+  }
+
+  const stepCount = Math.max(Math.floor(sourceTimeframeSec / displayTimeframeSec), 1);
+  if (stepCount <= 1) {
+    return layers;
+  }
+
+  const expandedLinePoints: StatusLinePoint[] = [];
+  layers.statusLinePoints.forEach((point) => {
+    expandedLinePoints.push(point);
+    for (let step = 1; step < stepCount; step += 1) {
+      expandedLinePoints.push({
+        ...point,
+        timeSec: point.timeSec + step * displayTimeframeSec,
+      });
+    }
+  });
+
+  const expandedCandles: StatusCandlePoint[] = [];
+  layers.statusCandles.forEach((point) => {
+    expandedCandles.push(point);
+    for (let step = 1; step < stepCount; step += 1) {
+      expandedCandles.push({
+        ...point,
+        timeSec: point.timeSec + step * displayTimeframeSec,
+      });
+    }
+  });
+
+  return {
+    ...layers,
+    statusLinePoints: expandedLinePoints.sort((a, b) => a.timeSec - b.timeSec),
+    statusCandles: expandedCandles.sort((a, b) => a.timeSec - b.timeSec),
+  };
 };
