@@ -253,7 +253,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   const benchmarkLabelMarkersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const statusMarkersSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const statusMarkersPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
-  const statusOverlayCandlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const statusOverlayCandlestickSeriesRef = useRef<Map<string, ISeriesApi<'Candlestick'>>>(new Map());
   const statusLineSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const positionSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
@@ -295,6 +295,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     statusLinePoints: [],
     statusCandles: [],
   });
+  const timeframeSecondsRef = useRef<number>(timeframeToSeconds(timeframe));
   const statusMarkersRef = useRef<SeriesMarker<Time>[]>([]);
   const roiByTimeRef = useRef<Map<number, number>>(new Map());
   const tradingEventsBySecondRef = useRef<Map<number, NonNullable<TradingDataPoint['events']>>>(new Map());
@@ -341,28 +342,12 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       return;
     }
 
-    const candlesWithStyle = candlesRef.current
+    const candlesWithGeometry = candlesRef.current
       .map((candle) => {
         const timeInSeconds = toTimeKeySeconds(candle.timestampNum / 1000);
         if (timeInSeconds === null) {
           return null;
         }
-        let activeColor: string | null = null;
-        const intervals = chartEventLayersRef.current.backgroundIntervals;
-        for (let index = intervals.length - 1; index >= 0; index -= 1) {
-          const interval = intervals[index];
-          if (timeInSeconds >= interval.startSec && timeInSeconds < interval.endSec) {
-            activeColor = interval.color;
-            break;
-          }
-          if (timeInSeconds >= interval.endSec) {
-            break;
-          }
-        }
-        if (!activeColor) {
-          return null;
-        }
-
         const coordinate = chart.timeScale().timeToCoordinate(timeInSeconds as Time);
         const x = coordinate === null ? Number.NaN : Number(coordinate);
         if (!Number.isFinite(x)) {
@@ -370,14 +355,14 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         }
 
         return {
+          timeSec: timeInSeconds,
           x,
-          color: activeColor,
         };
       })
-      .filter((bar): bar is { x: number; color: string } => bar !== null)
+      .filter((bar): bar is { timeSec: number; x: number } => bar !== null)
       .sort((a, b) => a.x - b.x);
 
-    if (candlesWithStyle.length === 0) {
+    if (candlesWithGeometry.length === 0) {
       return;
     }
 
@@ -386,25 +371,103 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       return;
     }
 
-    for (let index = 0; index < candlesWithStyle.length; index += 1) {
-      const current = candlesWithStyle[index];
-      const previous = candlesWithStyle[index - 1];
-      const next = candlesWithStyle[index + 1];
+    const barsWithGeometry = candlesWithGeometry.map((current, index) => {
+      const previous = candlesWithGeometry[index - 1];
+      const next = candlesWithGeometry[index + 1];
       const leftGap = previous ? Math.max(current.x - previous.x, 1) : next ? Math.max(next.x - current.x, 1) : 12;
       const rightGap = next ? Math.max(next.x - current.x, 1) : previous ? Math.max(current.x - previous.x, 1) : 12;
       const left = current.x - leftGap / 2;
       const right = current.x + rightGap / 2;
       const width = Math.max(right - left, 1);
+      return {
+        ...current,
+        left,
+        width,
+      };
+    });
+
+    // Draw full-height bgcolor intervals first.
+    for (let index = 0; index < barsWithGeometry.length; index += 1) {
+      const current = barsWithGeometry[index];
+      let activeColor: string | null = null;
+      const intervals = chartEventLayersRef.current.backgroundIntervals;
+      for (let intervalIndex = intervals.length - 1; intervalIndex >= 0; intervalIndex -= 1) {
+        const interval = intervals[intervalIndex];
+        if (current.timeSec >= interval.startSec && current.timeSec < interval.endSec) {
+          activeColor = interval.color;
+          break;
+        }
+        if (current.timeSec >= interval.endSec) {
+          break;
+        }
+      }
+      if (!activeColor) {
+        continue;
+      }
 
       const barEl = document.createElement('div');
       barEl.style.position = 'absolute';
-      barEl.style.left = `${left}px`;
+      barEl.style.left = `${current.left}px`;
       barEl.style.top = '0px';
-      barEl.style.width = `${width}px`;
+      barEl.style.width = `${current.width}px`;
       barEl.style.height = `${overlayHeight}px`;
-      barEl.style.backgroundColor = current.color;
+      barEl.style.backgroundColor = activeColor;
       overlayEl.appendChild(barEl);
     }
+
+    // Draw fill events as gapless per-bar rectangles (between upper/lower prices).
+    const fillCandles = chartEventLayersRef.current.statusCandles.filter((point) =>
+      (point.candleKey ?? '').startsWith('fill:')
+    );
+    if (fillCandles.length === 0) {
+      return;
+    }
+
+    const candleTimesSec = barsWithGeometry.map((bar) => bar.timeSec).sort((a, b) => a - b);
+    const maxMarkerDistanceSec = Math.max(Math.floor(timeframeSecondsRef.current / 2), 60);
+    const fillsByTime = new Map<number, typeof fillCandles>();
+    fillCandles.forEach((fillPoint) => {
+      const alignedTime = alignToNearestCandleSecond(fillPoint.timeSec, candleTimesSec, maxMarkerDistanceSec);
+      if (alignedTime === null) {
+        return;
+      }
+      const existing = fillsByTime.get(alignedTime) ?? [];
+      existing.push(fillPoint);
+      fillsByTime.set(alignedTime, existing);
+    });
+
+    const priceSeries = candlestickSeriesRef.current;
+    if (!priceSeries) {
+      return;
+    }
+
+    barsWithGeometry.forEach((bar) => {
+      const fillsAtTime = fillsByTime.get(bar.timeSec);
+      if (!fillsAtTime || fillsAtTime.length === 0) {
+        return;
+      }
+
+      fillsAtTime.forEach((fillPoint) => {
+        const upper = Math.max(fillPoint.open, fillPoint.high, fillPoint.low, fillPoint.close);
+        const lower = Math.min(fillPoint.open, fillPoint.high, fillPoint.low, fillPoint.close);
+        const yUpper = priceSeries.priceToCoordinate(upper);
+        const yLower = priceSeries.priceToCoordinate(lower);
+        if (yUpper === null || yLower === null) {
+          return;
+        }
+
+        const top = Math.min(yUpper, yLower);
+        const heightPx = Math.max(Math.abs(yUpper - yLower), 1);
+        const fillEl = document.createElement('div');
+        fillEl.style.position = 'absolute';
+        fillEl.style.left = `${bar.left}px`;
+        fillEl.style.top = `${top}px`;
+        fillEl.style.width = `${bar.width}px`;
+        fillEl.style.height = `${heightPx}px`;
+        fillEl.style.backgroundColor = fillPoint.color ?? 'rgba(59, 130, 246, 0.15)';
+        overlayEl.appendChild(fillEl);
+      });
+    });
   }, []);
 
   useEffect(() => {
@@ -481,6 +544,8 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     hasUserAdjustedRangeRef.current = false;
     previousCandlesLengthRef.current = 0;
     previousLatestBarTimeRef.current = null;
+    suppressTimeRangeEventRef.current = false;
+    timeframeSecondsRef.current = timeframeToSeconds(timeframe);
   }, [timeframe]);
 
 
@@ -663,14 +728,24 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         }
 
         if (suppressTimeRangeEventRef.current) {
+          renderStatusBackgroundOverlay();
           return;
         }
 
         hasUserAdjustedRangeRef.current = true;
         renderStatusBackgroundOverlay();
       };
+      const handleVisibleTimeRangeChange = () => {
+        if (suppressTimeRangeEventRef.current) {
+          renderStatusBackgroundOverlay();
+          return;
+        }
+        hasUserAdjustedRangeRef.current = true;
+        renderStatusBackgroundOverlay();
+      };
 
       timeScale.subscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
+      timeScale.subscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
 
       const series = chart.addSeries(CandlestickSeries, {
         priceScaleId: 'right',
@@ -754,19 +829,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       statusMarkersSeriesRef.current = statusMarkerSeries;
       statusMarkersPluginRef.current = createSeriesMarkers(statusMarkerSeries, []);
 
-      const statusOverlayCandles = chart.addSeries(CandlestickSeries, {
-        priceScaleId: 'right',
-        upColor: '#60A5FA',
-        downColor: '#3B82F6',
-        borderUpColor: '#60A5FA',
-        borderDownColor: '#3B82F6',
-        wickUpColor: '#60A5FA',
-        wickDownColor: '#3B82F6',
-        visible: false,
-        priceLineVisible: false,
-        lastValueVisible: false,
-      });
-      statusOverlayCandlestickSeriesRef.current = statusOverlayCandles;
 
       const volumeSeries = chart.addSeries(HistogramSeries, {
         priceScaleId: 'volume',
@@ -821,9 +883,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       }
       if (!statusMarkersSeriesRef.current) {
         statusMarkersSeriesRef.current = statusMarkerSeries;
-      }
-      if (!statusOverlayCandlestickSeriesRef.current) {
-        statusOverlayCandlestickSeriesRef.current = statusOverlayCandles;
       }
       volumeSeriesRef.current = volumeSeries;
       positionSeriesRef.current = positionSeries;
@@ -1086,6 +1145,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         window.removeEventListener('resize', handleResize);
         chart.unsubscribeCrosshairMove(handleCrosshairMove);
         timeScale.unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
+        timeScale.unsubscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
         if (tooltipRef.current && containerRef?.contains(tooltipRef.current)) {
           containerRef.removeChild(tooltipRef.current);
         }
@@ -1134,7 +1194,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       benchmarkLabelMarkersPluginRef.current = null;
       statusMarkersSeriesRef.current = null;
       statusMarkersPluginRef.current = null;
-      statusOverlayCandlestickSeriesRef.current = null;
+      statusOverlayCandlestickSeriesRef.current.clear();
       statusLineSeriesRef.current.clear();
       volumeSeriesRef.current = null;
       positionSeriesRef.current = null;
@@ -1169,7 +1229,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       benchmarkMarkersSeriesRef.current?.setData([]);
       statusMarkersSeriesRef.current?.setData([]);
       statusMarkersPluginRef.current?.setMarkers([]);
-      statusOverlayCandlestickSeriesRef.current?.setData([]);
+      statusOverlayCandlestickSeriesRef.current.forEach((series) => {
+        series.setData([]);
+      });
       statusLineSeriesRef.current.forEach((series) => {
         series.setData([]);
       });
@@ -1596,13 +1658,15 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       });
     }
 
-    const statusOverlayCandles = sortAndDedupeByTime(chartEventLayers.statusCandles
+    const statusOverlayCandles = chartEventLayers.statusCandles
+      .filter((point) => !(point.candleKey ?? '').startsWith('fill:'))
       .map((point) => {
         const alignedTime = alignToNearestCandleSecond(point.timeSec, candleTimesSec, maxMarkerDistanceSec);
         if (alignedTime === null) {
           return null;
         }
         const candle: {
+          candleKey: string;
           time: Time;
           open: number;
           high: number;
@@ -1612,6 +1676,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           borderColor?: string;
           wickColor?: string;
         } = {
+          candleKey: point.candleKey ?? 'status-candle',
           time: alignedTime as Time,
           open: point.open,
           high: point.high,
@@ -1627,6 +1692,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       })
       .filter(
         (point): point is {
+          candleKey: string;
           time: Time;
           open: number;
           high: number;
@@ -1636,12 +1702,76 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
           borderColor?: string;
           wickColor?: string;
         } => point !== null
-      ));
+      );
 
-    if (statusOverlayCandlestickSeriesRef.current) {
-      statusOverlayCandlestickSeriesRef.current.setData(statusOverlayCandles);
-      statusOverlayCandlestickSeriesRef.current.applyOptions({
-        visible: seriesVisibility.status && statusOverlayCandles.length > 0,
+    const statusOverlayCandlesByKey = new Map<
+      string,
+      Array<{
+        time: Time;
+        open: number;
+        high: number;
+        low: number;
+        close: number;
+        color?: string;
+        borderColor?: string;
+        wickColor?: string;
+      }>
+    >();
+
+    statusOverlayCandles.forEach((point) => {
+      const key = point.candleKey;
+      const existing = statusOverlayCandlesByKey.get(key) ?? [];
+      existing.push({
+        time: point.time,
+        open: point.open,
+        high: point.high,
+        low: point.low,
+        close: point.close,
+        color: point.color,
+        borderColor: point.borderColor,
+        wickColor: point.wickColor,
+      });
+      statusOverlayCandlesByKey.set(key, existing);
+    });
+
+    if (chartInstance) {
+      const staleStatusOverlayKeys = new Set(statusOverlayCandlestickSeriesRef.current.keys());
+
+      statusOverlayCandlesByKey.forEach((candlesForKey, candleKey) => {
+        staleStatusOverlayKeys.delete(candleKey);
+
+        let candleSeries = statusOverlayCandlestickSeriesRef.current.get(candleKey);
+        if (!candleSeries) {
+          candleSeries = chartInstance.addSeries(CandlestickSeries, {
+            priceScaleId: 'right',
+            upColor: '#60A5FA',
+            downColor: '#3B82F6',
+            borderUpColor: '#60A5FA',
+            borderDownColor: '#3B82F6',
+            wickUpColor: '#60A5FA',
+            wickDownColor: '#3B82F6',
+            borderVisible: false,
+            wickVisible: false,
+            visible: false,
+            priceLineVisible: false,
+            lastValueVisible: false,
+          });
+          statusOverlayCandlestickSeriesRef.current.set(candleKey, candleSeries);
+        }
+
+        const lineData = sortAndDedupeByTime(candlesForKey);
+        candleSeries.setData(lineData);
+        candleSeries.applyOptions({
+          visible: seriesVisibility.status && lineData.length > 0,
+        });
+      });
+
+      staleStatusOverlayKeys.forEach((staleKey) => {
+        const staleSeries = statusOverlayCandlestickSeriesRef.current.get(staleKey);
+        if (staleSeries) {
+          chartInstance.removeSeries(staleSeries);
+        }
+        statusOverlayCandlestickSeriesRef.current.delete(staleKey);
       });
     }
 
@@ -1733,9 +1863,11 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     statusLineSeriesRef.current.forEach((series) => {
       series.applyOptions({ visible: seriesVisibility.status });
     });
-    if (statusOverlayCandlestickSeriesRef.current && !seriesVisibility.status) {
-      statusOverlayCandlestickSeriesRef.current.applyOptions({ visible: false });
-    }
+    statusOverlayCandlestickSeriesRef.current.forEach((series) => {
+      if (!seriesVisibility.status) {
+        series.applyOptions({ visible: false });
+      }
+    });
   }, [hasInitialized, renderStatusBackgroundOverlay, seriesVisibility]);
 
   // Update internal state when external visibility changes (if from parent)

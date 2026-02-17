@@ -607,7 +607,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const [selectedStatusEventTypes, setSelectedStatusEventTypes] = useState<StatusEventDisplayType[]>(
     () => STATUS_EVENT_TYPE_OPTIONS
       .map((option) => option.key)
-      .filter((key) => key !== 'signal' && key !== 'plotcandle' && key !== 'plotshape')
+      .filter((key) => key !== 'signal' && key !== 'plot' && key !== 'plotcandle' && key !== 'plotshape')
   );
   const statusMenuRef = useRef<HTMLDivElement | null>(null);
   const [botId, setBotId] = useState<string | null>(() => {

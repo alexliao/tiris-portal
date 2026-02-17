@@ -42,6 +42,7 @@ export interface StatusLinePoint {
 }
 
 export interface StatusCandlePoint {
+  candleKey?: string;
   timeSec: number;
   open: number;
   high: number;
@@ -243,7 +244,8 @@ const mapPlotShapeLocation = (
 
 const clampStyleColor = (color: string | null, fallback: string): string => color ?? fallback;
 
-const buildPlotLookupKey = (timeSec: number, handle: string): string => `${timeSec}:${handle}`;
+const buildPlotLookupKey = (timeSec: number, handle: string, series?: string): string =>
+  `${timeSec}:${series ?? ''}:${handle}`;
 
 const parseMarkerFromPayload = (
   event: BotChartEvent,
@@ -313,8 +315,13 @@ const fillEventParser: ChartEventParser = {
       return;
     }
 
-    const upper = context.plotValueByTimeAndHandle.get(buildPlotLookupKey(timeSec, upperHandle));
-    const lower = context.plotValueByTimeAndHandle.get(buildPlotLookupKey(timeSec, lowerHandle));
+    const fillSeries = readStringFromPayload(event.payload, ['series']);
+    const upper =
+      context.plotValueByTimeAndHandle.get(buildPlotLookupKey(timeSec, upperHandle, fillSeries)) ??
+      context.plotValueByTimeAndHandle.get(buildPlotLookupKey(timeSec, upperHandle));
+    const lower =
+      context.plotValueByTimeAndHandle.get(buildPlotLookupKey(timeSec, lowerHandle, fillSeries)) ??
+      context.plotValueByTimeAndHandle.get(buildPlotLookupKey(timeSec, lowerHandle));
     if (!Number.isFinite(upper) || !Number.isFinite(lower)) {
       return;
     }
@@ -322,9 +329,13 @@ const fillEventParser: ChartEventParser = {
     const high = Math.max(upper as number, lower as number);
     const low = Math.min(upper as number, lower as number);
     const color = readColorFromPayload(event.payload) ?? 'rgba(59, 130, 246, 0.15)';
+    const fillSeriesKey =
+      fillSeries ??
+      `${upperHandle}:${lowerHandle}`;
 
     // Render fill as a candle-range bar (open/high = upper, close/low = lower).
     output.statusCandles.push({
+      candleKey: `fill:${fillSeriesKey}`,
       timeSec,
       open: upper as number,
       high,
@@ -415,6 +426,9 @@ const plotCandleEventParser: ChartEventParser = {
     }
 
     output.statusCandles.push({
+      candleKey:
+        readStringFromPayload(event.payload, ['handle', 'name', 'id', 'series', 'title']) ??
+        'plotcandle',
       timeSec,
       open: open as number,
       high: high as number,
@@ -465,12 +479,16 @@ export const buildChartEventLayers = (
     const handle =
       readStringFromPayload(event.payload, ['handle']) ??
       readStringFromPayload(event.payload, ['name', 'id', 'series', 'title']);
+    const series = readStringFromPayload(event.payload, ['series']);
     const value = readNumberFromPayload(event.payload, ['value', 'price', 'y']);
     if (!handle || !Number.isFinite(value)) {
       return;
     }
 
     plotValueByTimeAndHandle.set(buildPlotLookupKey(timeSec, handle), value as number);
+    if (series) {
+      plotValueByTimeAndHandle.set(buildPlotLookupKey(timeSec, handle, series), value as number);
+    }
   });
 
   const context: ChartEventParseContext = {
