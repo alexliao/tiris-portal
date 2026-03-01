@@ -30,3 +30,10 @@
 
 ## Optional: Local Tooling Notes
 - The repo includes Playwright MCP helpers in `tools/mcp-playwright.cjs` with scripts like `npm run mcp:playwright:smoke` for quick checks.
+
+## Language
+Always repeat the user's input in English with correct and natural expression, no matter which language the user is speaking. Correct the language error if the user is speaking in English.
+Always responds in English, unless the user explictly ask for the response in other languages.
+
+## Other
+Add comments directly under function signatures that explain each function’s purpose, inputs, and return values.

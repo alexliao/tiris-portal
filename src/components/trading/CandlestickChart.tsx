@@ -1865,9 +1865,7 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       series.applyOptions({ visible: seriesVisibility.status });
     });
     statusOverlayCandlestickSeriesRef.current.forEach((series) => {
-      if (!seriesVisibility.status) {
-        series.applyOptions({ visible: false });
-      }
+      series.applyOptions({ visible: seriesVisibility.status });
     });
   }, [hasInitialized, renderStatusBackgroundOverlay, seriesVisibility]);
 

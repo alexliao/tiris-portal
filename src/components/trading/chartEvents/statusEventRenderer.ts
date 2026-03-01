@@ -288,6 +288,58 @@ const readNumberFromPayload = (
   return undefined;
 };
 
+const toBooleanFlag = (value: unknown): boolean | undefined => {
+  // Purpose: Coerce loosely-typed payload values into a boolean flag.
+  // Inputs: A raw payload field value that may be boolean, number, or string.
+  // Returns: `true`/`false` when coercion is possible, otherwise `undefined`.
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    if (value === 1) {
+      return true;
+    }
+    if (value === 0) {
+      return false;
+    }
+    return undefined;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1') {
+      return true;
+    }
+    if (normalized === 'false' || normalized === '0') {
+      return false;
+    }
+  }
+  return undefined;
+};
+
+const hasOverlayFalseFlag = (payload: Record<string, unknown> | undefined): boolean => {
+  // Purpose: Detect whether an event payload explicitly sets overlay to false.
+  // Inputs: The event payload object (and optionally nested payload params/kwargs).
+  // Returns: `true` when overlay=false is found, otherwise `false`.
+  const sources = readPayloadSources(payload);
+
+  for (const source of sources) {
+    const directOverlay = toBooleanFlag(source.overlay);
+    if (directOverlay === false) {
+      return true;
+    }
+
+    const kwargsRaw = source.kwargs;
+    if (kwargsRaw && typeof kwargsRaw === 'object') {
+      const kwargsOverlay = toBooleanFlag((kwargsRaw as Record<string, unknown>).overlay);
+      if (kwargsOverlay === false) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
 const mapPlotShapeStyle = (style?: string): ChartEventMarkerShape => {
   const normalized = style?.toLowerCase().trim();
   switch (normalized) {
@@ -540,8 +592,9 @@ export const buildChartEventLayers = (
   tradingTimeframe?: string,
   enabledKinds?: StatusEventDisplayType[]
 ): ChartEventLayers => {
+  const filteredEvents = events.filter((event) => !hasOverlayFalseFlag(event.payload));
   const sourceTimeframeSec =
-    inferSourceTimeframeSecondsFromEvents(events) ??
+    inferSourceTimeframeSecondsFromEvents(filteredEvents) ??
     Math.max(timeframeToSeconds(tradingTimeframe), 1);
   const layers: ChartEventLayers = {
     sourceTimeframeSec,
@@ -551,13 +604,11 @@ export const buildChartEventLayers = (
     statusCandles: [],
   };
   const enabledSet = new Set<StatusEventDisplayType>(
-    enabledKinds && enabledKinds.length > 0
-      ? enabledKinds
-      : ['bgcolor', 'fill', 'plot', 'plotcandle', 'plotshape', 'signal']
+    enabledKinds ?? ['bgcolor', 'fill', 'plot', 'plotcandle', 'plotshape', 'signal']
   );
 
   const plotValueByTimeAndHandle = new Map<string, number>();
-  events.forEach((event) => {
+  filteredEvents.forEach((event) => {
     const normalizedType = event.event_type.toLowerCase().trim();
     if (normalizedType !== 'plot') {
       return;
@@ -588,7 +639,7 @@ export const buildChartEventLayers = (
     plotValueByTimeAndHandle,
   };
 
-  events.forEach((event) => {
+  filteredEvents.forEach((event) => {
     const normalizedType = event.event_type.toLowerCase().trim();
     for (const parser of EVENT_PARSERS) {
       if (!enabledSet.has(parser.kind)) {
