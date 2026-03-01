@@ -1658,6 +1658,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           baselinePrice: cachedData.baselinePrice,
         });
         setInitialized(false); // Reset to show latest 100 points
+
+        // Refresh the selected timeframe immediately so cached signal markers do not lag
+        // until the periodic incremental timer fires.
+        fetchIncrementalUpdates();
       } else {
         // No cache for this timeframe, fetch fresh data
         console.debug(`No cached data for timeframe ${cacheKey}, fetching fresh data`);
