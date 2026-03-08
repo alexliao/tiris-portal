@@ -303,18 +303,42 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
 
   const tradingEventsBySecond = useMemo(() => {
     const map = new Map<number, NonNullable<TradingDataPoint['events']>>();
+    const candleTimesSec = candles
+      .map((candle) => toTimeKeySeconds(candle.timestampNum / 1000))
+      .filter((time): time is number => time !== null)
+      .sort((a, b) => a - b);
+    const maxMarkerDistanceSec = Math.max(Math.floor(timeframeToSeconds(timeframe) / 2), 60);
+
     benchmarkPoints.forEach((point) => {
       if (!point.events || point.events.length === 0) {
         return;
       }
-      const timeInSeconds = toTimeKeySeconds(point.timestampNum / 1000);
-      if (timeInSeconds !== null) {
-        const existingEvents = map.get(timeInSeconds) ?? [];
-        map.set(timeInSeconds, existingEvents.concat(point.events));
-      }
+      const fallbackTimeSec = toTimeKeySeconds(point.timestampNum / 1000);
+
+      point.events.forEach((event) => {
+        const eventTimestampMs = new Date(event.timestamp).getTime();
+        const eventTimeSec = toTimeKeySeconds(eventTimestampMs / 1000);
+        const alignedTime = (() => {
+          if (eventTimeSec !== null) {
+            return alignToNearestCandleSecond(eventTimeSec, candleTimesSec, maxMarkerDistanceSec);
+          }
+          if (fallbackTimeSec !== null) {
+            return alignToNearestCandleSecond(fallbackTimeSec, candleTimesSec, maxMarkerDistanceSec);
+          }
+          return null;
+        })();
+
+        if (alignedTime === null) {
+          return;
+        }
+
+        const existingEvents = map.get(alignedTime) ?? [];
+        existingEvents.push(event);
+        map.set(alignedTime, existingEvents);
+      });
     });
     return map;
-  }, [benchmarkPoints]);
+  }, [benchmarkPoints, candles, timeframe]);
 
   const chartEventLayers = useMemo(() => {
     const baseLayers = buildChartEventLayers(statusEvents, statusEventTimeframe, statusEventTypeFilters);
@@ -506,7 +530,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
   };
 
   heightRef.current = height;
-  const LABEL_PRICE_OFFSET_PX = 18; // fixed pixel offset to keep labels from overlapping candles
 
   useEffect(() => {
     if (typeof tradingSignalsVisible === 'boolean') {
@@ -1451,95 +1474,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       })
       .filter((item): item is { time: Time; value: number } => item !== null);
 
-    const benchmarkPriceMarkers: SeriesMarker<Time>[] = [];
-    const benchmarkLabelMarkers: SeriesMarker<Time>[] = [];
-    const buyLabelText = t('performance.tooltip.buy', 'BUY');
-    const sellLabelText = t('performance.tooltip.sell', 'SELL');
-
-    benchmarkPoints.forEach((point) => {
-      if (!point.events || point.events.length === 0) {
-        return;
-      }
-      const timeInSeconds = toTimeKeySeconds(point.timestampNum / 1000);
-      if (timeInSeconds === null) {
-        return;
-      }
-
-      point.events.forEach((event) => {
-        const markerStyle = signalMarkerStyles[event.type] ?? signalMarkerStyles.sell;
-        const markerPrice =
-          typeof event.price === 'number' && Number.isFinite(event.price)
-            ? event.price
-            : typeof point.benchmarkPrice === 'number' && Number.isFinite(point.benchmarkPrice)
-              ? point.benchmarkPrice
-              : typeof resolvedBaselinePrice === 'number' && Number.isFinite(resolvedBaselinePrice)
-                ? resolvedBaselinePrice
-                : undefined;
-
-        if (markerPrice !== undefined) {
-          benchmarkPriceMarkers.push({
-            time: timeInSeconds as Time,
-            position: 'atPriceMiddle',
-            color: markerStyle.color,
-            shape: markerStyle.shape,
-            price: markerPrice,
-          });
-        } else {
-          benchmarkPriceMarkers.push({
-            time: timeInSeconds as Time,
-            position: markerStyle.position as SeriesMarkerBarPosition,
-            color: markerStyle.color,
-            shape: markerStyle.shape,
-          });
-        }
-
-        const markerText =
-          event.type === 'buy'
-            ? buyLabelText
-            : event.type === 'sell'
-              ? sellLabelText
-              : undefined;
-
-        if (markerText) {
-          const markerSeries = benchmarkMarkersSeriesRef.current;
-          const markerCoordinate =
-            markerSeries && markerPrice !== undefined && Number.isFinite(markerPrice)
-              ? markerSeries.priceToCoordinate(markerPrice)
-              : null;
-
-          const pixelOffset = event.type === 'buy' ? LABEL_PRICE_OFFSET_PX : -LABEL_PRICE_OFFSET_PX;
-          const adjustedPrice =
-            markerSeries && markerCoordinate !== null && markerCoordinate !== undefined
-              ? markerSeries.coordinateToPrice(markerCoordinate + pixelOffset)
-              : undefined;
-
-          benchmarkLabelMarkers.push(
-            markerPrice !== undefined
-              ? {
-                  time: timeInSeconds as Time,
-                  position: event.type === 'buy' ? 'atPriceBottom' : 'atPriceTop',
-                  color: markerStyle.color,
-                  shape: 'circle',
-                  text: markerText,
-                  price: adjustedPrice ?? markerPrice,
-                  size: 0,
-                }
-              : {
-                  time: timeInSeconds as Time,
-                  position: event.type === 'buy' ? 'belowBar' : 'aboveBar',
-                  color: markerStyle.color,
-                  shape: 'circle',
-                  text: markerText,
-                  size: 0,
-                }
-          );
-        }
-      });
-    });
-
-    benchmarkPriceMarkers.sort((a, b) => (a.time as number) - (b.time as number));
-    benchmarkLabelMarkers.sort((a, b) => (a.time as number) - (b.time as number));
-
     let sortedBenchmarkData: { time: Time; value: number }[] | undefined;
     if (benchmarkData.length > 0) {
       sortedBenchmarkData = sortAndDedupeByTime(benchmarkData);
@@ -1560,6 +1494,97 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
         benchmarkMarkersSeriesRef.current.setData([]);
       }
     }
+
+    const benchmarkPriceMarkers: SeriesMarker<Time>[] = [];
+    const benchmarkLabelMarkers: SeriesMarker<Time>[] = [];
+    const buyLabelText = t('performance.tooltip.buy', 'BUY');
+    const sellLabelText = t('performance.tooltip.sell', 'SELL');
+    const candleTimesSec = chartData.map(point => Number(point.time)).sort((a, b) => a - b);
+    const maxMarkerDistanceSec = Math.max(Math.floor(timeframeToSeconds(timeframe) / 2), 60);
+
+    benchmarkPoints.forEach((point) => {
+      if (!point.events || point.events.length === 0) {
+        return;
+      }
+      const fallbackTimeSec = toTimeKeySeconds(point.timestampNum / 1000);
+
+      point.events.forEach((event) => {
+        const eventTimestampMs = new Date(event.timestamp).getTime();
+        const eventTimeSec = toTimeKeySeconds(eventTimestampMs / 1000);
+        const alignedTime = (() => {
+          if (eventTimeSec !== null) {
+            return alignToNearestCandleSecond(eventTimeSec, candleTimesSec, maxMarkerDistanceSec);
+          }
+          if (fallbackTimeSec !== null) {
+            return alignToNearestCandleSecond(fallbackTimeSec, candleTimesSec, maxMarkerDistanceSec);
+          }
+          return null;
+        })();
+        if (alignedTime === null) {
+          return;
+        }
+
+        const markerStyle = signalMarkerStyles[event.type] ?? signalMarkerStyles.sell;
+        const markerPrice =
+          typeof event.price === 'number' && Number.isFinite(event.price)
+            ? event.price
+            : typeof point.benchmarkPrice === 'number' && Number.isFinite(point.benchmarkPrice)
+              ? point.benchmarkPrice
+              : typeof resolvedBaselinePrice === 'number' && Number.isFinite(resolvedBaselinePrice)
+                ? resolvedBaselinePrice
+                : undefined;
+
+        if (markerPrice !== undefined) {
+          benchmarkPriceMarkers.push({
+            time: alignedTime as Time,
+            position: 'atPriceMiddle',
+            color: markerStyle.color,
+            shape: markerStyle.shape,
+            price: markerPrice,
+          });
+        } else {
+          benchmarkPriceMarkers.push({
+            time: alignedTime as Time,
+            position: markerStyle.position as SeriesMarkerBarPosition,
+            color: markerStyle.color,
+            shape: markerStyle.shape,
+          });
+        }
+
+        const markerText =
+          event.type === 'buy'
+            ? buyLabelText
+            : event.type === 'sell'
+              ? sellLabelText
+              : undefined;
+
+        if (markerText) {
+          benchmarkLabelMarkers.push(
+            markerPrice !== undefined
+              ? {
+                  time: alignedTime as Time,
+                  position: event.type === 'buy' ? 'atPriceBottom' : 'atPriceTop',
+                  color: markerStyle.color,
+                  shape: 'circle',
+                  text: markerText,
+                  price: markerPrice,
+                  size: 0,
+                }
+              : {
+                  time: alignedTime as Time,
+                  position: event.type === 'buy' ? 'belowBar' : 'aboveBar',
+                  color: markerStyle.color,
+                  shape: 'circle',
+                  text: markerText,
+                  size: 0,
+                }
+          );
+        }
+      });
+    });
+
+    benchmarkPriceMarkers.sort((a, b) => (a.time as number) - (b.time as number));
+    benchmarkLabelMarkers.sort((a, b) => (a.time as number) - (b.time as number));
 
     if (benchmarkMarkersPluginRef.current) {
       benchmarkMarkersPluginRef.current.setMarkers(
@@ -1583,8 +1608,6 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
     }
 
     const statusMarkers: SeriesMarker<Time>[] = [];
-    const candleTimesSec = chartData.map(point => Number(point.time)).sort((a, b) => a - b);
-    const maxMarkerDistanceSec = Math.max(Math.floor(timeframeToSeconds(timeframe) / 2), 60);
 
     chartEventLayers.statusMarkers.forEach((marker) => {
       const alignedTime = alignToNearestCandleSecond(marker.timeSec, candleTimesSec, maxMarkerDistanceSec);

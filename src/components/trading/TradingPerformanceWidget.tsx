@@ -591,6 +591,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   })();
 
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>(resolvedDefaultTimeframe);
+  const [chartTimeframe, setChartTimeframe] = useState<Timeframe>(resolvedDefaultTimeframe);
   const [stockSymbol, setStockSymbol] = useState<string>('ETH');
   const [quoteSymbol, setQuoteSymbol] = useState<string>('USDT');
   const [isRefetchingData, setIsRefetchingData] = useState(false);
@@ -1141,6 +1142,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           baselinePrice: nextBaselinePrice,
         };
       });
+      setChartTimeframe(selectedTimeframe);
 
       const nextWarmupState = getWarmupStateFromCurve(constrainedEquityCurve);
       console.log('fetchTradingData success - nextWarmupState:', nextWarmupState, 'warming_up:', constrainedEquityCurve.warming_up);
@@ -1565,6 +1567,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           baselinePrice: nextBaselinePrice,
         };
       });
+      setChartTimeframe(selectedTimeframe);
     } catch (err) {
       console.error('Failed to fetch incremental trading data:', err);
     } finally {
@@ -1657,6 +1660,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           candlestickData: cachedData.candlestickData,
           baselinePrice: cachedData.baselinePrice,
         });
+        setChartTimeframe(selectedTimeframe);
         setInitialized(false); // Reset to show latest 100 points
 
         // Refresh the selected timeframe immediately so cached signal markers do not lag
@@ -1811,6 +1815,33 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
   // Handle timeframe selection
   const handleTimeframeChange = (timeframe: Timeframe) => {
+    if (timeframe === selectedTimeframe) {
+      return;
+    }
+
+    const cachedData = timeframeDataCacheRef.current[timeframe];
+    if (cachedData) {
+      if (
+        cachedData.initialBalance !== undefined &&
+        Number.isFinite(cachedData.initialBalance) &&
+        cachedData.initialBalance > 0 &&
+        cachedData.initialBalance !== initialBalance
+      ) {
+        setInitialBalance(cachedData.initialBalance);
+      }
+
+      setChartState({
+        data: cachedData.data,
+        benchmarkData: cachedData.benchmarkData,
+        beforeCreationData: cachedData.beforeCreationData,
+        metrics: cachedData.metrics,
+        candlestickData: cachedData.candlestickData,
+        baselinePrice: cachedData.baselinePrice,
+      });
+      setChartTimeframe(timeframe);
+    }
+
+    setInitialized(false);
     onTimeframeChange?.(timeframe);
     setSelectedTimeframe(timeframe);
   };
@@ -2315,11 +2346,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
               }}
             >
               <CandlestickChart
+                key={`${trading.id}:${chartTimeframe}`}
                 candles={chartState.candlestickData}
                 equityPoints={chartState.data}
                 benchmarkPoints={visibleBenchmarkData}
                 beforeCreationEquityPoints={chartState.beforeCreationData}
-                timeframe={selectedTimeframe}
+                timeframe={chartTimeframe}
                 height={400}
                 className=""
                 loading={loading || isRefetchingData}
