@@ -186,6 +186,12 @@ interface TradingPerformanceWidgetProps {
   className?: string;
   height?: string;
   dataEndTime?: number;
+  refreshNonce?: number;
+  metricAccountOverride?: {
+    quoteBalance?: number;
+    stockBalance?: number;
+    stockPrice?: number;
+  };
   timeframe?: Timeframe;
   onTimeframeChange?: (timeframe: Timeframe) => void;
   showEquity?: boolean;
@@ -523,6 +529,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   entityId,
   className = '',
   dataEndTime,
+  refreshNonce = 0,
+  metricAccountOverride,
   timeframe,
   onTimeframeChange,
   showEquity = true,
@@ -532,6 +540,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   showPosition = false,
   showStatus = false,
 }) => {
+  // Purpose: render trading performance data while preserving the selected timeframe across refreshes.
+  // Inputs: trading context, optional display settings, refreshNonce for one-shot silent refetches, and metricAccountOverride for stable account-card values.
+  // Returns: the performance widget UI with metrics, chart, and timeframe controls.
   const { isAuthenticated } = useAuth();
   const { t } = useTranslation();
   const toast = useToast();
@@ -627,6 +638,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const lastStatusEventTimestampRef = useRef<number | undefined>(undefined);
   const incrementalUpdateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const incrementalUpdateInProgressRef = useRef(false);
+  const lastAppliedRefreshNonceRef = useRef(refreshNonce);
 
   const tradingInitialBalanceFromInfo = (() => {
     const raw = trading.info?.initial_funds ?? trading.info?.initialBalance;
@@ -1599,6 +1611,25 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run on mount
 
+  useEffect(() => {
+    if (refreshNonce === lastAppliedRefreshNonceRef.current) {
+      return;
+    }
+
+    lastAppliedRefreshNonceRef.current = refreshNonce;
+    timeframeDataCacheRef.current = {};
+    tradingLogsRef.current = [];
+    lastTradingLogTimestampRef.current = undefined;
+    statusEventsRef.current = [];
+    lastStatusEventTimestampRef.current = undefined;
+    initialStockPriceRef.current = undefined;
+    oneMinutePriceRef.current = undefined;
+    setStatusEvents([]);
+    setInitialized(false);
+
+    void fetchTradingData(false, true);
+  }, [refreshNonce, fetchTradingData]);
+
   const lastKnownDataEndTimeRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -1861,14 +1892,29 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   };
 
   const effectiveStockPrice =
-    typeof oneMinutePriceRef.current === 'number' &&
-    Number.isFinite(oneMinutePriceRef.current) &&
-    oneMinutePriceRef.current > 0
-      ? oneMinutePriceRef.current
+    typeof metricAccountOverride?.stockPrice === 'number' &&
+    Number.isFinite(metricAccountOverride.stockPrice) &&
+    metricAccountOverride.stockPrice > 0
+      ? metricAccountOverride.stockPrice
+      : typeof oneMinutePriceRef.current === 'number' &&
+        Number.isFinite(oneMinutePriceRef.current) &&
+        oneMinutePriceRef.current > 0
+        ? oneMinutePriceRef.current
       : undefined;
 
-  const normalizedQuoteBalance = Number.isFinite(quoteBalance) ? quoteBalance : 0;
-  const normalizedStockBalance = Number.isFinite(stockBalance) ? stockBalance : 0;
+  const effectiveQuoteBalance =
+    typeof metricAccountOverride?.quoteBalance === 'number' &&
+    Number.isFinite(metricAccountOverride.quoteBalance)
+      ? metricAccountOverride.quoteBalance
+      : quoteBalance;
+  const effectiveStockBalance =
+    typeof metricAccountOverride?.stockBalance === 'number' &&
+    Number.isFinite(metricAccountOverride.stockBalance)
+      ? metricAccountOverride.stockBalance
+      : stockBalance;
+
+  const normalizedQuoteBalance = Number.isFinite(effectiveQuoteBalance) ? effectiveQuoteBalance : 0;
+  const normalizedStockBalance = Number.isFinite(effectiveStockBalance) ? effectiveStockBalance : 0;
   const displayStockBalance = normalizedStockBalance < 0.01 ? 0 : normalizedStockBalance;
   const displayQuoteBalance = normalizedQuoteBalance < 1 ? 0 : normalizedQuoteBalance;
   const normalizedInitialBalance =
@@ -2382,6 +2428,9 @@ const arePropsEqual = (
   prev: TradingPerformanceWidgetProps,
   next: TradingPerformanceWidgetProps
 ): boolean => {
+  // Purpose: avoid rerendering unless display-relevant props changed.
+  // Inputs: previous and next widget props.
+  // Returns: true when React can safely reuse the current render output.
   return (
     prev.trading.id === next.trading.id &&
     prev.trading.name === next.trading.name &&
@@ -2390,6 +2439,10 @@ const arePropsEqual = (
     prev.className === next.className &&
     prev.height === next.height &&
     prev.dataEndTime === next.dataEndTime &&
+    prev.refreshNonce === next.refreshNonce &&
+    prev.metricAccountOverride?.quoteBalance === next.metricAccountOverride?.quoteBalance &&
+    prev.metricAccountOverride?.stockBalance === next.metricAccountOverride?.stockBalance &&
+    prev.metricAccountOverride?.stockPrice === next.metricAccountOverride?.stockPrice &&
     prev.timeframe === next.timeframe &&
     prev.onTimeframeChange === next.onTimeframeChange &&
     prev.showEquity === next.showEquity &&

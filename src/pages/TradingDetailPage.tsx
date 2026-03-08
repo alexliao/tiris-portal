@@ -53,6 +53,22 @@ const extractExchangeCredentials = (binding?: ExchangeBinding | null) => {
   return { apiKey, apiSecret };
 };
 
+const parseFiniteNumber = (value: unknown): number | undefined => {
+  // Purpose: safely coerce unknown API payload values into finite numeric values.
+  // Inputs: a value that may be a number, numeric string, or unsupported type.
+  // Returns: a finite number when parsing succeeds; otherwise undefined.
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+};
+
 export const TradingDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation();
@@ -88,6 +104,8 @@ export const TradingDetailPage: React.FC = () => {
   const isRefreshing2 = useRef(false);
   const [isTradingOwner, setIsTradingOwner] = useState(false);
   const hasAutoStartedRef = useRef(false);
+  const previousBacktestStateRef = useRef<{ status: string; completed: boolean } | null>(null);
+  const [performanceRefreshNonce, setPerformanceRefreshNonce] = useState(0);
 
   const canManageTrading = isAuthenticated && isTradingOwner;
   const shouldAutoStartBacktest = useMemo(() => {
@@ -178,6 +196,53 @@ export const TradingDetailPage: React.FC = () => {
 
     return undefined;
   }, [bot?.record.status?.info, trading?.type]);
+
+  const backtestMetricAccountOverride = useMemo(() => {
+    if (trading?.type !== 'backtest') {
+      return undefined;
+    }
+
+    const statusInfo = bot?.record.status?.info;
+    if (!statusInfo || typeof statusInfo !== 'object') {
+      return undefined;
+    }
+
+    const info = statusInfo as Record<string, unknown>;
+    const virtualExchange = info.virtual_exchange;
+    const virtualExchangeAccount =
+      virtualExchange && typeof virtualExchange === 'object'
+        ? (virtualExchange as Record<string, unknown>).account
+        : undefined;
+    const account =
+      virtualExchangeAccount && typeof virtualExchangeAccount === 'object'
+        ? virtualExchangeAccount as Record<string, unknown>
+        : undefined;
+    const lastTicker =
+      backtestStatusInfo?.last_ticker && typeof backtestStatusInfo.last_ticker === 'object'
+        ? backtestStatusInfo.last_ticker as Record<string, unknown>
+        : undefined;
+
+    const quoteBalance = parseFiniteNumber(account?.balance);
+    const stockBalance = parseFiniteNumber(account?.stock);
+    const stockPrice =
+      parseFiniteNumber(lastTicker?.last) ??
+      parseFiniteNumber(lastTicker?.close) ??
+      parseFiniteNumber(lastTicker?.price);
+
+    if (
+      quoteBalance === undefined &&
+      stockBalance === undefined &&
+      stockPrice === undefined
+    ) {
+      return undefined;
+    }
+
+    return {
+      quoteBalance,
+      stockBalance,
+      stockPrice,
+    };
+  }, [backtestStatusInfo, bot?.record.status?.info, trading?.type]);
 
   const normalizeTimestampLike = (value?: number | null): number | undefined => {
     if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -469,6 +534,9 @@ export const TradingDetailPage: React.FC = () => {
 
   // Bot status checking function
   const checkBotStatus = async (botId: string) => {
+    // Synchronizes the latest bot snapshot from the bot API for the current trading.
+    // Input: the bot id associated with the detail page.
+    // Returns: resolves after local bot state is updated or the refresh failure is handled.
     // Prevent concurrent status checks
     if (isCheckingStatus.current) {
       console.log('Status check already in progress, skipping');
@@ -484,6 +552,26 @@ export const TradingDetailPage: React.FC = () => {
         alive: updatedBot.alive,
         lastHeartbeat: updatedBot.record.last_heartbeat_at
       });
+
+      if (tradingTypeRef.current === 'backtest') {
+        const updatedBacktest = (updatedBot.record.status?.info as {
+          backtest?: {
+            status?: string;
+            completed?: boolean;
+            progress_pct?: number;
+            pointer_iso?: string;
+          };
+        } | undefined)?.backtest;
+
+        setBot(updatedBot);
+        console.log('Backtest bot snapshot refreshed:', {
+          status: updatedBacktest?.status,
+          completed: updatedBacktest?.completed,
+          progressPct: updatedBacktest?.progress_pct,
+          pointerIso: updatedBacktest?.pointer_iso,
+        });
+        return;
+      }
 
       // Check if we need to update bot state - do this check OUTSIDE of setBot
       let shouldUpdate = false;
@@ -571,8 +659,9 @@ export const TradingDetailPage: React.FC = () => {
       await fetchTradingData(false);
 
       // Refresh bot status if bot exists
-      if (bot?.record.id) {
-        await checkBotStatus(bot.record.id);
+      const activeBotId = monitoringBotId.current ?? bot?.record.id;
+      if (activeBotId) {
+        await checkBotStatus(activeBotId);
       }
 
       console.log('Data refresh completed successfully');
@@ -584,6 +673,43 @@ export const TradingDetailPage: React.FC = () => {
       setIsRefreshing(false);
     }
   }, [bot?.record.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (trading?.type !== 'backtest') {
+      previousBacktestStateRef.current = null;
+      return;
+    }
+
+    const currentState = {
+      status: backtestStatus,
+      completed: Boolean(backtestCompleted),
+    };
+    const previousState = previousBacktestStateRef.current;
+    previousBacktestStateRef.current = currentState;
+
+    const leftRunningState = previousState?.status === 'running' && currentState.status !== 'running';
+    const completedJustNow = Boolean(previousState) && !previousState?.completed && currentState.completed;
+    const firstResolvedStateIsTerminal = !previousState && (currentState.status !== 'running' || currentState.completed);
+
+    if (!leftRunningState && !completedJustNow && !firstResolvedStateIsTerminal) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const refreshFinalBacktestState = async () => {
+      await refreshAllData();
+      if (!cancelled) {
+        setPerformanceRefreshNonce((currentNonce) => currentNonce + 1);
+      }
+    };
+
+    void refreshFinalBacktestState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [trading?.type, backtestStatus, backtestCompleted, refreshAllData]);
 
 
   // Start automatic data refresh when page loads and user is authenticated
@@ -1371,6 +1497,8 @@ export const TradingDetailPage: React.FC = () => {
           <TradingPerformanceWidget
             trading={trading}
             dataEndTime={backtestPointerMs}
+            refreshNonce={performanceRefreshNonce}
+            metricAccountOverride={backtestMetricAccountOverride}
           />
         </div>
       </div>

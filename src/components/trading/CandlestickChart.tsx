@@ -109,6 +109,20 @@ const alignToNearestCandleSecond = (
   return bestDistance <= maxDistanceSec ? best : null;
 };
 
+const getTradingEventTimestampMs = (
+  event: NonNullable<TradingDataPoint['events']>[number]
+): number | null => {
+  // Purpose: safely parse optional event timestamps before marker alignment.
+  // Inputs: a trading event that may or may not include an ISO timestamp.
+  // Returns: epoch milliseconds when the timestamp is present and valid; otherwise null.
+  if (!event.timestamp) {
+    return null;
+  }
+
+  const timestampMs = new Date(event.timestamp).getTime();
+  return Number.isFinite(timestampMs) ? timestampMs : null;
+};
+
 const toSeriesMarker = (
   marker: PlotShapeEventMarker,
   alignedTimeSec: number
@@ -316,8 +330,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       const fallbackTimeSec = toTimeKeySeconds(point.timestampNum / 1000);
 
       point.events.forEach((event) => {
-        const eventTimestampMs = new Date(event.timestamp).getTime();
-        const eventTimeSec = toTimeKeySeconds(eventTimestampMs / 1000);
+        const eventTimestampMs = getTradingEventTimestampMs(event);
+        const eventTimeSec =
+          eventTimestampMs === null ? null : toTimeKeySeconds(eventTimestampMs / 1000);
         const alignedTime = (() => {
           if (eventTimeSec !== null) {
             return alignToNearestCandleSecond(eventTimeSec, candleTimesSec, maxMarkerDistanceSec);
@@ -1509,8 +1524,9 @@ const CandlestickChartInner: React.FC<CandlestickChartProps> = ({
       const fallbackTimeSec = toTimeKeySeconds(point.timestampNum / 1000);
 
       point.events.forEach((event) => {
-        const eventTimestampMs = new Date(event.timestamp).getTime();
-        const eventTimeSec = toTimeKeySeconds(eventTimestampMs / 1000);
+        const eventTimestampMs = getTradingEventTimestampMs(event);
+        const eventTimeSec =
+          eventTimestampMs === null ? null : toTimeKeySeconds(eventTimestampMs / 1000);
         const alignedTime = (() => {
           if (eventTimeSec !== null) {
             return alignToNearestCandleSecond(eventTimeSec, candleTimesSec, maxMarkerDistanceSec);

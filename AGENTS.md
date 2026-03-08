@@ -13,6 +13,7 @@
 - `npm run preview` serves the production build locally.
 - `npm run lint` runs ESLint across the codebase.
 - `npm test` runs the full Playwright suite; `npm run test:ui` opens the UI runner; `npm run test:mobile` targets the mobile navigation spec.
+- Use .env to start the local dev server. 
 
 ## Coding Style & Naming Conventions
 - Use 2-space indentation, TypeScript for logic, and TSX for React views.
