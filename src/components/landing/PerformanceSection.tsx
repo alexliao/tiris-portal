@@ -237,7 +237,7 @@ export const PerformanceSection: React.FC<PerformanceSectionProps> = ({
 
           {!isLoading && !error && demoTrading && (
             <TradingPerformanceWidget trading={demoTrading} 
-              timeframe='1w'
+              timeframe='1d'
               showSignals={false}
             />
           )}
