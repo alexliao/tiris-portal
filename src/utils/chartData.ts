@@ -44,6 +44,8 @@ export interface TradingMetrics {
   totalROI: number;
   benchmarkROI?: number;
   excessROI?: number;
+  sharpeRatio: number;
+  maxDrawdown: number;
   totalTrades: number;
 }
 
@@ -148,6 +150,8 @@ export function transformNewEquityCurveToChartData(
       data: [],
       metrics: {
         totalROI: 0,
+        sharpeRatio: 0,
+        maxDrawdown: 0,
         totalTrades: 0,
       },
       candlestickData: [],
@@ -190,6 +194,8 @@ export function transformNewEquityCurveToChartData(
       data: [],
       metrics: {
         totalROI: 0,
+        sharpeRatio: 0,
+        maxDrawdown: 0,
         totalTrades: 0,
       },
       candlestickData: [],
@@ -406,15 +412,21 @@ function calculateMetricsFromNewData(
   tradingLogs: TradingLog[],
   initialEquity: number
 ): TradingMetrics {
+  // Purpose: derives summary metrics from the normalized equity curve and trade logs.
+  // Inputs: ordered chart points, related trading logs, and the initial equity baseline.
+  // Returns: total ROI, risk metrics, and total trade count for UI metric cards.
   if (chartData.length === 0) {
     return {
       totalROI: 0,
+      sharpeRatio: 0,
+      maxDrawdown: 0,
       totalTrades: 0,
     };
   }
 
   const finalValue = chartData[chartData.length - 1].netValue;
   const totalROI = initialEquity > 0 ? ((finalValue - initialEquity) / initialEquity) * 100 : 0;
+  const { sharpeRatio, maxDrawdown } = calculateRiskMetrics(chartData, initialEquity);
 
   // Calculate win rate from trading logs
   const tradeLogs = tradingLogs.filter(log =>
@@ -424,7 +436,105 @@ function calculateMetricsFromNewData(
 
   return {
     totalROI: Math.round(totalROI * 100) / 100,
+    sharpeRatio,
+    maxDrawdown,
     totalTrades,
+  };
+}
+
+function calculateRiskMetrics(
+  chartData: TradingDataPoint[],
+  initialEquity: number
+): Pick<TradingMetrics, 'sharpeRatio' | 'maxDrawdown'> {
+  // Purpose: calculates risk metrics that depend only on the equity curve values.
+  // Inputs: ordered chart points plus the initial equity used as the starting peak.
+  // Returns: rounded Sharpe ratio and negative max drawdown percentage for display.
+  const millisecondsPerYear = 365 * 24 * 60 * 60 * 1000;
+  const annualRiskFreeRate = 0;
+  const firstValidEquity =
+    chartData.find(point => Number.isFinite(point.netValue) && point.netValue > 0)?.netValue ?? 0;
+  const startingPeak =
+    Number.isFinite(initialEquity) && initialEquity > 0
+      ? initialEquity
+      : firstValidEquity;
+
+  let peak = startingPeak;
+  let maxDrawdown = 0;
+  chartData.forEach(point => {
+    const netValue = point.netValue;
+    if (!Number.isFinite(netValue)) {
+      return;
+    }
+
+    if (netValue > peak) {
+      peak = netValue;
+    }
+
+    if (peak <= 0) {
+      return;
+    }
+
+    const drawdown = ((peak - netValue) / peak) * 100;
+    if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+    }
+  });
+
+  const returnsWithIntervals = chartData
+    .slice(1)
+    .reduce<Array<{ returnValue: number; intervalMs: number }>>((acc, point, index) => {
+      const previousPoint = chartData[index];
+      const previousValue = previousPoint.netValue;
+      const currentValue = point.netValue;
+      const intervalMs = point.timestampNum - previousPoint.timestampNum;
+
+      if (
+        Number.isFinite(previousValue) &&
+        Number.isFinite(currentValue) &&
+        Number.isFinite(intervalMs) &&
+        previousValue > 0 &&
+        intervalMs > 0 &&
+        previousPoint.isPartial !== true &&
+        point.isPartial !== true
+      ) {
+        acc.push({
+          returnValue: (currentValue - previousValue) / previousValue,
+          intervalMs,
+        });
+      }
+      return acc;
+    }, []);
+
+  const returns = returnsWithIntervals.map(value => value.returnValue);
+  const intervals = returnsWithIntervals.map(value => value.intervalMs).sort((a, b) => a - b);
+  const midpoint = Math.floor(intervals.length / 2);
+  const medianInterval = intervals.length === 0
+    ? 0
+    : intervals.length % 2 === 0
+      ? (intervals[midpoint - 1] + intervals[midpoint]) / 2
+      : intervals[midpoint];
+  const periodsPerYear = medianInterval > 0 ? millisecondsPerYear / medianInterval : 0;
+  const riskFreeReturnPerPeriod = periodsPerYear > 0
+    ? annualRiskFreeRate / periodsPerYear
+    : 0;
+  const avgExcessReturn = returns.length > 0
+    ? returns.reduce((sum, value) => sum + (value - riskFreeReturnPerPeriod), 0) / returns.length
+    : 0;
+  const sampleVolatility = returns.length > 1
+    ? Math.sqrt(
+        returns.reduce(
+          (sum, value) => sum + Math.pow((value - riskFreeReturnPerPeriod) - avgExcessReturn, 2),
+          0
+        ) / (returns.length - 1)
+      )
+    : 0;
+  const sharpeRatio = sampleVolatility > 0 && periodsPerYear > 0
+    ? (avgExcessReturn / sampleVolatility) * Math.sqrt(periodsPerYear)
+    : 0;
+
+  return {
+    sharpeRatio: Math.round(sharpeRatio * 100) / 100,
+    maxDrawdown: -Math.round(maxDrawdown * 100) / 100,
   };
 }
 
@@ -716,15 +826,21 @@ function calculateMetrics(
   tradingLogs: TradingLog[],
   initialBalance: number
 ): TradingMetrics {
+  // Purpose: derives legacy equity-curve metrics from chart points and trade logs.
+  // Inputs: ordered chart points, related trading logs, and the initial balance baseline.
+  // Returns: total ROI, risk metrics, and total trade count for callers using legacy data.
   if (chartData.length === 0) {
     return {
       totalROI: 0,
+      sharpeRatio: 0,
+      maxDrawdown: 0,
       totalTrades: 0,
     };
   }
 
   const finalValue = chartData[chartData.length - 1].netValue;
-  const totalROI = ((finalValue - initialBalance) / initialBalance) * 100;
+  const totalROI = initialBalance > 0 ? ((finalValue - initialBalance) / initialBalance) * 100 : 0;
+  const { sharpeRatio, maxDrawdown } = calculateRiskMetrics(chartData, initialBalance);
 
   // Calculate win rate from trading logs
   const tradeLogs = tradingLogs.filter(log => 
@@ -734,6 +850,8 @@ function calculateMetrics(
 
   return {
     totalROI: Math.round(totalROI * 100) / 100,
+    sharpeRatio,
+    maxDrawdown,
     totalTrades,
   };
 }

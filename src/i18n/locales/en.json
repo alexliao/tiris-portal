@@ -613,6 +613,8 @@
       "benchmarkROI": "Benchmark",
       "excessROI": "Excess ROI",
       "annualizedReturnRate": "Annualized ROI",
+      "sharpeRatio": "Sharpe Ratio",
+      "maxDrawdown": "Max Drawdown",
       "totalTrades": "Trades",
       "groupAccount": "Account",
       "groupTradingStatus": "Trading Status"

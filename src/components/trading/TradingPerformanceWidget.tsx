@@ -269,7 +269,12 @@ const areTradingPointsEqual = (a: TradingDataPoint, b: TradingDataPoint): boolea
 };
 
 const areMetricsEqual = (prev: TradingMetrics, next: TradingMetrics): boolean => {
-  return prev.totalROI === next.totalROI && prev.totalTrades === next.totalTrades;
+  return (
+    prev.totalROI === next.totalROI &&
+    prev.sharpeRatio === next.sharpeRatio &&
+    prev.maxDrawdown === next.maxDrawdown &&
+    prev.totalTrades === next.totalTrades
+  );
 };
 
 const mergeTradingLogs = (existing: TradingLog[], incoming: TradingLog[]): TradingLog[] => {
@@ -2103,19 +2108,19 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.annualizedReturnRate')}</div>
         </div>
         {/* Sharpe Ratio */}
-        {/* <div className={SECONDARY_METRIC_CARD_CLASS}>
+        <div className={SECONDARY_METRIC_CARD_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-purple-600">
               {(chartState.metrics.sharpeRatio ?? 0).toFixed(1)}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.sharpeRatio')}</div>
-        </div> */}
+        </div>
         {/* Max Drawdown */}
-        {/* <div className={SECONDARY_METRIC_CARD_CLASS}>
+        <div className={SECONDARY_METRIC_CARD_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-orange-600">
               {formatPercentage(chartState.metrics.maxDrawdown ?? 0)}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.maxDrawdown')}</div>
-        </div> */}
+        </div>
         {/* Win Rate */}
         {/* <div className={SECONDARY_METRIC_CARD_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-cyan-600">
