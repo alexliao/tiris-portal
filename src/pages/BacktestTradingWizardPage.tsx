@@ -12,6 +12,7 @@ import BacktestStep2 from '../components/trading/wizard/BacktestStep2';
 import BacktestStep3 from '../components/trading/wizard/BacktestStep3';
 import BacktestWizardStepIndicator from '../components/trading/wizard/BacktestWizardStepIndicator';
 import { useRequireAuthRedirect } from '../hooks/useRequireAuthRedirect';
+import { createBacktestWindowStartDate } from '../config/backtest';
 
 const ICON_SERVICE_BASE_URL = import.meta.env.VITE_ICON_SERVICE_BASE_URL;
 
@@ -45,7 +46,7 @@ export const BacktestTradingWizardPage: React.FC = () => {
   const [chartError, setChartError] = useState<string | null>(null);
 
   // Default time range for step 2 ('all' | 'lastYear' | 'thisYear' | 'last3Months' | 'last1Month')
-  const defaultTimeRange = 'lastYear' as const;
+  const defaultTimeRange = 'last1Month' as const;
 
   const colors = THEME_COLORS.backtest;
   const Icon = colors.icon;
@@ -98,10 +99,10 @@ export const BacktestTradingWizardPage: React.FC = () => {
 
       // Fetch OHLCV chart data
       try {
-        const startDate2024 = new Date('2024-01-01');
+        const backtestWindowStartDate = createBacktestWindowStartDate();
         const requestEndTime = Date.now();
 
-        const startTime = startDate2024.getTime();
+        const startTime = backtestWindowStartDate.getTime();
         const endTime = requestEndTime;
 
         // Fetch OHLCV data for ETH_USDT with 1d timeframe from binance

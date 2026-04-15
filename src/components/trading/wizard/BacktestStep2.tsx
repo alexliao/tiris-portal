@@ -4,6 +4,7 @@ import { AlertCircle, TrendingUp } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
 import { type OHLCVCandle } from '../../../utils/api';
 import { AxisDateTimeFormatOption, createDateTimeFormatter, DateFormatOption } from '../../../utils/locale';
+import { createBacktestWindowStartDate } from '../../../config/backtest';
 
 interface ChartDataPoint {
   timestamp: number;
@@ -12,6 +13,7 @@ interface ChartDataPoint {
 }
 
 type DefaultTimeRange = 'all' | 'lastYear' | 'thisYear' | 'last3Months' | 'last1Month';
+const SHOW_YEAR_PRESET_BUTTONS = false;
 
 interface BacktestStep2Props {
   chartData: ChartDataPoint[];
@@ -37,18 +39,20 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
   setStartDate,
   endDate,
   setEndDate,
-  defaultTimeRange = 'lastYear',
+  defaultTimeRange = 'last1Month',
 }) => {
+  // Renders the backtest date-range selector; receives chart/date state and returns the step 2 wizard UI.
   const { t, i18n } = useTranslation();
   const [brushStartIndex, setBrushStartIndex] = useState(0);
   const [brushEndIndex, setBrushEndIndex] = useState(100);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<DefaultTimeRange | null>(defaultTimeRange);
 
   const axisDateFormatter = useMemo(
-    () => createDateTimeFormatter(AxisDateTimeFormatOption),
+    () => createDateTimeFormatter(AxisDateTimeFormatOption, { language: i18n.language }),
     [i18n.language]
   );
   const dateFormatter = useMemo(
-    () => createDateTimeFormatter(DateFormatOption),
+    () => createDateTimeFormatter(DateFormatOption, { language: i18n.language }),
     [i18n.language]
   );
 
@@ -63,6 +67,7 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
 
   // Helper function to apply default time range
   const applyDefaultTimeRange = (range: DefaultTimeRange, data: ChartDataPoint[]) => {
+    // Applies a preset time range to loaded chart data; accepts the preset and data points, then updates selected dates without returning a value.
     if (data.length === 0) return;
 
     let startIdx = 0;
@@ -169,6 +174,7 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
     setBrushEndIndex(endIdx);
     setStartDate(startDateToSet);
     setEndDate(endDateToSet);
+    setSelectedTimeRange(range);
   };
 
   // Initialize dates and brush indices when chart data is available
@@ -215,6 +221,7 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
   }, [startDate, endDate, chartData.length]);
 
   const handleBrushChange = (state: BrushChangeState | null) => {
+    // Handles manual chart brush movement; accepts Recharts brush state and updates the selected dates without returning a value.
     if (state && state.startIndex !== undefined && state.endIndex !== undefined) {
       const startIndex = Math.max(0, state.startIndex);
       const endIndex = Math.min(chartData.length - 1, state.endIndex);
@@ -228,11 +235,13 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
 
         setStartDate(newStartDate);
         setEndDate(newEndDate);
+        setSelectedTimeRange(null);
       }
     }
   };
 
-  const setPresetDateRange = (days: number) => {
+  const setPresetDateRange = (days: number, range: Extract<DefaultTimeRange, 'last3Months' | 'last1Month'>) => {
+    // Applies a relative-day preset; accepts a day count and preset key, updates the brush/date state, and returns nothing.
     if (chartData.length === 0) return;
 
     const endDate = new Date();
@@ -255,9 +264,11 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
     setBrushEndIndex(endIndex);
     setStartDate(new Date(chartData[startIndex].timestamp));
     setEndDate(endDate);
+    setSelectedTimeRange(range);
   };
 
   const setPresetDateRangeThisYear = () => {
+    // Applies the current-year preset; takes no inputs, updates the brush/date state, and returns nothing.
     if (chartData.length === 0) return;
 
     const now = new Date();
@@ -288,9 +299,11 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
     setBrushEndIndex(endIndex);
     setStartDate(new Date(chartData[startIndex].timestamp));
     setEndDate(new Date(chartData[endIndex].timestamp));
+    setSelectedTimeRange('thisYear');
   };
 
   const setPresetDateRangeLastYear = () => {
+    // Applies the previous-year preset; takes no inputs, updates the brush/date state, and returns nothing.
     if (chartData.length === 0) return;
 
     const now = new Date();
@@ -321,12 +334,14 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
     setBrushEndIndex(endIndex);
     setStartDate(new Date(chartData[startIndex].timestamp));
     setEndDate(new Date(chartData[endIndex].timestamp));
+    setSelectedTimeRange('lastYear');
   };
 
   const setPresetDateRangeAll = () => {
+    // Applies the full configured backtest window; takes no inputs, updates the brush/date state, and returns nothing.
     if (chartData.length === 0) return;
 
-    const startDate = new Date('2024-01-01'); // Jan 1, 2024
+    const startDate = createBacktestWindowStartDate();
     const endDate = new Date(); // Today's date
 
     // Find the closest indices in chartData
@@ -352,11 +367,24 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
     setBrushEndIndex(endIndex);
     setStartDate(new Date(chartData[startIndex].timestamp));
     setEndDate(new Date(chartData[endIndex].timestamp));
+    setSelectedTimeRange('all');
   };
 
   const formatDate = (date: Date | null): string => {
+    // Formats selected dates for the range summary; accepts a nullable Date and returns a localized display string.
     if (!date) return '';
     return dateFormatter.format(date);
+  };
+
+  const getPresetButtonClass = (range: DefaultTimeRange): string => {
+    // Builds preset button styling; accepts a preset key and returns the Tailwind classes for active or inactive state.
+    const baseClass = 'px-3 py-1 text-sm border rounded-md transition-colors font-medium';
+
+    if (selectedTimeRange === range) {
+      return `${baseClass} bg-tiris-primary-600 border-tiris-primary-600 text-white hover:bg-tiris-primary-700`;
+    }
+
+    return `${baseClass} bg-white border-gray-300 hover:bg-gray-100 text-gray-700`;
   };
 
   return (
@@ -469,31 +497,33 @@ export const BacktestStep2: React.FC<BacktestStep2Props> = ({
               <div className="flex gap-2 flex-wrap justify-center">
                 <button
                   onClick={() => setPresetDateRangeAll()}
-                  className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-700 font-medium"
+                  className={getPresetButtonClass('all')}
                 >
                   {t('trading.wizard.backtestStep2.presetAll')}
                 </button>
+                <div className={SHOW_YEAR_PRESET_BUTTONS ? 'contents' : 'hidden'}>
+                  <button
+                    onClick={() => setPresetDateRangeLastYear()}
+                    className={getPresetButtonClass('lastYear')}
+                  >
+                    {t('trading.wizard.backtestStep2.presetLastYear')}
+                  </button>
+                  <button
+                    onClick={() => setPresetDateRangeThisYear()}
+                    className={getPresetButtonClass('thisYear')}
+                  >
+                    {t('trading.wizard.backtestStep2.presetThisYear')}
+                  </button>
+                </div>
                 <button
-                  onClick={() => setPresetDateRangeLastYear()}
-                  className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-700 font-medium"
-                >
-                  {t('trading.wizard.backtestStep2.presetLastYear')}
-                </button>
-                <button
-                  onClick={() => setPresetDateRangeThisYear()}
-                  className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-700 font-medium"
-                >
-                  {t('trading.wizard.backtestStep2.presetThisYear')}
-                </button>
-                <button
-                  onClick={() => setPresetDateRange(90)}
-                  className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-700 font-medium"
+                  onClick={() => setPresetDateRange(90, 'last3Months')}
+                  className={getPresetButtonClass('last3Months')}
                 >
                   {t('trading.wizard.backtestStep2.preset3Months')}
                 </button>
                 <button
-                  onClick={() => setPresetDateRange(30)}
-                  className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors text-gray-700 font-medium"
+                  onClick={() => setPresetDateRange(30, 'last1Month')}
+                  className={getPresetButtonClass('last1Month')}
                 >
                   {t('trading.wizard.backtestStep2.preset1Month')}
                 </button>
