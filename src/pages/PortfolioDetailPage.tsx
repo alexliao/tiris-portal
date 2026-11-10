@@ -122,19 +122,14 @@ export const PortfolioDetailPage: React.FC = () => {
   };
 
   const handleTimeframeSelection = useCallback((nextTimeframe: TradingPerformanceProps['timeframe']) => {
-    if (!nextTimeframe) {
-      return;
-    }
-    const currentTimeframe = searchParams.get('timeframe');
-    if (currentTimeframe === nextTimeframe) {
+    // Updates the timeframe in browser history while keeping the widget and its cache mounted.
+    if (!nextTimeframe || searchParams.get('timeframe') === nextTimeframe) {
       return;
     }
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('timeframe', nextTimeframe);
-    const nextSearch = nextParams.toString();
-    const nextUrl = `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`;
-    window.location.assign(nextUrl);
-  }, [location.hash, location.pathname, searchParams]);
+    navigate({ pathname: location.pathname, search: nextParams.toString(), hash: location.hash });
+  }, [location.hash, location.pathname, navigate, searchParams]);
 
   const formatDateTime = useCallback(
     (value?: string | number | null): string | null => {
@@ -410,6 +405,7 @@ export const PortfolioDetailPage: React.FC = () => {
           </div>
 
           <TradingPerformanceWidget
+            key={JSON.stringify([portfolio.id, tradings.map(trading => trading.id).sort()])}
             trading={portfolioTrading}
             entityType="portfolio"
             entityId={portfolio.id}

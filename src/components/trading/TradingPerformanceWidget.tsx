@@ -23,7 +23,7 @@ import {
   type TradingMetrics,
   type TradingCandlestickPoint,
 } from '../../utils/chartData';
-import { fetchMarketSnapshot, fetchPortfolioSnapshot } from '../../utils/marketSnapshot';
+import { deriveMarketContextFromTrading, fetchMarketSnapshot, fetchPortfolioSnapshot } from '../../utils/marketSnapshot';
 import CandlestickChart from './CandlestickChart';
 import { useToast } from '../../hooks/useToast';
 import { useAuth } from '../../hooks/useAuth';
@@ -135,6 +135,11 @@ const MIN_WARMUP_RETRY_MS = 1_500;
 const DEFAULT_WARMUP_RETRY_MS = 2_000;
 const EQUITY_CURVE_FETCH_INTERVAL_MS = 5_000; // 5 seconds
 
+const resolveSnapshotEndTime = (endTimeMs: number): number | undefined => {
+  // Lets the snapshot use the previous finalized minute when the requested end is effectively now.
+  return Math.abs(Date.now() - endTimeMs) < 5000 ? undefined : endTimeMs;
+};
+
 const getWarmupStateFromCurve = (
   curve?: EquityCurveNewData | null
 ): { active: boolean; retryAfterMs: number } => {
@@ -200,13 +205,6 @@ interface TradingPerformanceWidgetProps {
   showPrice?: boolean;
   showPosition?: boolean;
   showStatus?: boolean;
-}
-
-interface MarketContext {
-  stockSymbol: string;
-  quoteSymbol: string;
-  stockBalance: number;
-  quoteBalance: number;
 }
 
 const shouldRetryWithAuth = (error: unknown): boolean =>
@@ -564,6 +562,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const tradingTimeframe = trading.info?.timeframe;
   const resolvedEntityId = entityId ?? trading.id;
   const isPortfolio = entityType === 'portfolio';
+  const portfolioMarket = useMemo(
+    () => isPortfolio ? deriveMarketContextFromTrading(trading) : undefined,
+    [isPortfolio, trading]
+  );
 
   const availableTimeframes = useMemo<Timeframe[]>(() => {
     const baseTimeframes: Timeframe[] = ['1h', '8h', '1d', '1w'];
@@ -606,7 +608,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
   })();
 
-  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>(resolvedDefaultTimeframe);
+  const [localTimeframe, setLocalTimeframe] = useState<Timeframe>(resolvedDefaultTimeframe);
+  const usesUrlTimeframe = isPortfolio && onTimeframeChange !== undefined;
+  const selectedTimeframe = usesUrlTimeframe ? resolvedDefaultTimeframe : localTimeframe;
   const [chartTimeframe, setChartTimeframe] = useState<Timeframe>(resolvedDefaultTimeframe);
   const [stockSymbol, setStockSymbol] = useState<string>('ETH');
   const [quoteSymbol, setQuoteSymbol] = useState<string>('USDT');
@@ -667,6 +671,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   const apiRequestCountRef = useRef(0);
   const [isWarmingUp, setIsWarmingUp] = useState(false);
   const oneMinutePriceRef = useRef<number | undefined>(undefined);
+  const [portfolioPrice, setPortfolioPrice] = useState<number>();
+  const portfolioAccountVersionRef = useRef(0);
 
   useEffect(() => {
     if (!statusMenuOpen) {
@@ -712,36 +718,63 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     }
   }, [isAuthenticated]);
 
-  const loadMarketSnapshot = useCallback(async (endTimeMs?: number): Promise<MarketContext & { price: number | null; warmingUp: boolean }> => {
-    // If endTimeMs is very close to current time (within 5 seconds), don't pass it
-    // to let fetchMarketSnapshot use its default (previous minute's finalized data)
-    // and avoid backend warmup delays.
-    const isCurrentTime = typeof endTimeMs === 'number' && Math.abs(Date.now() - endTimeMs) < 5000;
-    const resolvedEndTime = isCurrentTime ? undefined : endTimeMs;
-    const snapshot = isPortfolio
-      ? await fetchPortfolioSnapshot(resolvedEntityId, trading, {
-        attemptPublicFirst,
-        endTimeMs: resolvedEndTime,
-      })
-      : await fetchMarketSnapshot(trading, {
-        attemptPublicFirst,
-        endTimeMs: resolvedEndTime,
-      });
+  const loadMarketSnapshot = useCallback(async (endTimeMs: number) => {
+    // Returns the market context and updates the account values for a single trading.
+    const snapshot = await fetchMarketSnapshot(trading, {
+      attemptPublicFirst,
+      endTimeMs: resolveSnapshotEndTime(endTimeMs),
+    });
 
     setStockSymbol(snapshot.stockSymbol);
     setQuoteSymbol(snapshot.quoteSymbol);
     setStockBalance(snapshot.stockBalance);
     setQuoteBalance(snapshot.quoteBalance);
-    const snapshotPrice =
-      typeof snapshot.price === 'number' && Number.isFinite(snapshot.price) && snapshot.price > 0
-        ? snapshot.price
-        : undefined;
-
-    // Keep showing the last known valid price if the backend returns an invalid value
-    oneMinutePriceRef.current = snapshotPrice ?? oneMinutePriceRef.current;
+    if (isValidPrice(snapshot.price)) {
+      oneMinutePriceRef.current = snapshot.price;
+    }
 
     return snapshot;
-  }, [attemptPublicFirst, isPortfolio, trading]);
+  }, [attemptPublicFirst, trading]);
+
+  const updatePortfolioAccount = useCallback((
+    curve: EquityCurveNewData,
+    endTimeMs: number,
+    isCurrent: () => boolean,
+  ) => {
+    // Updates the account from the latest curve point and fetches a snapshot only for missing fields.
+    const version = ++portfolioAccountVersionRef.current;
+    const point = curve.data_points.at(-1);
+    const quote = typeof point?.quote_balance === 'number' && Number.isFinite(point.quote_balance)
+      ? point.quote_balance : undefined;
+    const stock = typeof point?.stock_balance === 'number' && Number.isFinite(point.stock_balance)
+      ? point.stock_balance : undefined;
+    const pointPrice = point?.stock_price;
+    const price = isValidPrice(pointPrice) ? pointPrice : undefined;
+
+    if (quote !== undefined) setQuoteBalance(quote);
+    if (stock !== undefined) setStockBalance(stock);
+    if (price !== undefined) setPortfolioPrice(price);
+    if (point && initialStockPriceRef.current === undefined && isValidPrice(curve.baseline_price)) {
+      initialStockPriceRef.current = curve.baseline_price;
+    }
+    if (quote !== undefined && stock !== undefined && price !== undefined) {
+      return;
+    }
+
+    void fetchPortfolioSnapshot(resolvedEntityId, trading, {
+      attemptPublicFirst,
+      endTimeMs: resolveSnapshotEndTime(endTimeMs),
+    }).then(snapshot => {
+      if (!isCurrent() || version !== portfolioAccountVersionRef.current) {
+        return;
+      }
+      if (quote === undefined) setQuoteBalance(snapshot.quoteBalance);
+      if (stock === undefined) setStockBalance(snapshot.stockBalance);
+      if (price === undefined && isValidPrice(snapshot.price)) {
+        setPortfolioPrice(snapshot.price);
+      }
+    });
+  }, [attemptPublicFirst, resolvedEntityId, trading]);
 
   const requestEquityCurve = useCallback(
     (
@@ -807,12 +840,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     [isPortfolio, resolvedEntityId]
   );
 
-  const loadTradingLogs = useCallback((refreshAll = false): Promise<TradingLog[]> => {
+  const loadTradingLogs = useCallback((): Promise<TradingLog[]> => {
     // Returns a shared log snapshot, using recording time for inclusive incremental reads.
     // shortcut: incremental reads are append-only, reconcile from scratch when the trading reloads.
     const state = tradingLogStateRef.current;
     if (!state.pending) {
-      const recordedSince = refreshAll ? undefined : state.recordedThrough;
+      const recordedSince = state.recordedThrough;
       state.pending = attemptPublicFirst(useAuth => requestTradingLogs(useAuth, recordedSince))
         .then(incoming => {
           if (recordedSince === undefined || !state.logs) {
@@ -906,7 +939,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       const logState = tradingLogStateRef.current;
       const resolvedBotIdPromise = resolveBotId();
-      const marketContext = await loadMarketSnapshot(effectiveEndTime);
+      const marketContext = portfolioMarket ?? await loadMarketSnapshot(effectiveEndTime);
       if (!isCurrent()) {
         return;
       }
@@ -1033,25 +1066,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       const normalizedEquityCurve = normalizeEquityCurve(equityCurve);
       const constrainedEquityCurve = trimEquityCurveToEndTime(normalizedEquityCurve, effectiveEndTime) ?? normalizedEquityCurve;
 
-      if (isPortfolio && constrainedEquityCurve?.data_points?.length) {
-        const lastPoint = constrainedEquityCurve.data_points[constrainedEquityCurve.data_points.length - 1];
-        if (typeof lastPoint.quote_balance === 'number' && Number.isFinite(lastPoint.quote_balance)) {
-          setQuoteBalance(lastPoint.quote_balance);
-        }
-        if (typeof lastPoint.stock_balance === 'number' && Number.isFinite(lastPoint.stock_balance)) {
-          setStockBalance(lastPoint.stock_balance);
-        }
-        if (typeof lastPoint.stock_price === 'number' && Number.isFinite(lastPoint.stock_price) && lastPoint.stock_price > 0) {
-          oneMinutePriceRef.current = lastPoint.stock_price;
-        }
-        if (
-          initialStockPriceRef.current === undefined &&
-          typeof constrainedEquityCurve.baseline_price === 'number' &&
-          Number.isFinite(constrainedEquityCurve.baseline_price) &&
-          constrainedEquityCurve.baseline_price > 0
-        ) {
-          initialStockPriceRef.current = constrainedEquityCurve.baseline_price;
-        }
+      if (isPortfolio) {
+        updatePortfolioAccount(constrainedEquityCurve, effectiveEndTime, isCurrent);
       }
 
       const publishChart = (tradingLogs?: TradingLog[]) => {
@@ -1173,7 +1189,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       setLoading(false);
       setIsRefetchingData(false);
 
-      const tradingLogsPromise = loadTradingLogs(isPortfolio).catch(err => {
+      const tradingLogsPromise = loadTradingLogs().catch(err => {
         console.error('Failed to load trading logs:', err);
         return undefined;
       });
@@ -1304,7 +1320,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     dataEndTime,
     tradingStartDateIso,
     tradingStartTimestamp,
+    portfolioMarket,
     loadMarketSnapshot,
+    updatePortfolioAccount,
     requestEquityCurve,
     requestEquityCurveByTimeRange,
     loadTradingLogs,
@@ -1335,7 +1353,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     beginApiCall();
 
     try {
-      const marketContext = await loadMarketSnapshot(targetEndTime);
+      const marketContext = portfolioMarket ?? await loadMarketSnapshot(targetEndTime);
       if (version !== fullLoadVersionRef.current) {
         return;
       }
@@ -1350,6 +1368,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       const endTime = targetEndTime;
 
       if (typeof tradingEndTime === 'number' && lastCachedTimestamp >= tradingEndTime) {
+        if (isPortfolio) {
+          updatePortfolioAccount(existingEquityCurve, targetEndTime, () => version === fullLoadVersionRef.current);
+        }
         return;
       }
 
@@ -1448,25 +1469,8 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         message: warmupSourceCurve?.message ?? existingEquityCurve.message,
       };
 
-      if (isPortfolio && updatedEquityCurve.data_points.length > 0) {
-        const lastPoint = updatedEquityCurve.data_points[updatedEquityCurve.data_points.length - 1];
-        if (typeof lastPoint.quote_balance === 'number' && Number.isFinite(lastPoint.quote_balance)) {
-          setQuoteBalance(lastPoint.quote_balance);
-        }
-        if (typeof lastPoint.stock_balance === 'number' && Number.isFinite(lastPoint.stock_balance)) {
-          setStockBalance(lastPoint.stock_balance);
-        }
-        if (typeof lastPoint.stock_price === 'number' && Number.isFinite(lastPoint.stock_price) && lastPoint.stock_price > 0) {
-          oneMinutePriceRef.current = lastPoint.stock_price;
-        }
-        if (
-          initialStockPriceRef.current === undefined &&
-          typeof updatedEquityCurve.baseline_price === 'number' &&
-          Number.isFinite(updatedEquityCurve.baseline_price) &&
-          updatedEquityCurve.baseline_price > 0
-        ) {
-          initialStockPriceRef.current = updatedEquityCurve.baseline_price;
-        }
+      if (isPortfolio) {
+        updatePortfolioAccount(updatedEquityCurve, targetEndTime, () => version === fullLoadVersionRef.current);
       }
 
       const nextWarmupState = getWarmupStateFromCurve(updatedEquityCurve);
@@ -1663,7 +1667,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     dataEndTime,
     tradingStartDateIso,
     tradingStartTimestamp,
+    portfolioMarket,
     loadMarketSnapshot,
+    updatePortfolioAccount,
     requestEquityCurveByTimeRange,
     loadTradingLogs,
     requestBotChartEvents,
@@ -1694,6 +1700,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     lastStatusEventTimestampRef.current = undefined;
     initialStockPriceRef.current = undefined;
     oneMinutePriceRef.current = undefined;
+    setPortfolioPrice(undefined);
     setStatusEvents([]);
     setInitialized(false);
 
@@ -1905,7 +1912,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
     setInitialized(false);
     onTimeframeChange?.(timeframe);
-    setSelectedTimeframe(timeframe);
+    if (!usesUrlTimeframe) {
+      setLocalTimeframe(timeframe);
+    }
   };
 
   const formatPercentage = (value: number) => {
@@ -1923,15 +1932,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   };
 
   const effectiveStockPrice =
-    typeof metricAccountOverride?.stockPrice === 'number' &&
-    Number.isFinite(metricAccountOverride.stockPrice) &&
-    metricAccountOverride.stockPrice > 0
+    isValidPrice(metricAccountOverride?.stockPrice)
       ? metricAccountOverride.stockPrice
-      : typeof oneMinutePriceRef.current === 'number' &&
-        Number.isFinite(oneMinutePriceRef.current) &&
-        oneMinutePriceRef.current > 0
-        ? oneMinutePriceRef.current
-      : undefined;
+      : portfolioPrice ?? (isValidPrice(oneMinutePriceRef.current) ? oneMinutePriceRef.current : undefined);
 
   const effectiveQuoteBalance =
     typeof metricAccountOverride?.quoteBalance === 'number' &&
@@ -2080,7 +2083,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
                 ${formatSignificantDigits(displayQuoteBalance, 4)}
             </div>
-            <div className="text-sm text-gray-600">{quoteSymbol}</div>
+            <div className="text-sm text-gray-600">{portfolioMarket?.quoteSymbol ?? quoteSymbol}</div>
           </div>
           <div className="text-sm font-bold text-gray-400 mx-2 self-end">+</div>
           <div className="text-sm font-bold text-gray-400 self-end">(</div>
@@ -2088,7 +2091,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-tiris-primary-600">
               {formatSignificantDigits(displayStockBalance, 4)}
             </div>
-            <div className="text-sm text-gray-600">{stockSymbol}</div>
+            <div className="text-sm text-gray-600">{portfolioMarket?.stockSymbol ?? stockSymbol}</div>
           </div>
           <div className="text-sm font-bold text-gray-400 mx-2 self-end">×</div>
           <div className={METRIC_VALUE_BLOCK_CLASS}>
