@@ -182,6 +182,7 @@ export const DashboardPage: React.FC = () => {
   ];
 
   const onlineTradings = useMemo(() => {
+    // Return online trading cards from bots and tradings, ordered by trading creation time.
     return bots
       .filter(bot => bot.alive)
       .map(bot => {
@@ -190,11 +191,14 @@ export const DashboardPage: React.FC = () => {
         return {
           trading,
           bot,
-          updatedAt: bot.record.updated_at ?? ''
+          createdAt: Date.parse(trading.created_at) || 0
         };
       })
-      .filter((entry): entry is { trading: Trading; bot: Bot; updatedAt: string } => entry !== null)
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      .filter((entry): entry is { trading: Trading; bot: Bot; createdAt: number } => entry !== null)
+      .sort((a, b) => {
+        // Compare two cards newest first, using trading IDs to break ties.
+        return b.createdAt - a.createdAt || a.trading.id.localeCompare(b.trading.id);
+      });
   }, [bots, tradings]);
 
   if (authLoading) {
