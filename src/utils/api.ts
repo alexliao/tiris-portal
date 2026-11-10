@@ -490,41 +490,25 @@ export async function getTransactions(tradingId: string, requireAuth: boolean = 
     .then(response => response.transactions);
 }
 
-export async function getTradingLogs(tradingId: string, requireAuth: boolean = true, sinceTimestamp?: number): Promise<TradingLog[]> {
+export async function getTradingLogs(tradingId: string, requireAuth: boolean = true, recordedSince?: number): Promise<TradingLog[]> {
+  // Returns all pages for a trading, optionally from an inclusive recording timestamp.
   const allLogs: TradingLog[] = [];
-  let offset = 0;
   const limit = 1000;
-
-  // Build query parameters
-  let query = `/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}`;
-  if (sinceTimestamp !== undefined) {
-    // Convert timestamp to ISO string for backend filtering
-    const sinceIso = new Date(sinceTimestamp).toISOString();
-    query = `/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}&since=${sinceIso}`;
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (recordedSince !== undefined) {
+    params.set('start_date', new Date(recordedSince).toISOString());
   }
 
-  while (true) {
-    const response = await apiRequest<{ trading_logs: TradingLog[] }>(query, {}, requireAuth);
-    const logs = response.trading_logs;
-
-    if (logs.length === 0) {
-      break; // No more logs to fetch
+  for (let offset = 0; ; offset += limit) {
+    params.set('offset', String(offset));
+    const { trading_logs, has_more } = await apiRequest<{ trading_logs: TradingLog[]; has_more?: boolean }>(
+      `/trading-logs/trading/${tradingId}?${params}`, {}, requireAuth
+    );
+    allLogs.push(...trading_logs);
+    if (has_more === false || trading_logs.length < limit) {
+      return allLogs;
     }
-
-    allLogs.push(...logs);
-
-    if (logs.length < limit) {
-      break; // Last page, no more data
-    }
-
-    offset += limit;
-    // Update query with new offset
-    query = sinceTimestamp !== undefined
-      ? `/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}&since=${new Date(sinceTimestamp).toISOString()}`
-      : `/trading-logs/trading/${tradingId}?limit=${limit}&offset=${offset}`;
   }
-
-  return allLogs;
 }
 
 export async function getPortfolioTradingLogs(

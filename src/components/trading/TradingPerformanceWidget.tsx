@@ -268,7 +268,7 @@ const areTradingPointsEqual = (a: TradingDataPoint, b: TradingDataPoint): boolea
   return true;
 };
 
-const areMetricsEqual = (prev: TradingMetrics, next: TradingMetrics): boolean => {
+const areMetricsEqual = (prev: ChartState['metrics'], next: ChartState['metrics']): boolean => {
   return (
     prev.totalROI === next.totalROI &&
     prev.sharpeRatio === next.sharpeRatio &&
@@ -400,7 +400,7 @@ type ChartState = {
   data: TradingDataPoint[];
   benchmarkData: TradingDataPoint[];
   beforeCreationData: TradingDataPoint[];
-  metrics: TradingMetrics;
+  metrics: Partial<TradingMetrics>;
   candlestickData: TradingCandlestickPoint[];
   baselinePrice?: number;
 };
@@ -411,7 +411,7 @@ type TimeframeDataCache = {
     data: TradingDataPoint[];
     benchmarkData: TradingDataPoint[];
     beforeCreationData: TradingDataPoint[];
-    metrics: TradingMetrics;
+    metrics: ChartState['metrics'];
     lastUpdateTimestamp?: number;
     candlestickData: TradingCandlestickPoint[];
     equityCurve: EquityCurveNewData;
@@ -555,7 +555,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     data: [],
     benchmarkData: [],
     beforeCreationData: [],
-    metrics: {} as TradingMetrics,
+    metrics: {},
     candlestickData: [],
     baselinePrice: undefined,
   });
@@ -637,8 +637,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   // Per-timeframe data cache to store data loaded for each timeframe
   const timeframeDataCacheRef = useRef<TimeframeDataCache>({});
   const initialStockPriceRef = useRef<number | undefined>(undefined);
-  const tradingLogsRef = useRef<TradingLog[]>([]);
-  const lastTradingLogTimestampRef = useRef<number | undefined>(undefined);
+  const tradingLogStateRef = useRef<{
+    logs?: TradingLog[];
+    recordedThrough?: number;
+    pending?: Promise<TradingLog[]>;
+  }>({});
+  const fullLoadVersionRef = useRef(0);
+  const fullLoadInProgressRef = useRef(false);
   const statusEventsRef = useRef<BotChartEvent[]>([]);
   const lastStatusEventTimestampRef = useRef<number | undefined>(undefined);
   const incrementalUpdateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -793,17 +798,52 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   );
 
   const requestTradingLogs = useCallback(
-    (useAuth: boolean, sinceTimestamp?: number) => {
+    (useAuth: boolean, recordedSince?: number) => {
       if (isPortfolio) {
-        return getPortfolioTradingLogs(resolvedEntityId, useAuth, sinceTimestamp);
+        return getPortfolioTradingLogs(resolvedEntityId, useAuth, recordedSince);
       }
-      return getTradingLogs(resolvedEntityId, useAuth, sinceTimestamp);
+      return getTradingLogs(resolvedEntityId, useAuth, recordedSince);
     },
     [isPortfolio, resolvedEntityId]
   );
 
+  const loadTradingLogs = useCallback((refreshAll = false): Promise<TradingLog[]> => {
+    // Returns a shared log snapshot, using recording time for inclusive incremental reads.
+    // shortcut: incremental reads are append-only, reconcile from scratch when the trading reloads.
+    const state = tradingLogStateRef.current;
+    if (!state.pending) {
+      const recordedSince = refreshAll ? undefined : state.recordedThrough;
+      state.pending = attemptPublicFirst(useAuth => requestTradingLogs(useAuth, recordedSince))
+        .then(incoming => {
+          if (recordedSince === undefined || !state.logs) {
+            state.logs = Array.from(new Map(incoming.map(log => [log.id, log])).values());
+          } else if (incoming.length > 0) {
+            const existingIds = new Set(state.logs.map(log => log.id));
+            if (incoming.some(log => !existingIds.has(log.id))) {
+              const byId = new Map(incoming.map(log => [log.id, log]));
+              state.logs.forEach(log => {
+                if (!byId.has(log.id)) {
+                  byId.set(log.id, log);
+                }
+              });
+              state.logs = Array.from(byId.values());
+            }
+          }
+
+          // The API orders by recording time descending. Keep the boundary inclusive and deduplicate IDs.
+          const latestRecordedAt = Date.parse(state.logs[0]?.timestamp ?? '');
+          state.recordedThrough = Number.isFinite(latestRecordedAt) ? latestRecordedAt : undefined;
+          return state.logs;
+        })
+        .finally(() => {
+          state.pending = undefined;
+        });
+    }
+    return state.pending;
+  }, [attemptPublicFirst, requestTradingLogs]);
+
   const resolveBotId = useCallback(async (): Promise<string | null> => {
-    if (isPortfolio) {
+    if (isPortfolio || !isAuthenticated) {
       return null;
     }
 
@@ -814,7 +854,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
     const associatedBot = await getBotByTradingId(trading.id);
     return associatedBot?.record.id ?? null;
-  }, [isPortfolio, trading.id, trading.info?.bot_id]);
+  }, [isAuthenticated, isPortfolio, trading.id, trading.info?.bot_id]);
 
   const requestBotChartEvents = useCallback(async (
     resolvedBotId: string,
@@ -844,6 +884,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
 
   const fetchTradingData = useCallback(async (isInitialLoad = false, silentRefresh = false) => {
+    // Loads the main chart before its supplemental logs and strategy overlays are ready.
+    const version = ++fullLoadVersionRef.current;
+    const isCurrent = () => version === fullLoadVersionRef.current;
+    fullLoadInProgressRef.current = true;
     let is202Error = false;
 
     try {
@@ -860,7 +904,12 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       const tradingEndTime = parseTimestamp(trading.info?.end_date);
       const effectiveEndTime = resolveEffectiveEndTime(dataEndTime, tradingEndTime);
 
+      const logState = tradingLogStateRef.current;
+      const resolvedBotIdPromise = resolveBotId();
       const marketContext = await loadMarketSnapshot(effectiveEndTime);
+      if (!isCurrent()) {
+        return;
+      }
       const resolvedStockSymbol = marketContext.stockSymbol;
       const resolvedQuoteSymbol = marketContext.quoteSymbol;
 
@@ -970,17 +1019,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         };
       };
 
-      const equityCurvePromise = loadBacktestEquityCurve();
-      const resolvedBotIdPromise = resolveBotId();
-
-      const [equityCurve, tradingLogs, resolvedBotId] = await Promise.all([
-        equityCurvePromise,
-        attemptPublicFirst(useAuth => requestTradingLogs(useAuth)),
-        resolvedBotIdPromise,
-      ]);
-
-      console.log('Equity curve response:', equityCurve);
-      console.log('Trading logs response:', tradingLogs);
+      const equityCurve = await loadBacktestEquityCurve();
+      if (!isCurrent()) {
+        return;
+      }
 
       // Validate equity curve data - expect new API format only
       if (!equityCurve || !equityCurve.data_points || !Array.isArray(equityCurve.data_points)) {
@@ -990,12 +1032,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       const normalizedEquityCurve = normalizeEquityCurve(equityCurve);
       const constrainedEquityCurve = trimEquityCurveToEndTime(normalizedEquityCurve, effectiveEndTime) ?? normalizedEquityCurve;
-
-      if (!isPortfolio) {
-        if (botId !== resolvedBotId) {
-          setBotId(resolvedBotId);
-        }
-      }
 
       if (isPortfolio && constrainedEquityCurve?.data_points?.length) {
         const lastPoint = constrainedEquityCurve.data_points[constrainedEquityCurve.data_points.length - 1];
@@ -1018,148 +1054,168 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         }
       }
 
-      const {
-        data,
-        metrics: calculatedMetrics,
-        candlestickData,
-        initialBalance: resolvedInitialBalance,
-        baselinePrice,
-      } = transformNewEquityCurveToChartData(
-        constrainedEquityCurve,
-        tradingLogs,
-        selectedTimeframe
-      );
+      const publishChart = (tradingLogs?: TradingLog[]) => {
+        // Projects the curve and available logs into chart series, metrics, and the timeframe cache.
+        const {
+          data,
+          metrics: calculatedMetrics,
+          candlestickData,
+          initialBalance: resolvedInitialBalance,
+          baselinePrice,
+        } = transformNewEquityCurveToChartData(
+          constrainedEquityCurve,
+          tradingLogs ?? [],
+          selectedTimeframe
+        );
 
-      if (isPortfolio && resolvedInitialBalance && resolvedInitialBalance > 0) {
-        if (initialBalance === undefined || initialBalance !== resolvedInitialBalance) {
+        if (isPortfolio && resolvedInitialBalance && resolvedInitialBalance > 0) {
+          if (initialBalance === undefined || initialBalance !== resolvedInitialBalance) {
+            setInitialBalance(resolvedInitialBalance);
+          }
+        } else if (initialBalance === undefined && tradingInitialBalanceFromInfo !== undefined) {
+          setInitialBalance(tradingInitialBalanceFromInfo);
+        } else if (resolvedInitialBalance && resolvedInitialBalance > 0 && initialBalance === undefined) {
           setInitialBalance(resolvedInitialBalance);
         }
-      } else if (initialBalance === undefined && tradingInitialBalanceFromInfo !== undefined) {
-        setInitialBalance(tradingInitialBalanceFromInfo);
-      } else if (resolvedInitialBalance && resolvedInitialBalance > 0 && initialBalance === undefined) {
-        setInitialBalance(resolvedInitialBalance);
-      }
 
-      if (initialStockPriceRef.current === undefined && tradingInitialPriceFromInfo !== undefined) {
-        initialStockPriceRef.current = tradingInitialPriceFromInfo;
-      }
-
-      const normalizedCandles = normalizeCandlesticks(candlestickData);
-      const constrainedCandles = normalizedCandles.filter(candle => candle.timestampNum <= effectiveEndTime);
-      if (constrainedCandles.length > 0) {
-        const lastCandle = constrainedCandles[constrainedCandles.length - 1];
-        console.debug(
-          `Candles after initial load (${selectedTimeframe}): count=${constrainedCandles.length}, last=${new Date(lastCandle.timestamp).toISOString()} O:${lastCandle.open} H:${lastCandle.high} L:${lastCandle.low} C:${lastCandle.close}`
-        );
-      }
-
-      if (!isValidPrice(oneMinutePriceRef.current)) {
-        const derivedPrice = derivePriceFromChartData(data, constrainedCandles);
-        if (isValidPrice(derivedPrice)) {
-          oneMinutePriceRef.current = derivedPrice;
+        if (initialStockPriceRef.current === undefined && tradingInitialPriceFromInfo !== undefined) {
+          initialStockPriceRef.current = tradingInitialPriceFromInfo;
         }
-      }
 
-      const benchmarkDataFromApi: TradingDataPoint[] = data.map(point => ({
-        date: point.date,
-        timestamp: point.timestamp,
-        timestampNum: point.timestampNum,
-        netValue: 0,
-        roi: 0,
-        benchmark: point.benchmark ?? 0,
-        benchmarkPrice: point.benchmarkPrice ?? 0,
-        events: point.events,
-      }));
-
-      const benchmarkData: TradingDataPoint[] = benchmarkDataFromApi;
-
-      // Split equity data into before and after start time (using start_date from trading.info if available, otherwise created_at)
-      const { beforeCreationData, afterCreationData } = splitEquityDataByCreationTime(
-        data,
-        tradingStartDateIso,
-        selectedTimeframe
-      );
-
-      tradingLogsRef.current = mergeTradingLogs(tradingLogsRef.current, tradingLogs);
-      if (tradingLogsRef.current.length > 0) {
-        const latestLog = tradingLogsRef.current[tradingLogsRef.current.length - 1];
-        lastTradingLogTimestampRef.current = new Date(latestLog.event_time).getTime();
-      }
-
-      if (!isPortfolio && resolvedBotId) {
-        const statusEventsStart = constrainedEquityCurve.start_time;
-        const statusEventsEnd = constrainedEquityCurve.end_time;
-        const fetchedStatusEvents = await requestBotChartEvents(
-          resolvedBotId,
-          statusEventsStart,
-          statusEventsEnd
-        );
-        const mergedStatusEvents = mergeBotChartEvents(statusEventsRef.current, fetchedStatusEvents);
-        statusEventsRef.current = mergedStatusEvents;
-        setStatusEvents(mergedStatusEvents);
-
-        if (mergedStatusEvents.length > 0) {
-          lastStatusEventTimestampRef.current = getBotChartEventTimestampMs(
-            mergedStatusEvents[mergedStatusEvents.length - 1]
+        const normalizedCandles = normalizeCandlesticks(candlestickData);
+        const constrainedCandles = normalizedCandles.filter(candle => candle.timestampNum <= effectiveEndTime);
+        if (constrainedCandles.length > 0) {
+          const lastCandle = constrainedCandles[constrainedCandles.length - 1];
+          console.debug(
+            `Candles after initial load (${selectedTimeframe}): count=${constrainedCandles.length}, last=${new Date(lastCandle.timestamp).toISOString()} O:${lastCandle.open} H:${lastCandle.high} L:${lastCandle.low} C:${lastCandle.close}`
           );
         }
-      } else if (!isPortfolio) {
-        statusEventsRef.current = [];
-        lastStatusEventTimestampRef.current = undefined;
-        setStatusEvents([]);
-      } else if (isPortfolio) {
-        statusEventsRef.current = [];
-        lastStatusEventTimestampRef.current = undefined;
-        setStatusEvents([]);
-      }
 
-      setChartState((previous) => {
-        const mergedData = mergeTradingDataSets(previous.data, afterCreationData);
-        const mergedBenchmark = mergeTradingDataSets(previous.benchmarkData, benchmarkData);
-        const mergedBeforeCreationData = mergeTradingDataSets(previous.beforeCreationData, beforeCreationData);
-        const metricsChanged = !areMetricsEqual(previous.metrics, calculatedMetrics);
-        const candlestickChanged = haveCandlestickDataChanged(previous.candlestickData, constrainedCandles);
-
-        const nextData = mergedData.changed ? mergedData.value : previous.data;
-        const nextBenchmark = mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData;
-        const nextBeforeCreationData = mergedBeforeCreationData.changed ? mergedBeforeCreationData.value : previous.beforeCreationData;
-        const nextMetrics = metricsChanged ? calculatedMetrics : previous.metrics;
-        const nextCandlesticks = candlestickChanged ? constrainedCandles : previous.candlestickData;
-        const nextBaselinePrice = baselinePrice ?? previous.baselinePrice;
-
-        // Store in cache for this timeframe
-        const cacheKey = selectedTimeframe;
-        timeframeDataCacheRef.current[cacheKey] = {
-          data: nextData,
-          benchmarkData: nextBenchmark,
-          beforeCreationData: nextBeforeCreationData,
-          metrics: nextMetrics,
-          candlestickData: nextCandlesticks,
-          equityCurve: constrainedEquityCurve,
-          baselinePrice: nextBaselinePrice,
-          initialBalance: resolvedInitialBalance,
-          lastUpdateTimestamp:
-            nextData.length > 0
-              ? nextData[nextData.length - 1].timestampNum
-              : undefined,
-        };
-
-        console.log(`Cached data for timeframe ${cacheKey}: ${nextData.length} data points, beforeCreation: ${nextBeforeCreationData.length}`);
-
-        if (!mergedData.changed && !mergedBenchmark.changed && !mergedBeforeCreationData.changed && !metricsChanged && !candlestickChanged) {
-          return previous;
+        if (!isValidPrice(oneMinutePriceRef.current)) {
+          const derivedPrice = derivePriceFromChartData(data, constrainedCandles);
+          if (isValidPrice(derivedPrice)) {
+            oneMinutePriceRef.current = derivedPrice;
+          }
         }
 
-        return {
-          data: nextData,
-          benchmarkData: nextBenchmark,
-          beforeCreationData: nextBeforeCreationData,
-          metrics: nextMetrics,
-          candlestickData: nextCandlesticks,
-          baselinePrice: nextBaselinePrice,
-        };
+        const benchmarkDataFromApi: TradingDataPoint[] = data.map(point => ({
+          date: point.date,
+          timestamp: point.timestamp,
+          timestampNum: point.timestampNum,
+          netValue: 0,
+          roi: 0,
+          benchmark: point.benchmark ?? 0,
+          benchmarkPrice: point.benchmarkPrice ?? 0,
+          events: point.events,
+        }));
+
+        const benchmarkData: TradingDataPoint[] = benchmarkDataFromApi;
+
+        // Split equity data into before and after start time (using start_date from trading.info if available, otherwise created_at)
+        const { beforeCreationData, afterCreationData } = splitEquityDataByCreationTime(
+          data,
+          tradingStartDateIso,
+          selectedTimeframe
+        );
+
+        const metrics = tradingLogs === undefined ? { ...calculatedMetrics, totalTrades: undefined } : calculatedMetrics;
+        setChartState((previous) => {
+          const mergedData = mergeTradingDataSets(previous.data, afterCreationData);
+          const mergedBenchmark = mergeTradingDataSets(previous.benchmarkData, benchmarkData);
+          const mergedBeforeCreationData = mergeTradingDataSets(previous.beforeCreationData, beforeCreationData);
+          const metricsChanged = !areMetricsEqual(previous.metrics, metrics);
+          const candlestickChanged = haveCandlestickDataChanged(previous.candlestickData, constrainedCandles);
+
+          const nextData = mergedData.changed ? mergedData.value : previous.data;
+          const nextBenchmark = mergedBenchmark.changed ? mergedBenchmark.value : previous.benchmarkData;
+          const nextBeforeCreationData = mergedBeforeCreationData.changed ? mergedBeforeCreationData.value : previous.beforeCreationData;
+          const nextMetrics = metricsChanged ? metrics : previous.metrics;
+          const nextCandlesticks = candlestickChanged ? constrainedCandles : previous.candlestickData;
+          const nextBaselinePrice = baselinePrice ?? previous.baselinePrice;
+
+          // Store in cache for this timeframe
+          const cacheKey = selectedTimeframe;
+          timeframeDataCacheRef.current[cacheKey] = {
+            data: nextData,
+            benchmarkData: nextBenchmark,
+            beforeCreationData: nextBeforeCreationData,
+            metrics: nextMetrics,
+            candlestickData: nextCandlesticks,
+            equityCurve: constrainedEquityCurve,
+            baselinePrice: nextBaselinePrice,
+            initialBalance: resolvedInitialBalance,
+            lastUpdateTimestamp:
+              nextData.length > 0
+                ? nextData[nextData.length - 1].timestampNum
+                : undefined,
+          };
+
+          console.log(`Cached data for timeframe ${cacheKey}: ${nextData.length} data points, beforeCreation: ${nextBeforeCreationData.length}`);
+
+          if (!mergedData.changed && !mergedBenchmark.changed && !mergedBeforeCreationData.changed && !metricsChanged && !candlestickChanged) {
+            return previous;
+          }
+
+          return {
+            data: nextData,
+            benchmarkData: nextBenchmark,
+            beforeCreationData: nextBeforeCreationData,
+            metrics: nextMetrics,
+            candlestickData: nextCandlesticks,
+            baselinePrice: nextBaselinePrice,
+          };
+        });
+        setChartTimeframe(selectedTimeframe);
+      };
+
+      const previewLogs = logState.logs;
+      publishChart(previewLogs);
+      setLoading(false);
+      setIsRefetchingData(false);
+
+      const tradingLogsPromise = loadTradingLogs(isPortfolio).catch(err => {
+        console.error('Failed to load trading logs:', err);
+        return undefined;
       });
-      setChartTimeframe(selectedTimeframe);
+      const statusPromise = resolvedBotIdPromise.then(async resolvedBotId => {
+        if (!isCurrent()) {
+          return;
+        }
+        setBotId(resolvedBotId);
+        if (!resolvedBotId) {
+          if (statusEventsRef.current.length > 0) {
+            statusEventsRef.current = [];
+            lastStatusEventTimestampRef.current = undefined;
+            setStatusEvents([]);
+          }
+          return;
+        }
+
+        const events = await requestBotChartEvents(
+          resolvedBotId, constrainedEquityCurve.start_time, constrainedEquityCurve.end_time
+        );
+        if (!isCurrent()) {
+          return;
+        }
+        const mergedEvents = mergeBotChartEvents(statusEventsRef.current, events);
+        statusEventsRef.current = mergedEvents;
+        setStatusEvents(mergedEvents);
+        if (mergedEvents.length > 0) {
+          lastStatusEventTimestampRef.current = getBotChartEventTimestampMs(mergedEvents[mergedEvents.length - 1]);
+        }
+      }).catch(err => console.error('Failed to load chart events:', err));
+
+      const tradingLogs = await tradingLogsPromise;
+      if (!isCurrent()) {
+        return;
+      }
+      if (tradingLogs && tradingLogs !== previewLogs) {
+        publishChart(tradingLogs);
+      }
+      await statusPromise;
+      if (!isCurrent()) {
+        return;
+      }
 
       const nextWarmupState = getWarmupStateFromCurve(constrainedEquityCurve);
       console.log('fetchTradingData success - nextWarmupState:', nextWarmupState, 'warming_up:', constrainedEquityCurve.warming_up);
@@ -1176,6 +1232,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       });
 
     } catch (err) {
+      if (!isCurrent()) {
+        return;
+      }
       console.error('Failed to fetch trading data:', err);
 
       // Check if this is a 202 (warmup in progress) - if so, keep the warmup spinner showing
@@ -1228,10 +1287,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       // Always end the API call - the warmup spinner is controlled by isWarmingUp state instead
       endApiCall();
 
-      // Only hide loading state if we showed it (initial load)
-      if (isInitialLoad) {
+      if (isCurrent()) {
+        fullLoadInProgressRef.current = false;
         setLoading(false);
-      } else if (!silentRefresh) {
         setIsRefetchingData(false);
       }
     }
@@ -1249,10 +1307,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     loadMarketSnapshot,
     requestEquityCurve,
     requestEquityCurveByTimeRange,
-    requestTradingLogs,
+    loadTradingLogs,
     resolveBotId,
     requestBotChartEvents,
-    botId,
     isPortfolio,
   ]);
 
@@ -1261,7 +1318,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     const cacheKey = selectedTimeframe;
     const cacheEntry = timeframeDataCacheRef.current[cacheKey];
 
-    if (!cacheEntry || incrementalUpdateInProgressRef.current) {
+    if (!cacheEntry || fullLoadInProgressRef.current || incrementalUpdateInProgressRef.current) {
       return;
     }
 
@@ -1272,12 +1329,16 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       return;
     }
 
+    const version = fullLoadVersionRef.current;
     const exchangeType = trading.exchange_binding?.exchange_type;
     incrementalUpdateInProgressRef.current = true;
     beginApiCall();
 
     try {
       const marketContext = await loadMarketSnapshot(targetEndTime);
+      if (version !== fullLoadVersionRef.current) {
+        return;
+      }
       const resolvedStockSymbol = marketContext.stockSymbol;
       const resolvedQuoteSymbol = marketContext.quoteSymbol;
 
@@ -1307,6 +1368,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
           exchangeType
         )
       );
+
+      if (version !== fullLoadVersionRef.current) {
+        return;
+      }
 
       const normalizedIncremental = incrementalEquity ? normalizeEquityCurve(incrementalEquity) : undefined;
       const constrainedIncremental = trimEquityCurveToEndTime(normalizedIncremental, targetEndTime) ?? normalizedIncremental;
@@ -1418,23 +1483,18 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
       let hasUpdatedData = newDataPoints.length > 0;
 
-      // Fetch trading logs incrementally to capture new events
-      const newTradingLogs = await attemptPublicFirst(useAuth =>
-        requestTradingLogs(
-          useAuth,
-          lastTradingLogTimestampRef.current
-        )
-      );
-
-      if (newTradingLogs.length > 0) {
-        tradingLogsRef.current = mergeTradingLogs(tradingLogsRef.current, newTradingLogs);
-        const latestLog = tradingLogsRef.current[tradingLogsRef.current.length - 1];
-        lastTradingLogTimestampRef.current = new Date(latestLog.event_time).getTime();
-        hasUpdatedData = true;
+      const previousLogs = tradingLogStateRef.current.logs;
+      const tradingLogs = await loadTradingLogs();
+      if (version !== fullLoadVersionRef.current) {
+        return;
       }
+      hasUpdatedData ||= tradingLogs !== previousLogs || cacheEntry.metrics.totalTrades === undefined;
 
       if (!isPortfolio) {
         const resolvedBotId = botId ?? await resolveBotId();
+        if (version !== fullLoadVersionRef.current) {
+          return;
+        }
         if (botId !== resolvedBotId) {
           setBotId(resolvedBotId);
         }
@@ -1453,6 +1513,9 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
             updatedEquityCurve.end_time
           );
 
+          if (version !== fullLoadVersionRef.current) {
+            return;
+          }
           if (fetchedStatusEvents.length > 0) {
             const mergedStatusEvents = mergeBotChartEvents(statusEventsRef.current, fetchedStatusEvents);
             const changed = mergedStatusEvents.length !== statusEventsRef.current.length;
@@ -1486,7 +1549,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         baselinePrice,
       } = transformNewEquityCurveToChartData(
         updatedEquityCurve,
-        tradingLogsRef.current,
+        mergeTradingLogs([], tradingLogs),
         selectedTimeframe
       );
 
@@ -1602,7 +1665,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
     tradingStartTimestamp,
     loadMarketSnapshot,
     requestEquityCurveByTimeRange,
-    requestTradingLogs,
+    loadTradingLogs,
     requestBotChartEvents,
     resolveBotId,
     botId,
@@ -1612,7 +1675,10 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
   // Initial data loading effect - only run once on mount
   useEffect(() => {
-    fetchTradingData(true); // Mark as initial load
+    void fetchTradingData(true);
+    return () => {
+      fullLoadVersionRef.current += 1;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run on mount
 
@@ -1623,8 +1689,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
     lastAppliedRefreshNonceRef.current = refreshNonce;
     timeframeDataCacheRef.current = {};
-    tradingLogsRef.current = [];
-    lastTradingLogTimestampRef.current = undefined;
+    tradingLogStateRef.current = {};
     statusEventsRef.current = [];
     lastStatusEventTimestampRef.current = undefined;
     initialStockPriceRef.current = undefined;
@@ -1652,8 +1717,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
 
     if (dataEndTime + 50 < previous) {
       timeframeDataCacheRef.current = {};
-      tradingLogsRef.current = [];
-      lastTradingLogTimestampRef.current = undefined;
+      tradingLogStateRef.current = {};
       statusEventsRef.current = [];
       lastStatusEventTimestampRef.current = undefined;
       setStatusEvents([]);
@@ -1673,11 +1737,13 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
   // Timeframe change effect - use cached data if available, otherwise fetch
   useEffect(() => {
     // Skip the initial render (handled by the effect above)
-    if (chartState.data.length > 0) {
+    if (!loading) {
       const cacheKey = selectedTimeframe;
       const cachedData = timeframeDataCacheRef.current[cacheKey];
 
       if (cachedData) {
+        fullLoadVersionRef.current += 1;
+        fullLoadInProgressRef.current = false;
         // Use cached data for this timeframe
         console.log(`Using cached data for timeframe ${cacheKey}: ${cachedData.data.length} points`);
         if (
@@ -1806,46 +1872,6 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
       }
     };
   }, [chartState.data.length, fetchIncrementalUpdates, selectedTimeframe, trading.type]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const hydrateBotId = async () => {
-      if (isPortfolio) {
-        if (!cancelled) {
-          setBotId(null);
-          statusEventsRef.current = [];
-          lastStatusEventTimestampRef.current = undefined;
-          setStatusEvents([]);
-        }
-        return;
-      }
-
-      const infoBotId = trading.info?.bot_id;
-      if (typeof infoBotId === 'string' && infoBotId.trim().length > 0) {
-        if (!cancelled) {
-          setBotId(infoBotId.trim());
-        }
-        return;
-      }
-
-      const associatedBot = await getBotByTradingId(trading.id);
-      if (!cancelled) {
-        setBotId(associatedBot?.record.id ?? null);
-      }
-    };
-
-    hydrateBotId().catch((error) => {
-      console.warn('Unable to resolve bot id for status chart events:', error);
-      if (!cancelled) {
-        setBotId(null);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isPortfolio, trading.id, trading.info?.bot_id]);
 
   const visibleBenchmarkData = chartState.benchmarkData;
 
@@ -2131,7 +2157,7 @@ const TradingPerformanceWidgetComponent: React.FC<TradingPerformanceWidgetProps>
         {/* Total Trades */}
         <div className={SECONDARY_METRIC_CARD_CLASS}>
             <div className="text-xl font-['Bebas_Neue'] font-bold text-rose-600">
-              {chartState.metrics.totalTrades ?? 0}
+              {chartState.metrics.totalTrades ?? '—'}
             </div>
             <div className="text-sm font-['Nunito'] text-gray-600">{t('trading.metrics.totalTrades')}</div>
         </div>

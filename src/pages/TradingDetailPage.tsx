@@ -1495,6 +1495,7 @@ export const TradingDetailPage: React.FC = () => {
 
           {/* Performance Widget */}
           <TradingPerformanceWidget
+            key={trading.id}
             trading={trading}
             dataEndTime={backtestPointerMs}
             refreshNonce={performanceRefreshNonce}
